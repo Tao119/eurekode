@@ -518,13 +518,20 @@ export interface Artifact {
   version: number;
 }
 
+// アンロッククイズ用の選択肢（生成モード用）
+export interface UnlockQuizOption {
+  label: string;
+  text: string;
+  explanation?: string;
+}
+
 export interface StructuredQuiz {
   /** 現在の質問番号（1から始まる） */
   level: number;
   /** このアーティファクトの総質問数（1〜3） */
   totalQuestions?: number;
   question: string;
-  options: { label: string; text: string; explanation?: string }[];
+  options: UnlockQuizOption[];
   correctLabel: string;
   hint?: string;
   /** クイズが参照するコードスニペット（blur解除して表示） */

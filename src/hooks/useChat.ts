@@ -270,10 +270,7 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
         return;
       }
 
-      const data = await response.json();
-      if (data.success && data.data?.updated) {
-        console.log("[useChat] Title updated:", data.data.title);
-      }
+      await response.json();
     } catch (err) {
       // タイトル生成の失敗は致命的ではないのでログのみ
       console.warn("Failed to generate title:", err);

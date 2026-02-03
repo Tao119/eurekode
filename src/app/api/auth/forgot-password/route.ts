@@ -69,8 +69,8 @@ export async function POST(
     const resetUrl = `${baseUrl}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
     // TODO: Send email with reset link
-    // For now, log the reset URL (in production, use a proper email service)
-    console.log("Password reset URL:", resetUrl);
+    // In production, use a proper email service (e.g., Resend, SendGrid)
+    // For development, check server logs or implement email preview
 
     return NextResponse.json({
       success: true,

@@ -197,7 +197,6 @@ export default function AccessKeysPage() {
           unlockSkipAllowed: editUnlockSkipAllowed,
         },
       };
-      console.log("Update key request:", JSON.stringify(requestBody, null, 2));
 
       const response = await fetch(`/api/admin/keys/${editingKey.id}`, {
         method: "PUT",

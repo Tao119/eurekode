@@ -1,9 +1,13 @@
-import type { StructuredQuiz, Artifact } from "@/types/chat";
-import type { UnlockLevel, UnlockQuiz, QuizOption } from "@/hooks/useGenerationMode";
+import type { StructuredQuiz, Artifact, UnlockQuizOption } from "@/types/chat";
+import type { UnlockLevel, UnlockQuiz } from "@/hooks/useGenerationMode";
+
+// ローカル型エイリアス
+type QuizOption = UnlockQuizOption;
 
 // Session-based flag to track if fallback helper has been used
 // Key: artifactId, Value: true if helper was used
 const fallbackUsedInSession = new Map<string, boolean>();
+const MAX_FALLBACK_ENTRIES = 100;
 
 /**
  * Estimate the appropriate number of quiz questions based on code complexity
@@ -68,6 +72,13 @@ export function hasFallbackBeenUsed(artifactId: string): boolean {
  * Mark fallback helper as used for this artifact
  */
 export function markFallbackAsUsed(artifactId: string): void {
+  // Prevent unbounded memory growth
+  if (fallbackUsedInSession.size >= MAX_FALLBACK_ENTRIES) {
+    const firstKey = fallbackUsedInSession.keys().next().value;
+    if (firstKey) {
+      fallbackUsedInSession.delete(firstKey);
+    }
+  }
   fallbackUsedInSession.set(artifactId, true);
 }
 
@@ -120,18 +131,11 @@ export function parseStructuredQuiz(content: string): StructuredQuiz | null {
 
     // Validate required fields
     if (!parsed.question || !parsed.options || parsed.options.length < 2) {
-      console.warn("[Quiz Parser] Missing required fields:", {
-        hasQuestion: !!parsed.question,
-        optionsCount: parsed.options?.length ?? 0,
-      });
       return null;
     }
 
     return parsed;
-  } catch (e) {
-    // Log the error for debugging
-    console.warn("[Quiz Parser] Failed to parse quiz JSON:", e);
-    console.warn("[Quiz Parser] Raw content:", quizMatch[1].substring(0, 200));
+  } catch {
     return null;
   }
 }

@@ -319,7 +319,6 @@ export function GenerationChatContainer({
       if (!isFullyUnlocked && (artifacts.length > 0 || state.phase === "coding" || state.phase === "unlocking")) {
         const quiz = extractQuizFromResponse(content, state.unlockLevel);
         if (quiz) {
-          console.log("[Quiz] Extracted quiz:", quiz.question);
           setCurrentQuiz(quiz);
         }
       }

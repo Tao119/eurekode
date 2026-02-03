@@ -3,12 +3,14 @@
  * AIレスポンスからn択クイズを抽出する共通ロジック
  */
 
-import type { StructuredQuiz } from "@/types/chat";
+import type { StructuredQuiz, UnlockQuizOption } from "@/types/chat";
+import { parseStructuredQuiz, removeQuizMarkerFromContent } from "./quiz-generator";
 
-export interface QuizOption {
-  label: string;
-  text: string;
-}
+// 再エクスポート（後方互換性のため）
+export { parseStructuredQuiz, removeQuizMarkerFromContent };
+
+// クイズの選択肢（互換性のため型エイリアスを提供）
+export type QuizOption = Pick<UnlockQuizOption, "label" | "text">;
 
 export interface ExtractedQuiz {
   question: string;
@@ -19,35 +21,6 @@ export interface ExtractedQuiz {
 export interface MultipleExtractedQuizzes {
   quizzes: ExtractedQuiz[];
   contentWithoutQuizzes: string;
-}
-
-/**
- * 構造化クイズ形式をパース
- * Format: <!--QUIZ:{"level":1,"question":"...","options":[...],"correctLabel":"A","hint":"..."}-->
- */
-export function parseStructuredQuiz(content: string): StructuredQuiz | null {
-  const quizMatch = content.match(/<!--QUIZ:([\s\S]*?)-->/);
-  if (!quizMatch) return null;
-
-  try {
-    const parsed = JSON.parse(quizMatch[1].trim()) as StructuredQuiz;
-
-    // Validate required fields
-    if (!parsed.question || !parsed.options || parsed.options.length < 2) {
-      return null;
-    }
-
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * コンテンツからクイズマーカーを除去
- */
-export function removeQuizMarkerFromContent(content: string): string {
-  return content.replace(/<!--QUIZ:[\s\S]*?-->/g, "").trim();
 }
 
 /**

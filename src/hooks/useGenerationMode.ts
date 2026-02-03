@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Artifact } from "@/types/chat";
+import type { Artifact, UnlockQuizOption } from "@/types/chat";
 import {
   upsertArtifact as apiUpsertArtifact,
   updateArtifactProgress as apiUpdateProgress,
@@ -22,12 +22,8 @@ export type GenerationPhase =
 // アンロックレベル（現在の正解数、0から始まる）
 export type UnlockLevel = number;
 
-// クイズの選択肢
-export interface QuizOption {
-  label: string;
-  text: string;
-  explanation?: string;
-}
+// クイズの選択肢（types/chat.tsから再エクスポート）
+export type QuizOption = UnlockQuizOption;
 
 // クイズの質問タイプ
 export interface UnlockQuiz {
@@ -242,13 +238,6 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     initialStateAppliedRef.current = true;
     canSaveRef.current = true; // 初期状態が適用されたので保存を許可
 
-    console.log("[useGenerationMode] Initial state applied:", {
-      phase: initialState.phase,
-      unlockLevel: initialState.unlockLevel,
-      totalQuestions: initialState.totalQuestions,
-      artifactProgressKeys: Object.keys(initialState.artifactProgress || {}),
-    });
-
     setState((prev) => ({
       ...prev,
       phase: initialState.phase || prev.phase,
@@ -336,10 +325,6 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     setState((prev) => {
       // totalQuestions=0 または既にアンロック済みの場合はクイズを設定しない
       if (prev.totalQuestions === 0 || prev.unlockLevel >= prev.totalQuestions) {
-        console.log("[setCurrentQuiz] Skipped: already unlocked", {
-          totalQuestions: prev.totalQuestions,
-          unlockLevel: prev.unlockLevel,
-        });
         return prev;
       }
 
@@ -347,15 +332,8 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
       const currentProgress = activeId ? prev.artifactProgress[activeId] : null;
 
       if (currentProgress && currentProgress.unlockLevel >= currentProgress.totalQuestions) {
-        console.log("[setCurrentQuiz] Skipped: artifact already unlocked", {
-          activeId,
-          progressUnlockLevel: currentProgress.unlockLevel,
-          progressTotalQuestions: currentProgress.totalQuestions,
-        });
         return prev;
       }
-
-      console.log("[setCurrentQuiz] Setting quiz:", quiz.question.substring(0, 50));
 
       const updatedProgress: Record<string, ArtifactProgress> = activeId && currentProgress
         ? {
