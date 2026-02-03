@@ -538,7 +538,11 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
                 if (parsed.done && parsed.tokensUsed !== undefined) {
                   onTokensUsed?.(parsed.tokensUsed);
                 }
-              } catch {
+              } catch (parseErr) {
+                // Re-throw if it's a streaming error (not a JSON parse error)
+                if (parseErr instanceof Error && parseErr.message !== "Unexpected end of JSON input" && !parseErr.message.includes("JSON")) {
+                  throw parseErr;
+                }
                 // Skip invalid JSON (might be incomplete chunk)
               }
             }
@@ -765,7 +769,11 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
               if (parsed.done && parsed.tokensUsed !== undefined) {
                 onTokensUsed?.(parsed.tokensUsed);
               }
-            } catch {
+            } catch (parseErr) {
+              // Re-throw if it's a streaming error (not a JSON parse error)
+              if (parseErr instanceof Error && parseErr.message !== "Unexpected end of JSON input" && !parseErr.message.includes("JSON")) {
+                throw parseErr;
+              }
               // Skip invalid JSON (might be incomplete chunk)
             }
           }
