@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { GenerationChatContainer } from "@/components/chat";
 import { ProjectSelector } from "@/components/chat/ProjectSelector";
@@ -9,6 +9,12 @@ import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
 import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
 import { toast } from "sonner";
+import type { PersistedGenerationState } from "@/hooks/useGenerationMode";
+
+// 拡張されたConversationMetadata型（generationStateを含む）
+interface ExtendedConversationMetadata {
+  generationState?: PersistedGenerationState;
+}
 
 export default function GenerationModePage() {
   const searchParams = useSearchParams();
@@ -75,6 +81,7 @@ export default function GenerationModePage() {
     canRegenerate,
     generationRecovery,
     clearGenerationRecovery,
+    restoredMetadata,
   } = useChat({
     mode: "generation",
     conversationId: currentConversationId || undefined,
@@ -86,6 +93,12 @@ export default function GenerationModePage() {
 
   // Disable project change once conversation has started
   const canChangeProject = messages.length === 0 && !currentConversationId;
+
+  // 会話metadataから生成モード状態を取得
+  const initialGenerationState = useMemo(() => {
+    const extendedMetadata = restoredMetadata as ExtendedConversationMetadata | null;
+    return extendedMetadata?.generationState || undefined;
+  }, [restoredMetadata]);
 
   // Load conversation from history if ID is provided (from URL on initial load)
   useEffect(() => {
@@ -134,6 +147,7 @@ export default function GenerationModePage() {
         onRegenerate={regenerateLastMessage}
         canRegenerate={canRegenerate}
         conversationId={currentConversationId || undefined}
+        initialGenerationState={initialGenerationState}
         headerExtra={
           <ProjectSelector
             selectedProjectId={selectedProjectId}

@@ -4,21 +4,51 @@ import type { UnlockLevel, UnlockQuiz, QuizOption } from "@/hooks/useGenerationM
 /**
  * Parse structured quiz from AI response
  * Format: <!--QUIZ:{"level":1,"question":"...","options":[...],"correctLabel":"A","hint":"..."}-->
+ *
+ * Handles common formatting issues:
+ * - Multi-line JSON
+ * - Trailing whitespace
+ * - Japanese characters in strings
  */
 export function parseStructuredQuiz(content: string): StructuredQuiz | null {
+  // Match the quiz tag (supports multi-line content)
   const quizMatch = content.match(/<!--QUIZ:([\s\S]*?)-->/);
-  if (!quizMatch) return null;
+  if (!quizMatch) {
+    // Check if there's an incomplete quiz tag (streaming in progress)
+    if (content.includes("<!--QUIZ:") && !content.includes("-->")) {
+      // Tag is incomplete, wait for more content
+      return null;
+    }
+    return null;
+  }
 
   try {
-    const parsed = JSON.parse(quizMatch[1].trim()) as StructuredQuiz;
+    // Clean up the JSON content
+    let jsonContent = quizMatch[1].trim();
+
+    // Remove any leading/trailing whitespace from each line
+    jsonContent = jsonContent
+      .split("\n")
+      .map((line) => line.trim())
+      .join("");
+
+    // Try to parse as JSON
+    const parsed = JSON.parse(jsonContent) as StructuredQuiz;
 
     // Validate required fields
     if (!parsed.question || !parsed.options || parsed.options.length < 2) {
+      console.warn("[Quiz Parser] Missing required fields:", {
+        hasQuestion: !!parsed.question,
+        optionsCount: parsed.options?.length ?? 0,
+      });
       return null;
     }
 
     return parsed;
-  } catch {
+  } catch (e) {
+    // Log the error for debugging
+    console.warn("[Quiz Parser] Failed to parse quiz JSON:", e);
+    console.warn("[Quiz Parser] Raw content:", quizMatch[1].substring(0, 200));
     return null;
   }
 }

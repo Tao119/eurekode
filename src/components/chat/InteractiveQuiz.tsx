@@ -150,11 +150,11 @@ function ChoiceQuestion({
 }: QuestionInputProps) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <span className="size-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs">
+      <div className="flex items-start gap-2 text-sm font-medium">
+        <span className="size-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs shrink-0 mt-0.5">
           {index + 1}
         </span>
-        <span>選択してください</span>
+        <span>{question.questionText || "選択してください"}</span>
       </div>
       <div className="grid gap-2">
         {question.options?.map((option) => {

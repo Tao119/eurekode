@@ -16,6 +16,11 @@ export interface ExtractedQuiz {
   contentWithoutOptions: string;
 }
 
+export interface MultipleExtractedQuizzes {
+  quizzes: ExtractedQuiz[];
+  contentWithoutQuizzes: string;
+}
+
 /**
  * 構造化クイズ形式をパース
  * Format: <!--QUIZ:{"level":1,"question":"...","options":[...],"correctLabel":"A","hint":"..."}-->
@@ -139,6 +144,136 @@ export function extractQuizOptions(content: string): ExtractedQuiz | null {
     options,
     contentWithoutOptions,
   };
+}
+
+/**
+ * AIレスポンスから複数のクイズを抽出
+ *
+ * 対応パターン:
+ * 1. 「質問1:」「質問2:」などの番号付き質問
+ * 2. 「【問1】」「【問2】」などの括弧付き番号
+ * 3. 「Q1:」「Q2:」などの英字番号
+ * 4. 「1.」「2.」などの数字だけの場合（選択肢A-Dが続く場合）
+ * 5. 複数の選択肢セット（A-D）が離れて存在する場合
+ */
+export function extractMultipleQuizzes(content: string): MultipleExtractedQuizzes | null {
+  // 質問区切りパターンを検出
+  const questionSplitPatterns = [
+    /(?=(?:質問|問題|問)\s*[1-9０-９][0-9０-９]*[\s:：.．])/g,
+    /(?=【(?:質問|問題|問)\s*[1-9０-９][0-9０-９]*】)/g,
+    /(?=Q\s*[1-9][0-9]*[\s:：.．])/gi,
+    /(?=\n\s*[1-9][0-9]*[\s.．:：]\s*[^\dA-Da-d].*?(?:\n\s*[A-Da-d][\s)）.:：]))/g,
+  ];
+
+  let sections: string[] = [];
+
+  // 各パターンで分割を試みる
+  for (const pattern of questionSplitPatterns) {
+    const testSections = content.split(pattern).filter((s) => s.trim());
+    if (testSections.length >= 2) {
+      sections = testSections;
+      break;
+    }
+  }
+
+  // パターンで分割できなかった場合、選択肢のセットで分割を試みる
+  if (sections.length < 2) {
+    sections = splitByOptionSets(content);
+  }
+
+  // 分割できなかった場合
+  if (sections.length < 2) {
+    // 単一のクイズとして抽出を試みる
+    const singleQuiz = extractQuizOptions(content);
+    if (singleQuiz) {
+      return {
+        quizzes: [singleQuiz],
+        contentWithoutQuizzes: singleQuiz.contentWithoutOptions,
+      };
+    }
+    return null;
+  }
+
+  // 各セクションからクイズを抽出
+  const quizzes: ExtractedQuiz[] = [];
+  const nonQuizParts: string[] = [];
+
+  for (const section of sections) {
+    const quiz = extractQuizOptions(section);
+    if (quiz && quiz.options.length >= 2) {
+      quizzes.push(quiz);
+    } else {
+      // クイズが抽出できなかったセクションは非クイズ部分として保持
+      nonQuizParts.push(section.trim());
+    }
+  }
+
+  if (quizzes.length === 0) {
+    return null;
+  }
+
+  // 非クイズ部分を結合
+  const contentWithoutQuizzes = nonQuizParts.join("\n\n").trim();
+
+  return {
+    quizzes,
+    contentWithoutQuizzes,
+  };
+}
+
+/**
+ * 選択肢のセット（A-D）で内容を分割
+ * 複数の独立したA-Dセットがある場合に対応
+ */
+function splitByOptionSets(content: string): string[] {
+  const lines = content.split("\n");
+  const sections: string[] = [];
+  let currentSection: string[] = [];
+  let lastOptionLabel = "";
+  let optionCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const optionMatch = line.match(/^\s*[A-Da-dＡ-Ｄ][)）.:：]\s*.+/);
+
+    if (optionMatch) {
+      const label = line.trim()[0].toUpperCase();
+
+      // 新しいAが見つかり、前のセクションに選択肢があった場合
+      if ((label === "A" || label === "Ａ") && optionCount >= 2) {
+        sections.push(currentSection.join("\n"));
+        currentSection = [];
+        optionCount = 0;
+      }
+
+      currentSection.push(line);
+      lastOptionLabel = label;
+      optionCount++;
+    } else {
+      currentSection.push(line);
+
+      // D/Ｄの後で、次の行が選択肢でない場合、セクション終了の可能性
+      if ((lastOptionLabel === "D" || lastOptionLabel === "Ｄ") && optionCount >= 2) {
+        // 空行または質問っぽいテキストが続く場合はセクション区切り
+        const nextOptionLine = lines.slice(i + 1, i + 5).find((l) =>
+          /^\s*[A-Da-dＡ-Ｄ][)）.:：]\s*.+/.test(l)
+        );
+        if (nextOptionLine && /^\s*[AaＡ][)）.:：]/.test(nextOptionLine)) {
+          sections.push(currentSection.join("\n"));
+          currentSection = [];
+          optionCount = 0;
+          lastOptionLabel = "";
+        }
+      }
+    }
+  }
+
+  // 最後のセクションを追加
+  if (currentSection.length > 0) {
+    sections.push(currentSection.join("\n"));
+  }
+
+  return sections.filter((s) => s.trim());
 }
 
 /**

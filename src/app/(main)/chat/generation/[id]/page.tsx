@@ -4,6 +4,7 @@ import { useEffect, use, useCallback, useMemo } from "react";
 import { GenerationChatContainer } from "@/components/chat";
 import { useChat, ChatApiError } from "@/hooks/useChat";
 import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
+import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
 import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
 import { toast } from "sonner";
 import type { PersistedGenerationState } from "@/hooks/useGenerationMode";
@@ -21,7 +22,11 @@ interface ExtendedConversationMetadata {
 export default function GenerationRoomPage({ params }: PageProps) {
   const { id: conversationId } = use(params);
   const tokenUsage = useTokenUsageOptional();
+  const userSettings = useUserSettingsOptional();
   const { showTokenLimitError, TokenLimitDialog } = useTokenLimitDialog();
+
+  // Get unlockSkipAllowed from user settings (制限解除モード)
+  const canSkip = userSettings?.settings?.unlockSkipAllowed ?? false;
 
   // Update token usage when response completes
   const handleTokensUsed = useCallback((tokens: number) => {
@@ -111,7 +116,7 @@ export default function GenerationRoomPage({ params }: PageProps) {
         onSendMessage={sendMessage}
         welcomeMessage="実装したい機能を言葉で説明してください。計画を立て、コードを生成し、理解度を確認しながら進めます。"
         inputPlaceholder="実装したい機能を説明してください..."
-        canSkip={false}
+        canSkip={canSkip}
         onStopGeneration={stopGeneration}
         onForkFromMessage={forkFromMessage}
         branches={branches}

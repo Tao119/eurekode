@@ -12,7 +12,7 @@ import { InteractiveQuiz } from "./InteractiveQuiz";
 import { LockedCodeBlock } from "./LockedCodeBlock";
 import { SaveLearningDialog } from "./SaveLearningDialog";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
-import { extractQuizOptions } from "@/lib/quizExtractor";
+import { extractQuizOptions, extractMultipleQuizzes } from "@/lib/quizExtractor";
 
 // Context to pass mode and lock state to nested components
 interface CodeBlockContextValue {
@@ -50,16 +50,36 @@ function detectOptions(content: string): DetectedOptions | null {
 }
 
 // Detect interactive quiz with multiple question types (choice + fill + text)
+// Also handles multiple independent choice questions in a single message
 function detectInteractiveQuiz(content: string): InteractiveQuizForm | null {
   const questions: InteractiveQuestion[] = [];
   let questionId = 0;
+
+  // First, try to detect multiple independent quizzes (e.g., 質問1, 質問2, etc.)
+  const multipleQuizzes = extractMultipleQuizzes(content);
+  if (multipleQuizzes && multipleQuizzes.quizzes.length >= 2) {
+    // Convert multiple quizzes to InteractiveQuestion format
+    for (const quiz of multipleQuizzes.quizzes) {
+      questions.push({
+        id: `choice-${questionId++}`,
+        type: "choice",
+        options: quiz.options,
+        questionText: quiz.question,
+      });
+    }
+
+    return {
+      questions,
+      contentWithoutQuestions: multipleQuizzes.contentWithoutQuizzes,
+    };
+  }
 
   // Check for fill-in-the-blank patterns (????, ???, or similar)
   const fillPattern = /([^\n]*?)(\?{3,}|＿{3,}|_{3,})([^\n]*)/g;
   const fillMatches = [...content.matchAll(fillPattern)];
 
   // Check for n-choice patterns
-  const choicePattern = /^[\s\-\•\*]*([A-D])[)）.\:：]\s*(.+)$/gm;
+  const choicePattern = /^[\s\-\•\*]*([A-DＡ-Ｄ])[)）.\:：]\s*(.+)$/gm;
   const choiceMatches = [...content.matchAll(choicePattern)];
 
   // Check for text questions (questions ending with ？ that expect free-form answer)

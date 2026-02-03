@@ -3,9 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// 生成モードのアーティファクト進行状況
+// 生成モードのアーティファクト進行状況（動的なクイズ数に対応）
 const artifactProgressSchema = z.record(z.string(), z.object({
-  unlockLevel: z.number().min(1).max(4),
+  unlockLevel: z.number().min(0), // 0から始まり、totalQuestionsまで
+  totalQuestions: z.number().min(0).max(10).optional(), // 動的なクイズ数（0=即アンロック）
   currentQuiz: z.any().nullable(),
   quizHistory: z.array(z.object({
     level: z.number(),
@@ -22,10 +23,11 @@ const conversationMetadataSchema = z.object({
   branchState: z.any().optional(),
   brainstormState: z.any().optional(),
   lastActiveBranchId: z.string().optional(),
-  // 生成モード用の追加フィールド
+  // 生成モード用の追加フィールド（動的なクイズ数に対応）
   generationState: z.object({
     phase: z.string().optional(),
-    unlockLevel: z.number().optional(),
+    unlockLevel: z.number().min(0).optional(), // 0から始まる
+    totalQuestions: z.number().min(0).max(10).optional(), // 動的なクイズ数
     artifacts: z.any().optional(),
     activeArtifactId: z.string().nullable().optional(),
     artifactProgress: artifactProgressSchema.optional(),
