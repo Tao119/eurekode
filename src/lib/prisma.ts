@@ -13,7 +13,13 @@ function createPrismaClient() {
     throw new Error("DATABASE_URL environment variable is not set");
   }
 
-  const pool = new pg.Pool({ connectionString });
+  // Limit pool size for serverless environment (Vercel)
+  const pool = new pg.Pool({
+    connectionString,
+    max: 1, // Limit to 1 connection per serverless function instance
+    idleTimeoutMillis: 20000, // Close idle connections after 20 seconds
+    connectionTimeoutMillis: 10000, // Connection timeout 10 seconds
+  });
   const adapter = new PrismaPg(pool);
 
   return new PrismaClient({
