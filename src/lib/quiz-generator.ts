@@ -216,7 +216,7 @@ function generateCodeSpecificQuestion(code: string, _language: string): string {
  * Generate a fallback quiz based on code content and level
  * This is used when AI doesn't provide a structured quiz
  *
- * Important: Always generates code-specific "なぜ？" questions, never generic pattern questions
+ * Important: Always generates code-specific "なぜ？" questions with matching reason-based options
  */
 export function generateFallbackQuiz(
   level: UnlockLevel,
@@ -228,8 +228,8 @@ export function generateFallbackQuiz(
   // Generate a specific question based on actual code content
   const question = generateCodeSpecificQuestion(code, language);
 
-  // Analyze code to generate context-aware options
-  const options = generateOptionsFromCode(level, artifact);
+  // Generate options that match the "なぜ〜？" question format
+  const options = generateReasonBasedOptions(code, question);
 
   // Extract a relevant code snippet for display
   const codeSnippet = extractRelevantSnippet(code, question);
@@ -243,6 +243,143 @@ export function generateFallbackQuiz(
     codeSnippet,
     codeLanguage: language,
   };
+}
+
+/**
+ * Generate reason-based options that match "なぜ〜？" questions
+ * Options should explain WHY something was done, not WHAT pattern it is
+ */
+function generateReasonBasedOptions(code: string, question: string): QuizOption[] {
+  // async/await 関連
+  if (question.includes("async") || question.includes("await")) {
+    if (question.includes("try-catch")) {
+      return [
+        { label: "A", text: "非同期処理のエラーをキャッチして適切に処理するため", explanation: "async/awaitでのエラーはtry-catchでキャッチする必要があります。Promiseのrejectがそのままスローされます。" },
+        { label: "B", text: "同期処理のエラーをキャッチするため", explanation: "try-catchは同期エラーもキャッチしますが、ここではawaitによる非同期エラーの処理が主目的です。" },
+        { label: "C", text: "パフォーマンスを向上させるため", explanation: "try-catchはパフォーマンス向上ではなく、エラーハンドリングのために使用します。" },
+      ];
+    }
+    return [
+      { label: "A", text: "非同期処理を同期的な書き方で読みやすくするため", explanation: "async/awaitを使うと、Promiseチェーンよりも直感的で読みやすいコードになります。" },
+      { label: "B", text: "処理を並列実行するため", explanation: "async/await自体は並列化しません。並列化にはPromise.allなどが必要です。" },
+      { label: "C", text: "同期処理を非同期にするため", explanation: "async/awaitは既存の非同期処理を扱いやすくするもので、同期処理を非同期にはしません。" },
+    ];
+  }
+
+  // useCallback 関連
+  if (question.includes("useCallback")) {
+    return [
+      { label: "A", text: "不要な再レンダリングを防ぎ、パフォーマンスを最適化するため", explanation: "useCallbackで関数をメモ化することで、依存配列が変わらない限り同じ参照を保持し、子コンポーネントの不要な再レンダリングを防ぎます。" },
+      { label: "B", text: "関数の実行を遅延させるため", explanation: "useCallbackは実行を遅延させません。関数の参照を安定させるために使用します。" },
+      { label: "C", text: "関数の戻り値をキャッシュするため", explanation: "関数の戻り値をキャッシュするのはuseMemoです。useCallbackは関数自体をメモ化します。" },
+    ];
+  }
+
+  // useMemo 関連
+  if (question.includes("useMemo")) {
+    return [
+      { label: "A", text: "計算コストの高い処理結果をキャッシュし、パフォーマンスを最適化するため", explanation: "useMemoは依存配列が変わらない限り前回の計算結果を再利用し、不要な再計算を防ぎます。" },
+      { label: "B", text: "関数をメモ化するため", explanation: "関数をメモ化するのはuseCallbackです。useMemoは値（計算結果）をメモ化します。" },
+      { label: "C", text: "状態を永続化するため", explanation: "状態の永続化はuseStateやuseRefで行います。useMemoは計算結果のキャッシュ用です。" },
+    ];
+  }
+
+  // useEffect 依存配列 関連
+  if (question.includes("useEffect") && question.includes("依存配列")) {
+    return [
+      { label: "A", text: "コンポーネントのマウント時に一度だけ実行するため", explanation: "空の依存配列[]を指定すると、effectはマウント時にのみ実行され、再レンダリング時には実行されません。" },
+      { label: "B", text: "すべてのレンダリング時に実行するため", explanation: "すべてのレンダリング時に実行するには、依存配列自体を省略します。空配列はマウント時のみです。" },
+      { label: "C", text: "エラーを防ぐため", explanation: "空の依存配列はエラー防止ではなく、実行タイミングの制御のために使用します。" },
+    ];
+  }
+
+  // reduce 関連
+  if (question.includes("reduce")) {
+    return [
+      { label: "A", text: "配列が空の場合にエラーを防ぎ、初期値から計算を開始するため", explanation: "reduceに初期値を渡すと、空配列でもエラーにならず、その値から集計を開始します。" },
+      { label: "B", text: "処理を高速化するため", explanation: "初期値はパフォーマンスには影響しません。空配列対策と計算の起点設定が目的です。" },
+      { label: "C", text: "型推論を助けるため", explanation: "TypeScriptでは型推論に役立ちますが、主な目的は空配列対策と計算の起点設定です。" },
+    ];
+  }
+
+  // オプショナルチェイニング 関連
+  if (question.includes("オプショナルチェイニング") || question.includes("?.")) {
+    return [
+      { label: "A", text: "プロパティがnull/undefinedの場合にエラーを防ぐため", explanation: "?.を使うと、途中のプロパティがnull/undefinedでもエラーにならず、undefinedを返します。" },
+      { label: "B", text: "コードを短くするため", explanation: "コードは短くなりますが、主目的はnull/undefined時の安全なアクセスです。" },
+      { label: "C", text: "パフォーマンスを向上させるため", explanation: "オプショナルチェイニングはパフォーマンス向上ではなく、安全なプロパティアクセスのために使用します。" },
+    ];
+  }
+
+  // Null合体演算子 関連
+  if (question.includes("Null合体") || question.includes("??")) {
+    return [
+      { label: "A", text: "値がnull/undefinedの場合にデフォルト値を設定するため", explanation: "??はnullまたはundefinedの時のみ右辺を返します。0や空文字はそのまま使用されます。" },
+      { label: "B", text: "falsyな値すべてにデフォルト値を設定するため", explanation: "falsyな値すべてにデフォルトを設定するのは||です。??はnull/undefinedのみ対象です。" },
+      { label: "C", text: "型変換を行うため", explanation: "??は型変換を行いません。デフォルト値の設定のみが目的です。" },
+    ];
+  }
+
+  // スプレッド演算子 関連
+  if (question.includes("スプレッド") || question.includes("...")) {
+    return [
+      { label: "A", text: "配列やオブジェクトを展開してコピー・結合するため", explanation: "スプレッド演算子で要素を展開し、新しい配列/オブジェクトを作成したり、既存のものと結合できます。" },
+      { label: "B", text: "参照を共有するため", explanation: "スプレッド演算子は浅いコピーを作成します。参照の共有ではなく、新しい参照を作ります。" },
+      { label: "C", text: "型を変換するため", explanation: "スプレッド演算子は型変換を行いません。展開とコピーが目的です。" },
+    ];
+  }
+
+  // 分割代入 関連
+  if (question.includes("分割代入")) {
+    return [
+      { label: "A", text: "オブジェクト/配列から必要なプロパティだけを簡潔に取り出すため", explanation: "分割代入により、長いアクセス記法を使わずに必要な値だけを変数に取り出せます。" },
+      { label: "B", text: "元のオブジェクトを変更するため", explanation: "分割代入は元のオブジェクトを変更しません。値を抽出するだけです。" },
+      { label: "C", text: "パフォーマンスを向上させるため", explanation: "分割代入はパフォーマンス向上ではなく、コードの可読性向上が主な目的です。" },
+    ];
+  }
+
+  // try-catch 関連
+  if (question.includes("try-catch") || question.includes("例外")) {
+    return [
+      { label: "A", text: "エラーが発生してもプログラムがクラッシュせず、適切に処理できるため", explanation: "try-catchでエラーをキャッチすることで、エラー時の処理を制御し、ユーザーに適切なフィードバックを提供できます。" },
+      { label: "B", text: "エラーを無視するため", explanation: "エラーを無視するのではなく、キャッチして適切に処理することが目的です。" },
+      { label: "C", text: "処理を高速化するため", explanation: "try-catchはエラーハンドリングのためで、パフォーマンス向上が目的ではありません。" },
+    ];
+  }
+
+  // 型チェック 関連
+  if (question.includes("型チェック")) {
+    return [
+      { label: "A", text: "実行時に値の型を確認し、型に応じた処理を行うため", explanation: "typeofやinstanceofで型を確認し、型に応じて異なる処理を行うことで、より堅牢なコードになります。" },
+      { label: "B", text: "コンパイル時のエラーを防ぐため", explanation: "コンパイル時の型チェックはTypeScriptが行います。typeof/instanceofは実行時のチェックです。" },
+      { label: "C", text: "パフォーマンスを向上させるため", explanation: "型チェックはパフォーマンス向上ではなく、安全性と正確性のために使用します。" },
+    ];
+  }
+
+  // デフォルト値 関連
+  if (question.includes("デフォルト値")) {
+    return [
+      { label: "A", text: "値が未定義の場合に安全な初期状態を確保するため", explanation: "デフォルト値を設定することで、undefinedやnullによるエラーを防ぎ、プログラムを安定させます。" },
+      { label: "B", text: "メモリを節約するため", explanation: "デフォルト値はメモリ節約のためではなく、安全な初期状態の確保が目的です。" },
+      { label: "C", text: "型推論を助けるため", explanation: "TypeScriptでは型推論に役立ちますが、主な目的は安全な初期状態の確保です。" },
+    ];
+  }
+
+  // 早期リターン 関連
+  if (question.includes("早期リターン")) {
+    return [
+      { label: "A", text: "条件を満たさない場合に早めに処理を終了し、ネストを減らすため", explanation: "早期リターンにより、if-elseのネストが深くならず、コードが読みやすくなります。" },
+      { label: "B", text: "処理を高速化するため", explanation: "早期リターンは可読性向上が主目的で、パフォーマンスへの影響は限定的です。" },
+      { label: "C", text: "エラーを無視するため", explanation: "早期リターンはエラーを無視するのではなく、条件に基づいて処理を制御します。" },
+    ];
+  }
+
+  // デフォルトの選択肢（汎用的な理由ベース）
+  return [
+    { label: "A", text: "コードの可読性と保守性を向上させるため", explanation: "この実装方法により、コードが読みやすく、将来の変更にも対応しやすくなります。" },
+    { label: "B", text: "パフォーマンスを最優先にするため", explanation: "この実装の主目的は可読性と保守性の向上です。" },
+    { label: "C", text: "特に理由はなく慣習的に使用している", explanation: "この実装には明確な理由があり、コードの品質向上に貢献しています。" },
+  ];
 }
 
 /**
@@ -276,158 +413,6 @@ function extractRelevantSnippet(code: string, question: string): string | undefi
   // Default: return first 5-8 non-empty lines
   const nonEmptyLines = lines.filter(l => l.trim()).slice(0, 8);
   return nonEmptyLines.length > 0 ? nonEmptyLines.join("\n") : undefined;
-}
-
-/**
- * Generate quiz options based on code analysis
- */
-function generateOptionsFromCode(
-  level: UnlockLevel,
-  artifact: Artifact | null
-): QuizOption[] {
-  const code = artifact?.content || "";
-  const language = artifact?.language || "javascript";
-
-  // Level 1: Purpose-based options
-  if (level === 1) {
-    return generatePurposeOptions(code, language);
-  }
-
-  // Level 2: Pattern-based options
-  if (level === 2) {
-    return generatePatternOptions(code, language);
-  }
-
-  // Level 3: Design decision options
-  if (level === 3) {
-    return generateDesignOptions(code, language);
-  }
-
-  // Default fallback
-  return [
-    { label: "A", text: "正しい実装方法である", explanation: "このコードは要件を満たす正しい実装です。" },
-    { label: "B", text: "別のアプローチの方が良い", explanation: "現在のコードが要件を満たしているため、別のアプローチは必要ありません。" },
-    { label: "C", text: "この実装は特定の条件でのみ有効", explanation: "このコードは一般的なユースケースに対応しています。" },
-  ];
-}
-
-function generatePurposeOptions(code: string, language: string): QuizOption[] {
-  // Detect common patterns in code
-  const hasApi = /fetch\(|axios|api|http|request/i.test(code);
-  const hasState = code.includes("useState") || code.includes("setState") || code.includes("state");
-  const hasValidation = /validate|schema|check|verify/i.test(code);
-  const hasLoop = /for\s*\(|while\s*\(|\.map\(|\.forEach\(/.test(code);
-
-  if (hasApi) {
-    return [
-      { label: "A", text: "外部APIとの通信を行う", explanation: "fetch、axios、またはAPI関連のコードが含まれており、外部サービスとの通信が主目的です。" },
-      { label: "B", text: "ローカルデータの処理を行う", explanation: "このコードにはAPI通信のコードが含まれているため、ローカルデータ処理だけが目的ではありません。" },
-      { label: "C", text: "UIの表示を制御する", explanation: "UIの制御も含まれる可能性がありますが、主目的はAPI通信です。" },
-    ];
-  } else if (hasState) {
-    return [
-      { label: "A", text: "状態管理を行う", explanation: "useState、setStateなどの状態管理APIが使用されており、コンポーネントの状態を管理しています。" },
-      { label: "B", text: "データの変換を行う", explanation: "データ変換は状態管理の一部かもしれませんが、主目的は状態の管理です。" },
-      { label: "C", text: "副作用を実行する", explanation: "副作用はuseEffectなどで実行されますが、このコードの主目的は状態管理です。" },
-    ];
-  } else if (hasValidation) {
-    return [
-      { label: "A", text: "データのバリデーションを行う", explanation: "validateやschemaなどのキーワードが含まれており、入力データの検証が主目的です。" },
-      { label: "B", text: "データの保存を行う", explanation: "データの保存は検証後に行われることが多いですが、このコードの主目的はバリデーションです。" },
-      { label: "C", text: "エラーハンドリングを行う", explanation: "バリデーションエラーの処理は含まれますが、主目的はデータの検証です。" },
-    ];
-  } else if (hasLoop) {
-    return [
-      { label: "A", text: "データの集合を処理する", explanation: "ループ処理（for、map、forEachなど）が含まれており、配列やリストの処理が主目的です。" },
-      { label: "B", text: "単一のデータを処理する", explanation: "ループが使用されているため、単一ではなく複数のデータを処理しています。" },
-      { label: "C", text: "イベントを処理する", explanation: "イベント処理のためにループが使われることもありますが、このコードはデータ処理が主目的です。" },
-    ];
-  }
-
-  return [
-    { label: "A", text: "特定の処理を実行する", explanation: "このコードは特定のビジネスロジックや処理を実行するために設計されています。" },
-    { label: "B", text: "ユーティリティ機能を提供する", explanation: "汎用的なユーティリティではなく、特定の目的のために作られています。" },
-    { label: "C", text: "設定を管理する", explanation: "設定管理が目的ではなく、特定の処理の実行が主な目的です。" },
-  ];
-}
-
-function generatePatternOptions(code: string, language: string): QuizOption[] {
-  const hasClass = /class\s+\w+/.test(code);
-  const hasHook = /use[A-Z]\w+/.test(code);
-  const hasFactory = /create[A-Z]\w+|factory/i.test(code);
-  const hasObserver = /subscribe|observe|listener|on[A-Z]\w+/i.test(code);
-  const hasComponent = /function\s+[A-Z]\w+|const\s+[A-Z]\w+\s*=/.test(code) && code.includes("return");
-
-  if (hasHook) {
-    return [
-      { label: "A", text: "カスタムフックパターン", explanation: "useXxxという命名規則でReactのカスタムフックが実装されています。状態やロジックを再利用可能な形で切り出すパターンです。" },
-      { label: "B", text: "HOCパターン", explanation: "HOC（Higher-Order Component）はコンポーネントをラップして機能を追加するパターンですが、このコードではフックが使用されています。" },
-      { label: "C", text: "Renderプロップパターン", explanation: "Renderプロップは関数をpropsとして渡すパターンですが、このコードはカスタムフックパターンです。" },
-    ];
-  } else if (hasComponent) {
-    return [
-      { label: "A", text: "関数コンポーネントパターン", explanation: "大文字で始まる関数がJSXを返しており、モダンなReactの関数コンポーネントパターンです。" },
-      { label: "B", text: "クラスコンポーネントパターン", explanation: "classキーワードを使用していないため、クラスコンポーネントではありません。" },
-      { label: "C", text: "コンテナコンポーネントパターン", explanation: "コンテナコンポーネントはロジックとUIを分離するパターンですが、このコードは関数コンポーネントパターンです。" },
-    ];
-  } else if (hasFactory) {
-    return [
-      { label: "A", text: "ファクトリパターン", explanation: "createXxxという関数名でオブジェクトを生成しており、ファクトリパターンが使用されています。" },
-      { label: "B", text: "シングルトンパターン", explanation: "シングルトンは単一インスタンスを保証するパターンですが、このコードは新しいオブジェクトを生成しています。" },
-      { label: "C", text: "ビルダーパターン", explanation: "ビルダーパターンはメソッドチェーンでオブジェクトを構築しますが、このコードはファクトリパターンです。" },
-    ];
-  } else if (hasObserver) {
-    return [
-      { label: "A", text: "オブザーバーパターン", explanation: "subscribe/observeなどのメソッドで、状態の変化を監視・通知するオブザーバーパターンです。" },
-      { label: "B", text: "Pub/Subパターン", explanation: "Pub/Subは似ていますが、より疎結合なメッセージングパターンで、このコードはオブザーバーパターンです。" },
-      { label: "C", text: "イベントエミッターパターン", explanation: "イベントエミッターも関連しますが、このコードはオブザーバーパターンの実装です。" },
-    ];
-  } else if (hasClass) {
-    return [
-      { label: "A", text: "オブジェクト指向パターン", explanation: "classキーワードを使用してオブジェクト指向のアプローチで実装されています。" },
-      { label: "B", text: "関数型パターン", explanation: "関数型プログラミングは純粋関数と不変データを重視しますが、このコードはクラスベースです。" },
-      { label: "C", text: "手続き型パターン", explanation: "手続き型は順次実行を重視しますが、このコードはオブジェクト指向パターンです。" },
-    ];
-  }
-
-  return [
-    { label: "A", text: "モジュールパターン", explanation: "関連する機能をモジュールとしてまとめて、外部に公開するインターフェースを制御しています。" },
-    { label: "B", text: "ユーティリティパターン", explanation: "特定のユーティリティではなく、モジュールとして機能をまとめています。" },
-    { label: "C", text: "プロシージャルパターン", explanation: "手続き的な処理よりも、モジュール化された構造が特徴です。" },
-  ];
-}
-
-function generateDesignOptions(code: string, language: string): QuizOption[] {
-  const hasAsync = code.includes("async") || code.includes("await");
-  const hasErrorHandling = /try\s*{|catch\s*\(|\.catch\(/.test(code);
-  const hasTyping = /:\s*\w+|interface\s+|type\s+/.test(code);
-  const hasMemoization = /useMemo|useCallback|memo\(/.test(code);
-
-  if (hasAsync && hasErrorHandling) {
-    return [
-      { label: "A", text: "非同期処理とエラーハンドリングの両立", explanation: "async/awaitとtry-catchを組み合わせることで、非同期処理のエラーを適切に捕捉し、ユーザー体験を損なわない堅牢な実装になっています。" },
-      { label: "B", text: "シンプルな同期処理で十分", explanation: "このコードはAPIコールやファイル操作など非同期が必要な処理を含んでおり、同期処理では対応できません。" },
-      { label: "C", text: "エラーハンドリングは不要", explanation: "非同期処理ではネットワークエラーなど予期しない問題が起こりうるため、エラーハンドリングは必須です。" },
-    ];
-  } else if (hasMemoization) {
-    return [
-      { label: "A", text: "パフォーマンス最適化のため", explanation: "useMemo/useCallbackを使用することで、不要な再計算や再レンダリングを防ぎ、特に重い計算やリストの処理でパフォーマンスが向上します。" },
-      { label: "B", text: "コードの可読性のため", explanation: "メモ化はパフォーマンス最適化が目的であり、可読性の向上にはあまり寄与しません。" },
-      { label: "C", text: "メモリ使用量削減のため", explanation: "実際にはメモ化はキャッシュを保持するためメモリを消費します。目的は再計算の防止です。" },
-    ];
-  } else if (hasTyping) {
-    return [
-      { label: "A", text: "型安全性と開発体験の向上", explanation: "TypeScriptの型定義により、コンパイル時にエラーを検出でき、IDEの補完機能も向上して開発効率が上がります。" },
-      { label: "B", text: "ドキュメンテーションのため", explanation: "型はドキュメントとしても機能しますが、主目的は型チェックによるバグ防止と開発体験の向上です。" },
-      { label: "C", text: "実行時エラーの防止", explanation: "TypeScriptはコンパイル時のチェックであり、実行時エラーの完全な防止は保証されません。" },
-    ];
-  }
-
-  return [
-    { label: "A", text: "保守性と拡張性のバランス", explanation: "適切な抽象化と明確な責務分離により、将来の変更や機能追加がしやすい設計になっています。" },
-    { label: "B", text: "実装の簡潔さを優先", explanation: "簡潔さも重要ですが、このコードは保守性と拡張性を考慮した設計がされています。" },
-    { label: "C", text: "パフォーマンスを優先", explanation: "パフォーマンスも考慮されていますが、主な設計判断は保守性と拡張性のバランスです。" },
-  ];
 }
 
 function getHintFromCode(level: UnlockLevel, artifact: Artifact | null): string {
