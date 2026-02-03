@@ -92,7 +92,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 // PUT /api/admin/keys/:id - Update key
 const updateKeySchema = z.object({
   dailyTokenLimit: z.number().int().min(100).max(100000).optional(),
-  expiresAt: z.string().datetime().nullable().optional(),
+  // Accept null, undefined, or any string that can be parsed as a date
+  expiresAt: z.union([z.string(), z.null()]).optional(),
   settings: z.object({
     allowedModes: z.array(z.enum(["explanation", "generation", "brainstorm"])).optional(),
     allowedTechStacks: z.array(z.string()).optional(),
@@ -152,6 +153,19 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const { dailyTokenLimit, expiresAt, settings } = parsed.data;
 
+    // Validate expiresAt if provided
+    let parsedExpiresAt: Date | null = null;
+    if (expiresAt) {
+      const date = new Date(expiresAt);
+      if (isNaN(date.getTime())) {
+        return NextResponse.json(
+          { success: false, error: { code: "VALIDATION_ERROR", message: "Invalid date format for expiresAt" } },
+          { status: 400 }
+        );
+      }
+      parsedExpiresAt = date;
+    }
+
     // Merge settings
     const updatedSettings = settings
       ? { ...(existingKey.settings as object || {}), ...settings }
@@ -161,7 +175,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       where: { id },
       data: {
         ...(dailyTokenLimit !== undefined && { dailyTokenLimit }),
-        ...(expiresAt !== undefined && { expiresAt: expiresAt ? new Date(expiresAt) : null }),
+        ...(expiresAt !== undefined && { expiresAt: parsedExpiresAt }),
         ...(settings && { settings: updatedSettings as Prisma.InputJsonValue }),
       },
     });
