@@ -241,8 +241,8 @@ export function BlurredCode({
       )}
 
       {/* コード表示エリア */}
-      <div className="relative font-mono text-sm">
-        <div className="p-4 space-y-0">
+      <div className="relative font-mono text-sm overflow-x-auto">
+        <div className="p-4 min-w-fit">
           {analyzedLines.map((line, index) => {
             const isVisible = visibleIndices.includes(index);
             const lineNumber = index + 1;
@@ -251,7 +251,7 @@ export function BlurredCode({
               <div
                 key={index}
                 className={cn(
-                  "flex transition-all duration-300",
+                  "flex transition-all duration-300 whitespace-pre",
                   !isVisible && "relative"
                 )}
               >
@@ -276,17 +276,19 @@ export function BlurredCode({
                       background: "transparent",
                       padding: 0,
                       margin: 0,
+                      whiteSpace: "pre",
                     }}
                     codeTagProps={{
                       style: {
                         fontFamily: "inherit",
+                        whiteSpace: "pre",
                       },
                     }}
                   >
                     {line.content || " "}
                   </SyntaxHighlighter>
                 ) : (
-                  <div className="flex-1 relative">
+                  <span className="flex-1 relative whitespace-pre">
                     {/* プレースホルダー（ぼかし） */}
                     <span
                       className="blur-[6px] select-none pointer-events-none text-muted-foreground/40"
@@ -294,7 +296,7 @@ export function BlurredCode({
                     >
                       {line.content.replace(/\S/g, "█") || " "}
                     </span>
-                  </div>
+                  </span>
                 )}
               </div>
             );

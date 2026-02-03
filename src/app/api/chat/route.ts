@@ -171,12 +171,56 @@ export async function POST(request: NextRequest) {
     const { mode, messages, conversationId, brainstormSubMode } = parsed.data;
     const userId = session.user.id;
 
+    // ユーザー設定を取得（スキップモードの判定用）
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        settings: true,
+        userType: true,
+        accessKey: {
+          select: {
+            settings: true,
+          },
+        },
+      },
+    });
+
+    // スキップモードかどうかを判定
+    let isSkipMode = false;
+    if (user) {
+      const userSettings = user.settings as { unlockSkipAllowed?: boolean } | null;
+      isSkipMode = userSettings?.unlockSkipAllowed ?? false;
+
+      // メンバーユーザーはAPIキーの設定を優先
+      if (user.userType === "member" && user.accessKey?.settings) {
+        const accessKeySettings = user.accessKey.settings as { unlockSkipAllowed?: boolean };
+        if (accessKeySettings.unlockSkipAllowed !== undefined) {
+          isSkipMode = accessKeySettings.unlockSkipAllowed;
+        }
+      }
+    }
+
     // サブモードに応じたシステムプロンプトを選択
     const getSystemPrompt = (): string => {
       if (mode === "brainstorm" && brainstormSubMode) {
         return brainstormSubModePrompts[brainstormSubMode];
       }
-      return systemPrompts[mode];
+      let basePrompt = systemPrompts[mode];
+
+      // 生成モードでスキップモードの場合、クイズを出さない指示を追加
+      if (mode === "generation" && isSkipMode) {
+        basePrompt += `
+
+【特別モード: 制限解除モード】
+このユーザーは「制限解除モード」が有効です。以下のルールを厳守してください：
+- クイズは一切出題しない
+- <!--QUIZ:...-->形式のタグを出力しない
+- 「クイズを出します」「理解度を確認します」などの発言をしない
+- コードを生成したら、そのまま使用方法や注意点を説明する
+- コードは通常通りArtifact形式（<!--ARTIFACT:...-->）で出力する`;
+      }
+
+      return basePrompt;
     };
 
     // Check if API key is configured
