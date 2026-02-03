@@ -325,6 +325,8 @@ export function structuredQuizToUnlockQuiz(quiz: StructuredQuiz): UnlockQuiz {
     options: quiz.options,
     correctLabel: quiz.correctLabel,
     hint: quiz.hint,
+    codeSnippet: quiz.codeSnippet,
+    codeLanguage: quiz.codeLanguage,
   };
 }
 

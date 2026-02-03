@@ -8,6 +8,35 @@ export interface Message {
   content: string;
   timestamp: string;
   metadata?: MessageMetadata;
+  // File attachments (images, PDFs, etc.)
+  attachments?: FileAttachment[];
+}
+
+// Supported file types for Claude API
+export type FileMediaType =
+  | "image/jpeg"
+  | "image/png"
+  | "image/gif"
+  | "image/webp"
+  | "application/pdf"
+  | "text/plain"
+  | "text/html"
+  | "text/css"
+  | "text/javascript"
+  | "application/json"
+  | "text/markdown"
+  | "text/csv"
+  | "application/xml";
+
+export interface FileAttachment {
+  id: string;
+  name: string;
+  type: FileMediaType;
+  size: number;
+  // Base64 encoded data (for images and small files)
+  data?: string;
+  // Preview URL (for display in UI)
+  previewUrl?: string;
 }
 
 // Represents a conversation branch
@@ -492,9 +521,13 @@ export interface Artifact {
 export interface StructuredQuiz {
   level: 1 | 2 | 3 | 4;
   question: string;
-  options: { label: string; text: string }[];
+  options: { label: string; text: string; explanation?: string }[];
   correctLabel: string;
   hint?: string;
+  /** クイズが参照するコードスニペット（blur解除して表示） */
+  codeSnippet?: string;
+  /** コードスニペットの言語 */
+  codeLanguage?: string;
 }
 
 // ===========================================

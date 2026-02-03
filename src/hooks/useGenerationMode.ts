@@ -29,6 +29,10 @@ export interface UnlockQuiz {
   correctLabel: string;
   hint?: string; // メインの解説
   detailedExplanation?: string; // より詳細な解説
+  /** クイズが参照するコードスニペット（blur解除して表示） */
+  codeSnippet?: string;
+  /** コードスニペットの言語 */
+  codeLanguage?: string;
 }
 
 // 生成されたコード情報

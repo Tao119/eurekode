@@ -138,6 +138,24 @@ export function GenerationQuiz({
           {quiz.question}
         </p>
 
+        {/* コードスニペット（クイズが参照するコード部分を表示） */}
+        {quiz.codeSnippet && (
+          <div className="mb-4 rounded-lg overflow-hidden border border-yellow-500/30 bg-zinc-900">
+            <div className="px-3 py-1.5 bg-zinc-800 border-b border-yellow-500/20 flex items-center gap-2">
+              <span className="material-symbols-outlined text-yellow-400 text-sm">code</span>
+              <span className="text-xs text-yellow-400 font-medium">このコードについて考えてみましょう</span>
+              {quiz.codeLanguage && (
+                <span className="ml-auto text-xs text-zinc-500">{quiz.codeLanguage}</span>
+              )}
+            </div>
+            <pre className="p-3 overflow-x-auto text-sm">
+              <code className="text-zinc-100 whitespace-pre-wrap break-words">
+                {quiz.codeSnippet}
+              </code>
+            </pre>
+          </div>
+        )}
+
         {/* 選択肢 */}
         <div className="space-y-2">
           {quiz.options.map((option) => {
