@@ -70,9 +70,9 @@ export function extractQuizFromText(
     }
   }
 
-  // Fallback to template
+  // Fallback to code-specific question (not generic template)
   if (!question) {
-    question = QUIZ_QUESTIONS[level][0];
+    question = "このコードについて考えてみてください。";
   }
 
   const options = matches.map((m) => ({
@@ -85,59 +85,167 @@ export function extractQuizFromText(
     question,
     options,
     correctLabel: "A", // Default to A (should be specified by AI)
-    hint: `コードの${LEVEL_DESCRIPTIONS[level]}を考えてみてください。`,
+    hint: "コードの内容をよく読んで考えてみてください。",
   };
 }
 
-// Quiz question templates by level
-const QUIZ_QUESTIONS: Record<UnlockLevel, string[]> = {
-  1: [
-    "このコードの主な目的は何ですか？",
-    "このコードは何を達成しようとしていますか？",
-    "この実装の目標は何ですか？",
-  ],
-  2: [
-    "このコードで使われているデザインパターンは何ですか？",
-    "この実装で採用されているアプローチは何ですか？",
-    "このコードの構造はどのパターンに基づいていますか？",
-  ],
-  3: [
-    "なぜこの書き方が選ばれたのでしょうか？",
-    "別のアプローチではなく、この方法を選んだ理由は何ですか？",
-    "この実装の利点は何ですか？",
-  ],
-  4: [], // Level 4 doesn't need quiz
-};
+// コード内容から具体的な質問を生成するためのヘルパー
+function generateCodeSpecificQuestion(code: string, _language: string): string {
+  // コードの特徴を検出して具体的な「なぜ？」質問を生成
 
-const LEVEL_DESCRIPTIONS: Record<UnlockLevel, string> = {
-  1: "目的",
-  2: "パターンとアプローチ",
-  3: "設計意図",
-  4: "完了",
-};
+  // 非同期処理
+  if (/async\s+\w+|await\s+/.test(code)) {
+    if (code.includes("await Promise.all")) {
+      return "なぜ Promise.all を使用していますか？";
+    }
+    if (/try\s*{[\s\S]*await[\s\S]*}\s*catch/.test(code)) {
+      return "なぜ async/await を try-catch で囲んでいますか？";
+    }
+    return "なぜこの処理を async/await で実装していますか？";
+  }
+
+  // React hooks
+  if (/useCallback\s*\(/.test(code)) {
+    return "なぜ useCallback でラップしていますか？";
+  }
+  if (/useMemo\s*\(/.test(code)) {
+    return "なぜ useMemo を使用していますか？";
+  }
+  if (/useEffect\s*\([\s\S]*,\s*\[\s*\]/.test(code)) {
+    return "なぜ useEffect の依存配列を空にしていますか？";
+  }
+  if (/useState</.test(code)) {
+    return "なぜこの状態の型をジェネリクスで指定していますか？";
+  }
+
+  // 配列操作
+  if (/\.reduce\s*\(/.test(code)) {
+    const reduceMatch = code.match(/\.reduce\s*\([^,]+,\s*([^)]+)\)/);
+    if (reduceMatch) {
+      return `なぜ reduce の初期値に ${reduceMatch[1].trim()} を渡していますか？`;
+    }
+    return "なぜ reduce を使用していますか？";
+  }
+  if (/\.filter\s*\([\s\S]*\)\.map\s*\(/.test(code)) {
+    return "なぜ filter と map をチェーンしていますか？";
+  }
+  if (/\.flatMap\s*\(/.test(code)) {
+    return "なぜ flatMap を使用していますか？";
+  }
+
+  // オプショナルチェイニング
+  if (/\?\.\w+/.test(code)) {
+    return "なぜオプショナルチェイニング（?.）を使用していますか？";
+  }
+
+  // Null合体演算子
+  if (/\?\?\s*/.test(code)) {
+    return "なぜ Null合体演算子（??）を使用していますか？";
+  }
+
+  // スプレッド演算子
+  if (/\.\.\.\w+/.test(code)) {
+    return "なぜスプレッド演算子（...）を使用していますか？";
+  }
+
+  // 分割代入
+  if (/const\s*{\s*\w+.*}\s*=/.test(code)) {
+    return "なぜ分割代入を使用していますか？";
+  }
+
+  // エラーハンドリング
+  if (/throw\s+new\s+Error/.test(code)) {
+    return "なぜこの箇所で例外をスローしていますか？";
+  }
+
+  // 型ガード
+  if (/typeof\s+\w+\s*===/.test(code) || /instanceof\s+\w+/.test(code)) {
+    return "なぜ型チェックを行っていますか？";
+  }
+
+  // デフォルト値
+  if (/=\s*{\s*}|=\s*\[\s*]|=\s*null|=\s*undefined|=\s*''|=\s*0/.test(code)) {
+    return "なぜこのデフォルト値を設定していますか？";
+  }
+
+  // 早期リターン
+  if (/if\s*\([^)]+\)\s*(return|throw)/.test(code)) {
+    return "なぜ早期リターンを使用していますか？";
+  }
+
+  // デフォルトの質問（コードの具体的な要素を参照）
+  const functionMatch = code.match(/(?:function|const|let|var)\s+(\w+)/);
+  if (functionMatch) {
+    return `なぜ ${functionMatch[1]} をこのように実装していますか？`;
+  }
+
+  return "なぜこのような実装方法を選択していますか？";
+}
 
 /**
  * Generate a fallback quiz based on code content and level
  * This is used when AI doesn't provide a structured quiz
+ *
+ * Important: Always generates code-specific "なぜ？" questions, never generic pattern questions
  */
 export function generateFallbackQuiz(
   level: UnlockLevel,
   artifact: Artifact | null
 ): UnlockQuiz {
-  // Get a random question for this level
-  const questions = QUIZ_QUESTIONS[level];
-  const question = questions[Math.floor(Math.random() * questions.length)] || questions[0];
+  const code = artifact?.content || "";
+  const language = artifact?.language || "javascript";
+
+  // Generate a specific question based on actual code content
+  const question = generateCodeSpecificQuestion(code, language);
 
   // Analyze code to generate context-aware options
   const options = generateOptionsFromCode(level, artifact);
+
+  // Extract a relevant code snippet for display
+  const codeSnippet = extractRelevantSnippet(code, question);
 
   return {
     level,
     question,
     options,
     correctLabel: "A",
-    hint: `コードの${LEVEL_DESCRIPTIONS[level]}について考えてみてください。${getHintFromCode(level, artifact)}`,
+    hint: getHintFromCode(level, artifact),
+    codeSnippet,
+    codeLanguage: language,
   };
+}
+
+/**
+ * Extract a relevant code snippet based on the question
+ */
+function extractRelevantSnippet(code: string, question: string): string | undefined {
+  const lines = code.split("\n");
+
+  // Find relevant lines based on question keywords
+  if (question.includes("async") || question.includes("await")) {
+    const asyncIndex = lines.findIndex(l => /async|await/.test(l));
+    if (asyncIndex >= 0) {
+      return lines.slice(Math.max(0, asyncIndex - 1), asyncIndex + 4).join("\n");
+    }
+  }
+
+  if (question.includes("useCallback") || question.includes("useMemo")) {
+    const hookIndex = lines.findIndex(l => /useCallback|useMemo/.test(l));
+    if (hookIndex >= 0) {
+      return lines.slice(Math.max(0, hookIndex - 1), hookIndex + 5).join("\n");
+    }
+  }
+
+  if (question.includes("reduce")) {
+    const reduceIndex = lines.findIndex(l => /\.reduce/.test(l));
+    if (reduceIndex >= 0) {
+      return lines.slice(Math.max(0, reduceIndex - 1), reduceIndex + 3).join("\n");
+    }
+  }
+
+  // Default: return first 5-8 non-empty lines
+  const nonEmptyLines = lines.filter(l => l.trim()).slice(0, 8);
+  return nonEmptyLines.length > 0 ? nonEmptyLines.join("\n") : undefined;
 }
 
 /**

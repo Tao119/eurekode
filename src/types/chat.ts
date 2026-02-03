@@ -519,7 +519,10 @@ export interface Artifact {
 }
 
 export interface StructuredQuiz {
-  level: 1 | 2 | 3 | 4;
+  /** 現在の質問番号（1から始まる） */
+  level: number;
+  /** このアーティファクトの総質問数（1〜3） */
+  totalQuestions?: number;
   question: string;
   options: { label: string; text: string; explanation?: string }[];
   correctLabel: string;

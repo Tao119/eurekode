@@ -6,6 +6,7 @@ import { GenerationChatContainer } from "@/components/chat";
 import { ProjectSelector } from "@/components/chat/ProjectSelector";
 import { useChat, ChatApiError } from "@/hooks/useChat";
 import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
+import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
 import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
 import { toast } from "sonner";
 
@@ -15,7 +16,11 @@ export default function GenerationModePage() {
   const conversationId = searchParams.get("id");
   const initialProjectId = searchParams.get("projectId");
   const tokenUsage = useTokenUsageOptional();
+  const userSettings = useUserSettingsOptional();
   const { showTokenLimitError, TokenLimitDialog } = useTokenLimitDialog();
+
+  // Get unlockSkipAllowed from user settings
+  const canSkip = userSettings?.settings?.unlockSkipAllowed ?? false;
 
   // Project selection state (can be changed before first message)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId);
@@ -112,7 +117,7 @@ export default function GenerationModePage() {
         onSendMessage={sendMessage}
         welcomeMessage="実装したい機能を言葉で説明してください。計画を立て、コードを生成し、理解度を確認しながら進めます。"
         inputPlaceholder="実装したい機能を説明してください..."
-        canSkip={false}
+        canSkip={canSkip}
         onStopGeneration={stopGeneration}
         onForkFromMessage={forkFromMessage}
         branches={branches}

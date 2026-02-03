@@ -107,6 +107,7 @@ export function GenerationChatContainer({
     const baseOptions: UseGenerationModeOptions = {
       conversationId,
       initialState: initialGenerationState,
+      skipAllowed: canSkip, // canSkip が有効な場合は最初から完全アンロック
     };
 
     if (!userSettingsContext) return baseOptions;
@@ -117,7 +118,7 @@ export function GenerationChatContainer({
       unlockMethod: settings.unlockMethod,
       hintSpeed: settings.hintSpeed,
     };
-  }, [userSettingsContext, conversationId, initialGenerationState]);
+  }, [userSettingsContext, conversationId, initialGenerationState, canSkip]);
 
   const {
     state,
@@ -148,8 +149,10 @@ export function GenerationChatContainer({
     initializedRef.current = true;
     prevMessagesLengthRef.current = messages.length;
 
-    // すでにunlocked状態（localStorageから復元）ならスキップ
-    if (state.phase === "unlocked" && state.unlockLevel === 4) {
+    // すでにunlocked状態（保存状態から復元）ならスキップ
+    // totalQuestions=0 または unlockLevel >= totalQuestions の場合はアンロック済み
+    const isFullyUnlocked = state.totalQuestions === 0 || state.unlockLevel >= state.totalQuestions;
+    if (state.phase === "unlocked" && isFullyUnlocked) {
       // アーティファクトのみ抽出（フェーズは変更しない）
       for (const message of messages) {
         if (message.role === "assistant") {
@@ -187,7 +190,7 @@ export function GenerationChatContainer({
         setPhase("coding");
       }
       // クイズは完全アンロック前のみ抽出
-      if (state.unlockLevel < 4) {
+      if (!isFullyUnlocked) {
         const quiz = extractQuizFromResponse(lastAssistantContent, state.unlockLevel);
         if (quiz) {
           setCurrentQuiz(quiz);
@@ -280,10 +283,11 @@ export function GenerationChatContainer({
   // クイズが必要な場合に自動生成（フォールバック）
   useEffect(() => {
     // unlocking フェーズで currentQuiz がなく、まだ完全アンロックではない場合
+    const needsQuiz = state.totalQuestions > 0 && state.unlockLevel < state.totalQuestions;
     if (
       state.phase === "unlocking" &&
       !state.currentQuiz &&
-      state.unlockLevel < 4 &&
+      needsQuiz &&
       artifactsList.length > 0
     ) {
       // フォールバッククイズを生成
@@ -587,7 +591,9 @@ export function GenerationChatContainer({
                       {artifactsList.map((artifact) => {
                         const isActive = state.activeArtifactId === artifact.id;
                         const progress = state.artifactProgress[artifact.id];
-                        const unlockLevel = progress?.unlockLevel || 1;
+                        const unlockLevel = progress?.unlockLevel ?? 0;
+                        const totalQ = progress?.totalQuestions ?? state.totalQuestions;
+                        const isArtifactUnlocked = totalQ === 0 || unlockLevel >= totalQ;
                         return (
                           <DropdownMenuItem
                             key={artifact.id}
@@ -602,7 +608,7 @@ export function GenerationChatContainer({
                                 "material-symbols-outlined text-base",
                                 isActive ? "text-yellow-400" : "text-zinc-500"
                               )}>
-                                {unlockLevel >= 4 ? "lock_open" : "lock"}
+                                {isArtifactUnlocked ? "lock_open" : "lock"}
                               </span>
                               <span className={cn(
                                 "truncate",
@@ -611,17 +617,19 @@ export function GenerationChatContainer({
                                 {artifact.title || `${artifact.language} #${artifact.version}`}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1 ml-2">
-                              {[1, 2, 3, 4].map((level) => (
-                                <div
-                                  key={level}
-                                  className={cn(
-                                    "size-1.5 rounded-full",
-                                    level <= unlockLevel ? "bg-yellow-500" : "bg-zinc-600"
-                                  )}
-                                />
-                              ))}
-                            </div>
+                            {totalQ > 0 && (
+                              <div className="flex items-center gap-1 ml-2">
+                                {Array.from({ length: totalQ }, (_, i) => i + 1).map((level) => (
+                                  <div
+                                    key={level}
+                                    className={cn(
+                                      "size-1.5 rounded-full",
+                                      level <= unlockLevel ? "bg-yellow-500" : "bg-zinc-600"
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </DropdownMenuItem>
                         );
                       })}
@@ -633,18 +641,24 @@ export function GenerationChatContainer({
               <div className="flex items-center gap-2">
                 {/* Unlock progress */}
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-zinc-500">レベル {state.unlockLevel}/4</span>
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4].map((level) => (
-                      <div
-                        key={level}
-                        className={cn(
-                          "size-1.5 rounded-full",
-                          level <= state.unlockLevel ? "bg-yellow-500" : "bg-zinc-700"
-                        )}
-                      />
-                    ))}
-                  </div>
+                  {state.totalQuestions > 0 ? (
+                    <>
+                      <span className="text-zinc-500">{state.unlockLevel}/{state.totalQuestions} 完了</span>
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: state.totalQuestions }, (_, i) => i + 1).map((level) => (
+                          <div
+                            key={level}
+                            className={cn(
+                              "size-1.5 rounded-full",
+                              level <= state.unlockLevel ? "bg-yellow-500" : "bg-zinc-700"
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-zinc-500">アンロック済み</span>
+                  )}
                 </div>
 
                 {/* Collapse button */}

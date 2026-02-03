@@ -190,16 +190,19 @@ export default function AccessKeysPage() {
 
     setUpdating(true);
     try {
+      const requestBody = {
+        dailyTokenLimit: editDailyTokenLimit,
+        expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+        settings: {
+          unlockSkipAllowed: editUnlockSkipAllowed,
+        },
+      };
+      console.log("Update key request:", JSON.stringify(requestBody, null, 2));
+
       const response = await fetch(`/api/admin/keys/${editingKey.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dailyTokenLimit: editDailyTokenLimit,
-          expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
-          settings: {
-            unlockSkipAllowed: editUnlockSkipAllowed,
-          },
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       // Check for auth error
@@ -215,6 +218,10 @@ export default function AccessKeysPage() {
         fetchKeys();
       } else {
         console.error("Failed to update key:", result.error);
+        // Show detailed validation errors
+        if (result.error?.details) {
+          console.error("Validation details:", JSON.stringify(result.error.details, null, 2));
+        }
       }
     } catch (error) {
       console.error("Failed to update key:", error);

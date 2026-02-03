@@ -6,7 +6,7 @@ export { ChatContainer } from "./ChatContainer";
 // Generation mode components
 export { GenerationChatContainer } from "./GenerationChatContainer";
 export { BlurredCode } from "./BlurredCode";
-export { GenerationQuiz, QUIZ_TEMPLATES } from "./GenerationQuiz";
+export { GenerationQuiz } from "./GenerationQuiz";
 export { PlanningHelper } from "./PlanningHelper";
 export { GenerationOptionsBar } from "./GenerationOptions";
 

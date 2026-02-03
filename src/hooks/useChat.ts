@@ -500,6 +500,10 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
 
               try {
                 const parsed = JSON.parse(data);
+                // Handle streaming error from API
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
                 if (parsed.content) {
                   fullContent += parsed.content;
                   setMessages((prev) => {
@@ -723,6 +727,10 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
 
             try {
               const parsed = JSON.parse(data);
+              // Handle streaming error from API
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
               if (parsed.content) {
                 fullContent += parsed.content;
                 setMessages((prev) => {
