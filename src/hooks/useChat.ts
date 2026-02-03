@@ -8,6 +8,7 @@ import type {
   ChatBranchState,
   ConversationMetadata,
   BrainstormModeState,
+  BrainstormSubMode,
 } from "@/types/chat";
 
 const EMPTY_MESSAGES: Message[] = [];
@@ -15,8 +16,12 @@ const EMPTY_MESSAGES: Message[] = [];
 interface UseChatOptions {
   mode: ChatMode;
   conversationId?: string;
+  projectId?: string;
   onError?: (error: Error) => void;
   onConversationCreated?: (id: string) => void;
+  onTokensUsed?: (tokens: number) => void;
+  // 壁打ちモードのサブモード（casual/planning）
+  brainstormSubMode?: BrainstormSubMode;
 }
 
 // Generation status from backend
@@ -65,7 +70,7 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
-export function useChat({ mode, conversationId: initialConversationId, onError, onConversationCreated }: UseChatOptions): UseChatReturn {
+export function useChat({ mode, conversationId: initialConversationId, projectId, onError, onConversationCreated, onTokensUsed, brainstormSubMode }: UseChatOptions): UseChatReturn {
   const [branchState, setBranchState] = useState<ChatBranchState>(() => {
     const mainBranchId = generateId();
     return {
@@ -180,6 +185,7 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
             mode,
             messages: msgs,
             metadata,
+            projectId,
           }),
           signal: saveAbortControllerRef.current.signal,
         });
@@ -201,7 +207,7 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
         console.warn("Failed to save conversation:", err);
       }
     }
-  }, [mode, buildMetadata, onConversationCreated]);
+  }, [mode, projectId, buildMetadata, onConversationCreated]);
 
   // Debounced save effect - skip during streaming to prevent excessive saves
   useEffect(() => {
@@ -406,6 +412,7 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
           body: JSON.stringify({
             mode,
             messages: [...currentMessages, userMessage],
+            brainstormSubMode: mode === "brainstorm" ? brainstormSubMode : undefined,
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -482,6 +489,10 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
                     return newMessages;
                   });
                 }
+                // Handle done message with tokens used
+                if (parsed.done && parsed.tokensUsed !== undefined) {
+                  onTokensUsed?.(parsed.tokensUsed);
+                }
               } catch {
                 // Skip invalid JSON (might be incomplete chunk)
               }
@@ -510,6 +521,10 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
                     }
                     return newMessages;
                   });
+                }
+                // Handle done message with tokens used (in case it's in the buffer)
+                if (parsed.done && parsed.tokensUsed !== undefined) {
+                  onTokensUsed?.(parsed.tokensUsed);
                 }
               } catch {
                 // Skip invalid JSON
@@ -543,7 +558,7 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
         }
       }
     },
-    [mode, isLoading, onError, setMessages, conversationId, saveConversation]
+    [mode, isLoading, onError, onTokensUsed, setMessages, conversationId, saveConversation, brainstormSubMode]
   );
 
   const clearMessages = useCallback(() => {
@@ -611,6 +626,7 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
         body: JSON.stringify({
           mode,
           messages: messagesForApi,
+          brainstormSubMode: mode === "brainstorm" ? brainstormSubMode : undefined,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -687,6 +703,10 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
                   return newMessages;
                 });
               }
+              // Handle done message with tokens used
+              if (parsed.done && parsed.tokensUsed !== undefined) {
+                onTokensUsed?.(parsed.tokensUsed);
+              }
             } catch {
               // Skip invalid JSON (might be incomplete chunk)
             }
@@ -715,6 +735,10 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
                   }
                   return newMessages;
                 });
+              }
+              // Handle done message with tokens used (in case it's in the buffer)
+              if (parsed.done && parsed.tokensUsed !== undefined) {
+                onTokensUsed?.(parsed.tokensUsed);
               }
             } catch {
               // Skip invalid JSON
@@ -747,7 +771,7 @@ export function useChat({ mode, conversationId: initialConversationId, onError, 
         saveConversation(latestMessages, conversationId);
       }
     }
-  }, [canRegenerate, isLoading, mode, onError, setMessages, conversationId, saveConversation]);
+  }, [canRegenerate, isLoading, mode, onError, onTokensUsed, setMessages, conversationId, saveConversation, brainstormSubMode]);
 
   // Set external metadata (e.g., brainstorm state from BrainstormChatContainer)
   const setExternalMetadata = useCallback((metadata: Partial<ConversationMetadata>) => {

@@ -3,6 +3,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Learning } from "@/generated/prisma/client";
+import {
+  checkTokenLimit,
+  estimateTokens,
+  updateTokenUsage,
+  TOKEN_LIMIT_EXCEEDED_CODE,
+} from "@/lib/token-limit";
 
 const validLearningTypes = ["insight", "reflection"] as const;
 
@@ -165,7 +171,28 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
 
     // Estimate token usage (1 token ≈ 4 characters)
-    const estimatedTokens = Math.ceil(content.length / 4);
+    const estimatedTokens = estimateTokens(content);
+
+    // Check token limit before creating learning
+    const tokenCheck = await checkTokenLimit(userId, estimatedTokens);
+    if (!tokenCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: TOKEN_LIMIT_EXCEEDED_CODE,
+            message: "本日のトークン上限に達しました",
+            details: {
+              currentUsage: tokenCheck.currentUsage,
+              dailyLimit: tokenCheck.dailyLimit,
+              remaining: tokenCheck.remaining,
+              required: estimatedTokens,
+            },
+          },
+        },
+        { status: 429 }
+      );
+    }
 
     const learning = await prisma.learning.create({
       data: {
@@ -195,39 +222,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update daily token usage
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    await prisma.tokenUsage.upsert({
-      where: {
-        userId_date: {
-          userId,
-          date: today,
-        },
-      },
-      create: {
-        userId,
-        date: today,
-        tokensUsed: estimatedTokens,
-        breakdown: { learning: estimatedTokens },
-      },
-      update: {
-        tokensUsed: { increment: estimatedTokens },
-      },
-    });
-
-    // Update the breakdown separately to handle JSON update
-    const existingUsage = await prisma.tokenUsage.findUnique({
-      where: { userId_date: { userId, date: today } },
-    });
-    if (existingUsage) {
-      const breakdown = (existingUsage.breakdown as Record<string, number>) || {};
-      breakdown.learning = (breakdown.learning || 0) + estimatedTokens;
-      await prisma.tokenUsage.update({
-        where: { userId_date: { userId, date: today } },
-        data: { breakdown },
-      });
-    }
+    await updateTokenUsage(userId, estimatedTokens, "learning");
 
     return NextResponse.json({
       success: true,

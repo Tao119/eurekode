@@ -119,13 +119,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
-    const status = searchParams.get("status") as ProjectStatus | null;
+    const statusParam = searchParams.get("status");
     const projectType = searchParams.get("projectType") as ProjectType | null;
     const search = searchParams.get("search");
 
+    // Handle comma-separated status values
+    const statusFilter = statusParam
+      ? statusParam.includes(",")
+        ? { in: statusParam.split(",") as ProjectStatus[] }
+        : statusParam as ProjectStatus
+      : undefined;
+
     const where = {
       userId: session.user.id,
-      ...(status && { status }),
+      ...(statusFilter && { status: statusFilter }),
       ...(projectType && { projectType }),
       ...(search && {
         OR: [

@@ -14,7 +14,6 @@ interface BlurredCodeProps {
   filename?: string;
   unlockLevel: UnlockLevel;
   progressPercentage: number;
-  onUnlockClick?: () => void;
   canCopy?: boolean;
 }
 
@@ -116,7 +115,6 @@ export function BlurredCode({
   filename,
   unlockLevel,
   progressPercentage,
-  onUnlockClick,
   canCopy = false,
 }: BlurredCodeProps) {
   const [copied, setCopied] = useState(false);
@@ -302,26 +300,6 @@ export function BlurredCode({
           })}
         </div>
 
-        {/* 隠れている行がある場合のオーバーレイ */}
-        {isLocked && hiddenLineCount > 0 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-black/80 backdrop-blur-sm border border-yellow-500/30 shadow-lg">
-              <span className="material-symbols-outlined text-yellow-400 text-lg">quiz</span>
-              <span className="text-sm text-foreground/90">
-                {hiddenLineCount} 行が非表示
-              </span>
-              {onUnlockClick && (
-                <Button
-                  onClick={onUnlockClick}
-                  size="sm"
-                  className="h-7 px-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white text-xs"
-                >
-                  クイズで解除
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* フッター（アンロック完了時） */}

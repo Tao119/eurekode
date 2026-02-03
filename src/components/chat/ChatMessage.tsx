@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, createContext, useContext } from "react";
+import { useState, createContext, useContext, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { Message, InteractiveQuestion, InteractiveQuizForm, ChatMode } from "@/types/chat";
 import ReactMarkdown from "react-markdown";
@@ -10,7 +10,9 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { InteractiveQuiz } from "./InteractiveQuiz";
 import { LockedCodeBlock } from "./LockedCodeBlock";
+import { SaveLearningDialog } from "./SaveLearningDialog";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
+import { extractQuizOptions } from "@/lib/quizExtractor";
 
 // Context to pass mode and lock state to nested components
 interface CodeBlockContextValue {
@@ -28,51 +30,23 @@ interface ChatMessageProps {
   onRegenerate?: () => void;
   showRegenerateButton?: boolean;
   mode?: ChatMode;
+  conversationId?: string;
 }
 
-// Detect n-choice options from AI response (A) B) C) format)
+// Detect n-choice options from AI response using shared utility
 interface DetectedOptions {
   contentWithoutOptions: string;
   options: { label: string; text: string }[];
 }
 
 function detectOptions(content: string): DetectedOptions | null {
-  // Patterns for n-choice options - try multiple formats
-  const optionPatterns = [
-    // Standard format: A) text, A. text, A: text, A） text
-    /^[\s\-\•\*]*([A-D])[)）.\:：]\s*(.+)$/gm,
-    // With parentheses: (A) text
-    /^[\s\-\•\*]*\(([A-D])\)\s*(.+)$/gm,
-    // Japanese format: Ａ） text (full-width)
-    /^[\s\-\•\*]*([Ａ-Ｄ])[)）]\s*(.+)$/gm,
-  ];
+  const result = extractQuizOptions(content);
+  if (!result) return null;
 
-  for (const optionPattern of optionPatterns) {
-    const matches = [...content.matchAll(optionPattern)];
-
-    if (matches.length >= 2 && matches.length <= 4) {
-      const options = matches.map(m => ({
-        // Normalize full-width to half-width
-        label: m[1].replace(/[Ａ-Ｄ]/g, (c) =>
-          String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
-        ),
-        text: m[2].trim(),
-      }));
-
-      // Remove options from content
-      let contentWithoutOptions = content;
-      for (const match of matches) {
-        contentWithoutOptions = contentWithoutOptions.replace(match[0], "");
-      }
-
-      // Clean up extra newlines
-      contentWithoutOptions = contentWithoutOptions.replace(/\n{3,}/g, "\n\n").trim();
-
-      return { contentWithoutOptions, options };
-    }
-  }
-
-  return null;
+  return {
+    contentWithoutOptions: result.contentWithoutOptions,
+    options: result.options,
+  };
 }
 
 // Detect interactive quiz with multiple question types (choice + fill + text)
@@ -189,16 +163,91 @@ export function ChatMessage({
   onRegenerate,
   showRegenerateButton = false,
   mode,
+  conversationId,
 }: ChatMessageProps) {
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
+
+  // Save learning dialog state
+  const [saveLearningOpen, setSaveLearningOpen] = useState(false);
+  const [selectedContent, setSelectedContent] = useState("");
+
+  // Text selection state for partial content saving
+  const [selectionPopup, setSelectionPopup] = useState<{ x: number; y: number; text: string } | null>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
+
+  // Handle save learning button click (save entire message)
+  const handleSaveLearning = useCallback(() => {
+    setSelectedContent(message.content);
+    setSaveLearningOpen(true);
+  }, [message.content]);
+
+  // Handle save selected text
+  const handleSaveSelection = useCallback(() => {
+    if (selectionPopup?.text) {
+      setSelectedContent(selectionPopup.text);
+      setSaveLearningOpen(true);
+      setSelectionPopup(null);
+      window.getSelection()?.removeAllRanges();
+    }
+  }, [selectionPopup]);
+
+  // Handle text selection within the message
+  useEffect(() => {
+    if (!isAssistant || isStreaming) return;
+
+    const handleMouseUp = (e: MouseEvent) => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
+
+      if (selectedText && selectedText.length > 0 && messageRef.current) {
+        // Check if selection is within this message
+        const range = selection?.getRangeAt(0);
+        if (range && messageRef.current.contains(range.commonAncestorContainer)) {
+          const rect = range.getBoundingClientRect();
+          const containerRect = messageRef.current.getBoundingClientRect();
+
+          setSelectionPopup({
+            x: rect.left - containerRect.left + rect.width / 2,
+            y: rect.top - containerRect.top - 8,
+            text: selectedText,
+          });
+        }
+      } else {
+        // Small delay to allow clicking the popup button
+        setTimeout(() => {
+          if (!selectionPopup) return;
+          const selection = window.getSelection();
+          if (!selection || selection.toString().trim().length === 0) {
+            setSelectionPopup(null);
+          }
+        }, 100);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectionPopup(null);
+        window.getSelection()?.removeAllRanges();
+      }
+    };
+
+    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAssistant, isStreaming, selectionPopup]);
 
   // Get user settings to check if quiz is enabled
   const userSettingsContext = useUserSettingsOptional();
   const quizEnabled = userSettingsContext?.settings.quizEnabled ?? true;
 
-  // In generation mode, lock code blocks until user completes quiz
-  const shouldLockCode = mode === "generation" && isAssistant && !isStreaming;
+  // In generation mode, artifacts are handled by the right panel (BlurredCode)
+  // Regular code blocks should NOT be locked - only show normally
+  const shouldLockCode = false; // Disabled: artifacts use the right panel now
 
   // Only detect quizzes if enabled in user settings (for explanation mode)
   const shouldShowQuiz = quizEnabled && mode !== "generation"; // Generation mode has its own quiz system
@@ -244,7 +293,7 @@ export function ChatMessage({
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 space-y-2">
+      <div ref={messageRef} className="flex-1 min-w-0 space-y-2 relative">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm">
             {isUser ? "あなた" : "Eurekode"}
@@ -261,6 +310,26 @@ export function ChatMessage({
             <MessageContent content={displayContent} isUser={isUser} />
           </CodeBlockContext.Provider>
         </div>
+
+        {/* Selection Popup for saving selected text */}
+        {selectionPopup && (
+          <div
+            className="absolute z-10 animate-in fade-in-50 zoom-in-95 duration-150"
+            style={{
+              left: selectionPopup.x,
+              top: selectionPopup.y,
+              transform: "translate(-50%, -100%)",
+            }}
+          >
+            <button
+              onClick={handleSaveSelection}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-lg cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-sm">bookmark_add</span>
+              <span>選択を保存</span>
+            </button>
+          </div>
+        )}
 
         {/* Interactive Quiz (multiple question types) */}
         {interactiveQuiz && interactiveQuiz.questions.length > 0 && (
@@ -289,8 +358,17 @@ export function ChatMessage({
       </div>
 
       {/* Action Buttons - always visible, highlight only on button hover */}
-      {(showForkButton || showRegenerateButton) && (
+      {isAssistant && !isStreaming && (
         <div className="absolute right-4 top-4 flex items-center gap-2">
+          {/* Save as Learning button */}
+          <button
+            onClick={handleSaveLearning}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-card/80 border border-border/50 text-muted-foreground hover:bg-muted/80 hover:border-amber-500/50 hover:text-amber-500 transition-all shadow-sm cursor-pointer"
+            title="学びとして保存"
+          >
+            <span className="material-symbols-outlined text-base">bookmark_add</span>
+            <span>保存</span>
+          </button>
           {showRegenerateButton && onRegenerate && (
             <button
               onClick={onRegenerate}
@@ -313,6 +391,14 @@ export function ChatMessage({
           )}
         </div>
       )}
+
+      {/* Save Learning Dialog */}
+      <SaveLearningDialog
+        open={saveLearningOpen}
+        onOpenChange={setSaveLearningOpen}
+        content={selectedContent}
+        conversationId={conversationId}
+      />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, use } from "react";
+import { useEffect, use, useCallback } from "react";
 import { ChatContainer } from "@/components/chat";
 import { useChat } from "@/hooks/useChat";
+import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { toast } from "sonner";
 
 interface PageProps {
@@ -11,6 +12,12 @@ interface PageProps {
 
 export default function ExplanationRoomPage({ params }: PageProps) {
   const { id: conversationId } = use(params);
+  const tokenUsage = useTokenUsageOptional();
+
+  // Update token usage when response completes
+  const handleTokensUsed = useCallback((tokens: number) => {
+    tokenUsage?.addUsage(tokens);
+  }, [tokenUsage]);
 
   const {
     messages,
@@ -32,6 +39,7 @@ export default function ExplanationRoomPage({ params }: PageProps) {
     onError: (error) => {
       toast.error(error.message);
     },
+    onTokensUsed: handleTokensUsed,
   });
 
   // Load conversation on mount (only when conversationId changes)
@@ -78,6 +86,7 @@ export default function ExplanationRoomPage({ params }: PageProps) {
       onSwitchBranch={switchBranch}
       onRegenerate={regenerateLastMessage}
       canRegenerate={canRegenerate}
+      conversationId={conversationId}
     />
   );
 }

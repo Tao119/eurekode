@@ -144,6 +144,31 @@ export interface UnlockChallenge {
 // Brainstorm Mode (壁打ちモード)
 // ===========================================
 
+// 壁打ちのサブモード
+export type BrainstormSubMode = "casual" | "planning";
+
+export interface BrainstormSubModeConfig {
+  mode: BrainstormSubMode;
+  title: string;
+  description: string;
+  icon: string;
+}
+
+export const BRAINSTORM_SUB_MODES: BrainstormSubModeConfig[] = [
+  {
+    mode: "casual",
+    title: "壁打ちモード",
+    description: "気軽にアイデアを相談",
+    icon: "chat_bubble",
+  },
+  {
+    mode: "planning",
+    title: "企画書モード",
+    description: "ステップに沿って企画を整理",
+    icon: "description",
+  },
+];
+
 export type BrainstormPhase =
   | "verbalization"    // 言語化
   | "persona"          // ペルソナ明確化
@@ -282,6 +307,7 @@ export interface ConversationMetadata {
 
 // 壁打ちモードの状態（永続化用）
 export interface BrainstormModeState {
+  subMode: BrainstormSubMode;
   currentPhase: BrainstormPhase;
   completedPhases: BrainstormPhase[];
   ideaSummary: string | null;
@@ -446,6 +472,29 @@ export interface StreamChunk {
   metadata?: Partial<MessageMetadata>;
   done?: boolean;
   error?: string;
+}
+
+// ===========================================
+// Artifact System (生成モード用)
+// ===========================================
+
+export interface Artifact {
+  id: string;
+  type: "code" | "component" | "config";
+  title: string;
+  content: string;
+  language?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+export interface StructuredQuiz {
+  level: 1 | 2 | 3 | 4;
+  question: string;
+  options: { label: string; text: string }[];
+  correctLabel: string;
+  hint?: string;
 }
 
 // ===========================================

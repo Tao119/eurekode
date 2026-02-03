@@ -1,21 +1,35 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { BrainstormChatContainer } from "@/components/chat/BrainstormChatContainer";
+import { ProjectSelector } from "@/components/chat/ProjectSelector";
 import { useChat } from "@/hooks/useChat";
+import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { toast } from "sonner";
-import type { ConversationMetadata } from "@/types/chat";
+import type { ConversationMetadata, BrainstormSubMode } from "@/types/chat";
 
 export default function BrainstormModePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const conversationId = searchParams.get("id");
+  const initialProjectId = searchParams.get("projectId");
+  const tokenUsage = useTokenUsageOptional();
+
+  // Project selection state (can be changed before first message)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId);
+  // SubMode state for API calls (synced from BrainstormChatContainer)
+  const [subMode, setSubMode] = useState<BrainstormSubMode>("casual");
 
   // Navigate to the room route when a new conversation is created
   const handleConversationCreated = useCallback((id: string) => {
     router.replace(`/chat/brainstorm/${id}`);
   }, [router]);
+
+  // Update token usage when response completes
+  const handleTokensUsed = useCallback((tokens: number) => {
+    tokenUsage?.addUsage(tokens);
+  }, [tokenUsage]);
 
   const {
     messages,
@@ -36,11 +50,17 @@ export default function BrainstormModePage() {
   } = useChat({
     mode: "brainstorm",
     conversationId: conversationId || undefined,
+    projectId: selectedProjectId || undefined,
+    brainstormSubMode: subMode,
     onError: (error) => {
       toast.error(error.message);
     },
     onConversationCreated: handleConversationCreated,
+    onTokensUsed: handleTokensUsed,
   });
+
+  // Disable project change once conversation has started
+  const canChangeProject = messages.length === 0 && !conversationId;
 
   // Handle metadata changes from BrainstormChatContainer
   const handleMetadataChange = useCallback(
@@ -97,6 +117,14 @@ export default function BrainstormModePage() {
       conversationId={conversationId || undefined}
       restoredMetadata={restoredMetadata}
       onMetadataChange={handleMetadataChange}
+      onSubModeChange={setSubMode}
+      headerExtra={
+        <ProjectSelector
+          selectedProjectId={selectedProjectId}
+          onProjectChange={setSelectedProjectId}
+          disabled={!canChangeProject}
+        />
+      }
     />
   );
 }

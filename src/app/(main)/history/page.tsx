@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { ChatMode } from "@/types/chat";
+
+interface Project {
+  id: string;
+  title: string;
+  status: string;
+}
 
 interface Conversation {
   id: string;
@@ -12,6 +18,8 @@ interface Conversation {
   createdAt: string;
   updatedAt: string;
   tokensConsumed: number;
+  projectId?: string | null;
+  project?: { id: string; title: string } | null;
 }
 
 const modeConfig: Record<
@@ -42,6 +50,24 @@ export default function HistoryPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<ChatMode | "all">("all");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [linkingConversationId, setLinkingConversationId] = useState<string | null>(null);
+
+  // プロジェクト一覧を取得
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const response = await fetch("/api/projects?limit=50");
+        const data = await response.json();
+        if (data.success) {
+          setProjects(data.data.items || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      }
+    }
+    fetchProjects();
+  }, []);
 
   useEffect(() => {
     async function fetchConversations() {
@@ -62,6 +88,31 @@ export default function HistoryPage() {
 
     fetchConversations();
   }, [filter]);
+
+  // プロジェクトと紐づける
+  const linkToProject = useCallback(async (conversationId: string, projectId: string | null) => {
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationId
+              ? { ...c, projectId: data.data.projectId, project: data.data.project }
+              : c
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to link conversation to project:", error);
+    } finally {
+      setLinkingConversationId(null);
+    }
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -196,6 +247,72 @@ export default function HistoryPage() {
                     )}
                   </div>
                 </Link>
+
+                {/* プロジェクト紐づけ */}
+                <div className="relative">
+                  {conversation.project ? (
+                    <button
+                      onClick={() => setLinkingConversationId(conversation.id)}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">folder</span>
+                      <span className="max-w-24 truncate">{conversation.project.title}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setLinkingConversationId(conversation.id)}
+                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
+                      title="プロジェクトに紐づける"
+                    >
+                      <span className="material-symbols-outlined text-xl">link</span>
+                    </button>
+                  )}
+
+                  {/* プロジェクト選択ドロップダウン */}
+                  {linkingConversationId === conversation.id && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setLinkingConversationId(null)}
+                      />
+                      <div className="absolute right-0 top-full mt-1 z-20 w-64 rounded-lg border border-border bg-card shadow-lg overflow-hidden">
+                        <div className="px-3 py-2 border-b border-border bg-muted/50">
+                          <span className="text-sm font-medium">プロジェクトを選択</span>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto">
+                          {conversation.projectId && (
+                            <button
+                              onClick={() => linkToProject(conversation.id, null)}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 flex items-center gap-2 text-red-400"
+                            >
+                              <span className="material-symbols-outlined text-base">link_off</span>
+                              紐づけを解除
+                            </button>
+                          )}
+                          {projects.length > 0 ? (
+                            projects.map((project) => (
+                              <button
+                                key={project.id}
+                                onClick={() => linkToProject(conversation.id, project.id)}
+                                className={cn(
+                                  "w-full px-3 py-2 text-left text-sm hover:bg-muted/50 flex items-center gap-2",
+                                  conversation.projectId === project.id && "bg-primary/10 text-primary"
+                                )}
+                              >
+                                <span className="material-symbols-outlined text-base">folder</span>
+                                <span className="truncate">{project.title}</span>
+                              </button>
+                            ))
+                          ) : (
+                            <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+                              プロジェクトがありません
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <button
                   onClick={() => handleDelete(conversation.id)}

@@ -3,7 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { systemPrompts } from "@/lib/prompts";
+import { systemPrompts, brainstormSubModePrompts } from "@/lib/prompts";
+import type { BrainstormSubMode } from "@/types/chat";
 
 const chatRequestSchema = z.object({
   mode: z.enum(["explanation", "generation", "brainstorm"]),
@@ -14,6 +15,8 @@ const chatRequestSchema = z.object({
     })
   ),
   conversationId: z.string().optional(),
+  // 壁打ちモードのサブモード（casual/planning）
+  brainstormSubMode: z.enum(["casual", "planning"]).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -44,8 +47,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { mode, messages, conversationId } = parsed.data;
+    const { mode, messages, conversationId, brainstormSubMode } = parsed.data;
     const userId = session.user.id;
+
+    // サブモードに応じたシステムプロンプトを選択
+    const getSystemPrompt = (): string => {
+      if (mode === "brainstorm" && brainstormSubMode) {
+        return brainstormSubModePrompts[brainstormSubMode];
+      }
+      return systemPrompts[mode];
+    };
 
     // Check if API key is configured
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -88,7 +99,7 @@ export async function POST(request: NextRequest) {
           const response = await anthropic.messages.stream({
             model: "claude-sonnet-4-20250514",
             max_tokens: 4096,
-            system: systemPrompts[mode],
+            system: getSystemPrompt(),
             messages: messages.map((msg) => ({
               role: msg.role,
               content: msg.content,
@@ -180,8 +191,8 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          // Send conversation ID in the done message
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversationId: currentConversationId })}\n\n`));
+          // Send conversation ID and tokens used in the done message
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversationId: currentConversationId, tokensUsed: estimatedTokens })}\n\n`));
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (error) {

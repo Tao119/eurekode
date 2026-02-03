@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Noto_Sans_JP, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { TokenUsageProvider } from "@/contexts/TokenUsageContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -53,8 +54,10 @@ export default function RootLayout({
         className={`${inter.variable} ${notoSansJP.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <SessionProvider>
-          {children}
-          <Toaster />
+          <TokenUsageProvider>
+            {children}
+            <Toaster />
+          </TokenUsageProvider>
         </SessionProvider>
       </body>
     </html>

@@ -235,16 +235,12 @@ export const authConfig: NextAuthConfig = {
 
         extendedToken.plan = subscription?.plan || "free";
 
-        // Get daily token limit
-        if (user.userType === "member" && user.organizationId) {
-          const accessKey = await prisma.accessKey.findFirst({
-            where: { userId: user.id },
-          });
-          extendedToken.dailyTokenLimit =
-            accessKey?.dailyTokenLimit || TOKEN_LIMITS[extendedToken.plan];
-        } else {
-          extendedToken.dailyTokenLimit = TOKEN_LIMITS[extendedToken.plan];
-        }
+        // Get daily token limit from access key if exists, otherwise use plan default
+        const accessKey = await prisma.accessKey.findFirst({
+          where: { userId: user.id },
+        });
+        extendedToken.dailyTokenLimit =
+          accessKey?.dailyTokenLimit || TOKEN_LIMITS[extendedToken.plan];
       }
       return extendedToken;
     },

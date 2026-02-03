@@ -48,15 +48,6 @@ export function GenerationOptionsBar({
             </span>
           </div>
 
-          {/* 見積もり訓練 */}
-          {options.estimationTraining && (
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm text-muted-foreground">
-                timer
-              </span>
-              <span className="text-muted-foreground">見積もり訓練</span>
-            </div>
-          )}
         </div>
 
         {/* 展開ボタン */}
@@ -162,30 +153,6 @@ export function GenerationOptionsBar({
             </div>
           )}
 
-          {/* 見積もり訓練 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm font-medium">見積もり訓練</span>
-              <p className="text-xs text-muted-foreground">
-                実装時間を予測して、見積もり力を鍛える
-              </p>
-            </div>
-            <button
-              onClick={() => onOptionsChange({ estimationTraining: !options.estimationTraining })}
-              disabled={disabled}
-              className={cn(
-                "relative w-11 h-6 rounded-full transition-colors disabled:opacity-50",
-                options.estimationTraining ? "bg-primary" : "bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 left-0.5 size-5 rounded-full bg-white transition-transform",
-                  options.estimationTraining && "translate-x-5"
-                )}
-              />
-            </button>
-          </div>
         </div>
       )}
     </div>

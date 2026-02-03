@@ -11,6 +11,16 @@ import type {
   LearningType,
 } from "@/types/learning";
 
+// Must match the value in @/lib/token-limit.ts (can't import due to server-only dependencies)
+const TOKEN_LIMIT_EXCEEDED_CODE = "TOKEN_LIMIT_EXCEEDED";
+
+export interface TokenLimitErrorDetails {
+  currentUsage: number;
+  dailyLimit: number;
+  remaining: number;
+  required: number;
+}
+
 interface UseLearningsOptions {
   initialLimit?: number;
   autoFetch?: boolean;
@@ -25,12 +35,14 @@ interface UseLearningsReturn {
   total: number;
   hasMore: boolean;
   filters: LearningsFilter;
+  tokenLimitError: TokenLimitErrorDetails | null;
   fetchLearnings: (options?: { offset?: number; append?: boolean }) => Promise<void>;
   createLearning: (data: CreateLearningRequest) => Promise<Learning | null>;
   updateLearning: (id: string, data: UpdateLearningRequest) => Promise<Learning | null>;
   deleteLearning: (id: string) => Promise<boolean>;
   setFilters: (filters: LearningsFilter) => void;
   refetch: () => Promise<void>;
+  clearTokenLimitError: () => void;
   // Legacy methods for backwards compatibility
   saveInsight: (
     insight: InsightSuggestion,
@@ -52,6 +64,7 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
   const [hasMore, setHasMore] = useState(false);
   const [filters, setFiltersState] = useState<LearningsFilter>(initialFilter);
   const [limit] = useState(initialLimit);
+  const [tokenLimitError, setTokenLimitError] = useState<TokenLimitErrorDetails | null>(null);
 
   const handleError = useCallback(
     (err: Error) => {
@@ -112,9 +125,14 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
     [buildQueryString, handleError]
   );
 
+  const clearTokenLimitError = useCallback(() => {
+    setTokenLimitError(null);
+  }, []);
+
   const createLearning = useCallback(
     async (data: CreateLearningRequest): Promise<Learning | null> => {
       setIsLoading(true);
+      setTokenLimitError(null);
       try {
         const response = await fetch("/api/learnings", {
           method: "POST",
@@ -125,6 +143,11 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
         const result = await response.json();
 
         if (!result.success) {
+          // Check if it's a token limit error
+          if (result.error?.code === TOKEN_LIMIT_EXCEEDED_CODE && result.error?.details) {
+            setTokenLimitError(result.error.details as TokenLimitErrorDetails);
+            return null;
+          }
           throw new Error(result.error?.message || "Failed to create learning");
         }
 
@@ -275,12 +298,14 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
     total,
     hasMore,
     filters,
+    tokenLimitError,
     fetchLearnings,
     createLearning,
     updateLearning,
     deleteLearning,
     setFilters,
     refetch,
+    clearTokenLimitError,
     // Legacy methods
     saveInsight,
     saveReflection,

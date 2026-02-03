@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +13,24 @@ import { TaskBoard, TaskTimer, EstimationDashboard } from "@/components/projects
 import { useProject } from "@/hooks/useProjects";
 import { cn } from "@/lib/utils";
 import type { Task, TaskStatus, ProjectStatus } from "@/types/project";
+import type { ChatMode } from "@/generated/prisma/client";
+
+// 関連会話の型定義
+interface ProjectConversation {
+  id: string;
+  mode: ChatMode;
+  title: string | null;
+  tokensConsumed: number;
+  learningsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const MODE_ICONS: Record<ChatMode, { icon: string; color: string; label: string }> = {
+  explanation: { icon: "school", color: "text-blue-400", label: "解説" },
+  generation: { icon: "code", color: "text-yellow-400", label: "生成" },
+  brainstorm: { icon: "lightbulb", color: "text-purple-400", label: "壁打ち" },
+};
 
 const STATUS_CONFIG: Record<ProjectStatus, { label: string; icon: string; color: string; bgColor: string }> = {
   planning: { label: "企画中", icon: "edit_note", color: "text-purple-400", bgColor: "bg-purple-500/10" },
@@ -46,6 +64,30 @@ export default function ProjectDetailPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [conversations, setConversations] = useState<ProjectConversation[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+
+  // 関連会話を取得
+  useEffect(() => {
+    if (!session?.user?.id || !projectId) return;
+
+    const fetchConversations = async () => {
+      setIsLoadingConversations(true);
+      try {
+        const response = await fetch(`/api/projects/${projectId}/conversations?limit=10`);
+        const data = await response.json();
+        if (data.success) {
+          setConversations(data.data.items);
+        }
+      } catch (error) {
+        console.error("Failed to fetch conversations:", error);
+      } finally {
+        setIsLoadingConversations(false);
+      }
+    };
+
+    fetchConversations();
+  }, [session?.user?.id, projectId]);
 
   // Get top-level tasks (no parent)
   const topLevelTasks = useMemo(() => {
@@ -189,6 +231,18 @@ export default function ProjectDetailPage() {
               完了する
             </Button>
           )}
+          {project.status === "completed" && (
+            <Button variant="outline" onClick={() => handleStatusChange("in_progress")}>
+              <span className="material-symbols-outlined text-base">replay</span>
+              再開する
+            </Button>
+          )}
+          {project.status === "archived" && (
+            <Button variant="outline" onClick={() => handleStatusChange("in_progress")}>
+              <span className="material-symbols-outlined text-base">unarchive</span>
+              復元する
+            </Button>
+          )}
         </div>
       </div>
 
@@ -288,6 +342,78 @@ export default function ProjectDetailPage() {
             </CardHeader>
             <CardContent>
               <EstimationDashboard tasks={project.tasks || []} className="space-y-3" />
+            </CardContent>
+          </Card>
+
+          {/* 関連会話 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-base">chat</span>
+                関連するチャット
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* 新規チャット開始ボタン */}
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/chat/explanation?projectId=${projectId}`}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <span className="material-symbols-outlined text-base text-blue-400">school</span>
+                    質問する
+                  </Button>
+                </Link>
+                <Link href={`/chat/generation?projectId=${projectId}`}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <span className="material-symbols-outlined text-base text-yellow-400">code</span>
+                    コード生成
+                  </Button>
+                </Link>
+                <Link href={`/chat/brainstorm?projectId=${projectId}`}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <span className="material-symbols-outlined text-base text-purple-400">lightbulb</span>
+                    壁打ち
+                  </Button>
+                </Link>
+              </div>
+
+              {/* 会話リスト */}
+              {isLoadingConversations ? (
+                <div className="flex items-center justify-center py-4">
+                  <span className="material-symbols-outlined animate-spin text-muted-foreground">
+                    progress_activity
+                  </span>
+                </div>
+              ) : conversations.length > 0 ? (
+                <div className="space-y-2">
+                  {conversations.map((conv) => {
+                    const modeInfo = MODE_ICONS[conv.mode];
+                    return (
+                      <Link
+                        key={conv.id}
+                        href={`/chat/${conv.mode}/${conv.id}`}
+                        className="block p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={cn("material-symbols-outlined text-sm", modeInfo.color)}>
+                            {modeInfo.icon}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{modeInfo.label}</span>
+                        </div>
+                        <p className="text-sm font-medium mt-1 line-clamp-1">
+                          {conv.title || "無題の会話"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(conv.updatedAt).toLocaleDateString("ja-JP")}
+                        </p>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  関連する会話はありません
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

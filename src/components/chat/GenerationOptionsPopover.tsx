@@ -188,35 +188,6 @@ export function GenerationOptionsPopover({
             </div>
           )}
 
-          {/* 見積もり訓練 */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-border">
-            <div>
-              <span className="text-sm font-medium">見積もり訓練</span>
-              <p className="text-xs text-muted-foreground">
-                実装時間を予測して、見積もり力を鍛える
-              </p>
-            </div>
-            <button
-              onClick={() =>
-                onOptionsChange({
-                  estimationTraining: !options.estimationTraining,
-                })
-              }
-              disabled={disabled}
-              className={cn(
-                "relative w-11 h-6 rounded-full transition-colors disabled:opacity-50",
-                options.estimationTraining ? "bg-yellow-500" : "bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 left-0.5 size-5 rounded-full bg-white transition-transform",
-                  options.estimationTraining && "translate-x-5"
-                )}
-              />
-            </button>
-          </div>
-
           {/* 現在の設定サマリー */}
           <div className="p-3 rounded-lg bg-muted/50 border border-border">
             <div className="text-xs text-muted-foreground mb-2">現在の設定</div>
@@ -237,14 +208,6 @@ export function GenerationOptionsPopover({
                   {options.hintSpeed === "immediate" && "ヒント即座"}
                   {options.hintSpeed === "30sec" && "30秒後"}
                   {options.hintSpeed === "none" && "ヒントなし"}
-                </span>
-              )}
-              {options.estimationTraining && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-400 text-xs">
-                  <span className="material-symbols-outlined text-sm">
-                    timer
-                  </span>
-                  見積もり訓練
                 </span>
               )}
             </div>

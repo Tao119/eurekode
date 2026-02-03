@@ -15,11 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-interface HeaderProps {
-  tokenUsed?: number;
-  tokenLimit?: number;
-}
+import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 
 interface NavItem {
   href: string;
@@ -36,11 +32,16 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "管理", icon: "admin_panel_settings", adminOnly: true },
 ];
 
-export function Header({ tokenUsed = 0, tokenLimit = 100 }: HeaderProps) {
+export function Header() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const isLoading = status === "loading";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const tokenUsage = useTokenUsageOptional();
+
+  // Get token values from context or fallback to session defaults
+  const tokenUsed = tokenUsage?.todayUsage ?? 0;
+  const tokenLimit = tokenUsage?.dailyLimit ?? session?.user?.dailyTokenLimit ?? 1000;
 
   const closeMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
@@ -112,7 +113,7 @@ export function Header({ tokenUsed = 0, tokenLimit = 100 }: HeaderProps) {
                 <div className="hidden lg:block">
                   <TokenCounter
                     used={tokenUsed}
-                    limit={session.user.dailyTokenLimit || tokenLimit}
+                    limit={tokenLimit}
                     size="sm"
                   />
                 </div>
@@ -151,7 +152,7 @@ export function Header({ tokenUsed = 0, tokenLimit = 100 }: HeaderProps) {
                     <div className="lg:hidden px-2 py-2 border-b border-border mb-1">
                       <TokenCounter
                         used={tokenUsed}
-                        limit={session.user.dailyTokenLimit || tokenLimit}
+                        limit={tokenLimit}
                         size="sm"
                       />
                     </div>

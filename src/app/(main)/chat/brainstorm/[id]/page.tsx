@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { BrainstormChatContainer } from "@/components/chat/BrainstormChatContainer";
 import { useChat } from "@/hooks/useChat";
+import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { toast } from "sonner";
-import type { ConversationMetadata } from "@/types/chat";
+import type { ConversationMetadata, BrainstormSubMode } from "@/types/chat";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -12,6 +13,14 @@ interface PageProps {
 
 export default function BrainstormRoomPage({ params }: PageProps) {
   const { id: conversationId } = use(params);
+  const tokenUsage = useTokenUsageOptional();
+  // SubMode state for API calls (synced from BrainstormChatContainer)
+  const [subMode, setSubMode] = useState<BrainstormSubMode>("casual");
+
+  // Update token usage when response completes
+  const handleTokensUsed = useCallback((tokens: number) => {
+    tokenUsage?.addUsage(tokens);
+  }, [tokenUsage]);
 
   const {
     messages,
@@ -32,9 +41,11 @@ export default function BrainstormRoomPage({ params }: PageProps) {
   } = useChat({
     mode: "brainstorm",
     conversationId,
+    brainstormSubMode: subMode,
     onError: (error) => {
       toast.error(error.message);
     },
+    onTokensUsed: handleTokensUsed,
   });
 
   // Handle metadata changes from BrainstormChatContainer
@@ -91,6 +102,7 @@ export default function BrainstormRoomPage({ params }: PageProps) {
       conversationId={conversationId}
       restoredMetadata={restoredMetadata}
       onMetadataChange={handleMetadataChange}
+      onSubModeChange={setSubMode}
     />
   );
 }

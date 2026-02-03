@@ -24,6 +24,10 @@ interface ChatContainerProps {
   // Regenerate functionality
   onRegenerate?: () => void;
   canRegenerate?: boolean;
+  // Project selector
+  headerExtra?: React.ReactNode;
+  // Conversation ID for saving learnings
+  conversationId?: string;
 }
 
 export function ChatContainer({
@@ -40,6 +44,8 @@ export function ChatContainer({
   onSwitchBranch,
   onRegenerate,
   canRegenerate = false,
+  headerExtra,
+  conversationId,
 }: ChatContainerProps) {
   const { containerRef, endRef } = useAutoScroll(messages);
   const config = MODE_CONFIG[mode];
@@ -76,8 +82,12 @@ export function ChatContainer({
               </div>
             </div>
 
-            {/* Branch Selector */}
-            {hasBranches && (
+            {/* Header Extra (Project Selector etc.) */}
+            <div className="flex items-center gap-2">
+              {headerExtra}
+
+              {/* Branch Selector */}
+              {hasBranches && (
               <div className="relative">
                 <button
                   onClick={() => setShowBranchSelector(!showBranchSelector)}
@@ -102,7 +112,8 @@ export function ChatContainer({
                   />
                 )}
               </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -137,6 +148,7 @@ export function ChatContainer({
                   onRegenerate={onRegenerate}
                   showRegenerateButton={!isLoading && isLastAssistantMessage && canRegenerate}
                   mode={mode}
+                  conversationId={conversationId}
                 />
               );
             })}

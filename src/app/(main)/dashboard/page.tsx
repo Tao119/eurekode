@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   BarChart,
   Bar,
@@ -22,9 +23,26 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { FullPageLoading } from "@/components/common/LoadingSpinner";
+import { cn } from "@/lib/utils";
+import type { ChatMode } from "@/types/chat";
 
 type PeriodType = "week" | "month" | "all";
+
+interface RecentConversation {
+  id: string;
+  mode: ChatMode;
+  title: string | null;
+  updatedAt: string;
+}
 
 interface DashboardData {
   summary: {
@@ -40,6 +58,33 @@ interface DashboardData {
   modeUsage: Record<string, number>;
   period: PeriodType;
 }
+
+const modeConfig: Record<
+  ChatMode,
+  { title: string; icon: string; color: string; bgColor: string; href: string }
+> = {
+  explanation: {
+    title: "解説",
+    icon: "menu_book",
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/20",
+    href: "/chat/explanation",
+  },
+  generation: {
+    title: "生成",
+    icon: "bolt",
+    color: "text-yellow-400",
+    bgColor: "bg-yellow-500/20",
+    href: "/chat/generation",
+  },
+  brainstorm: {
+    title: "壁打ち",
+    icon: "lightbulb",
+    color: "text-purple-400",
+    bgColor: "bg-purple-500/20",
+    href: "/chat/brainstorm",
+  },
+};
 
 const periodLabels: Record<PeriodType, string> = {
   week: "週",
@@ -219,68 +264,202 @@ function EstimationAccuracyChart({
   }));
 
   return (
-    <Card className="col-span-2">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary">trending_up</span>
-          見積もり精度
+    <div className="h-[300px]">
+      {chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis
+              dataKey="name"
+              className="text-xs"
+              tick={{ fill: "hsl(var(--muted-foreground))" }}
+            />
+            <YAxis
+              className="text-xs"
+              tick={{ fill: "hsl(var(--muted-foreground))" }}
+              unit="分"
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "8px",
+              }}
+            />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="predicted"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              dot={{ fill: "hsl(var(--primary))" }}
+              name="予測"
+            />
+            <Line
+              type="monotone"
+              dataKey="actual"
+              stroke="hsl(142.1 76.2% 36.3%)"
+              strokeWidth={2}
+              dot={{ fill: "hsl(142.1 76.2% 36.3%)" }}
+              name="実績"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-full flex items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <span className="material-symbols-outlined text-4xl mb-2">timeline</span>
+            <p>見積もりデータがありません</p>
+            <p className="text-xs mt-1">生成モードで見積もり訓練を行うと表示されます</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Quick Action Card for navigation to chat modes
+function QuickActionCard({
+  mode,
+  description,
+}: {
+  mode: ChatMode;
+  description: string;
+}) {
+  const config = modeConfig[mode];
+
+  return (
+    <Link href={config.href}>
+      <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4">
+            <div className={cn("p-3 rounded-lg", config.bgColor)}>
+              <span className={cn("material-symbols-outlined text-2xl", config.color)}>
+                {config.icon}
+              </span>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">{config.title}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{description}</p>
+            </div>
+            <span className="material-symbols-outlined text-muted-foreground">
+              arrow_forward
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+// Related Chats Card showing recent conversations
+function RelatedChatsCard({
+  conversations,
+  isLoading,
+}: {
+  conversations: RecentConversation[];
+  isLoading: boolean;
+}) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "今日";
+    if (diffDays === 1) return "昨日";
+    if (diffDays < 7) return `${diffDays}日前`;
+    return date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+  };
+
+  return (
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <span className="material-symbols-outlined text-primary">chat</span>
+          関連するチャット
         </CardTitle>
-        <CardDescription>予測時間 vs 実際の時間（分）</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[250px]">
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="name"
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
-                <YAxis
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  unit="分"
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="predicted"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--primary))" }}
-                  name="予測"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="actual"
-                  stroke="hsl(142.1 76.2% 36.3%)"
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(142.1 76.2% 36.3%)" }}
-                  name="実績"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <span className="material-symbols-outlined text-4xl mb-2">timeline</span>
-                <p>見積もりデータがありません</p>
-                <p className="text-xs mt-1">生成モードで見積もり訓練を行うと表示されます</p>
-              </div>
-            </div>
-          )}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <span className="material-symbols-outlined text-3xl mb-2">forum</span>
+            <p className="text-sm">まだ会話がありません</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {conversations.map((conversation) => {
+              const config = modeConfig[conversation.mode];
+              return (
+                <Link
+                  key={conversation.id}
+                  href={`/chat/${conversation.mode}/${conversation.id}`}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+                >
+                  <div className={cn("p-1.5 rounded", config.bgColor)}>
+                    <span className={cn("material-symbols-outlined text-sm", config.color)}>
+                      {config.icon}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {conversation.title || "無題の会話"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(conversation.updatedAt)}
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-sm text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                    arrow_forward
+                  </span>
+                </Link>
+              );
+            })}
+            <Link
+              href="/history"
+              className="flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors pt-2"
+            >
+              すべて見る
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+// Estimation Accuracy Dialog Button
+function EstimationAccuracyButton({
+  data,
+}: {
+  data: Array<{ date: string; predicted: number; actual: number }>;
+}) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <span className="material-symbols-outlined text-base">trending_up</span>
+          見積もり精度
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">trending_up</span>
+            見積もり精度
+          </DialogTitle>
+          <DialogDescription>
+            予測時間 vs 実際の時間（分）
+          </DialogDescription>
+        </DialogHeader>
+        <EstimationAccuracyChart data={data} />
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -348,6 +527,8 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recentConversations, setRecentConversations] = useState<RecentConversation[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async (selectedPeriod: PeriodType) => {
     setIsLoading(true);
@@ -369,6 +550,21 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchRecentConversations = useCallback(async () => {
+    setConversationsLoading(true);
+    try {
+      const response = await fetch("/api/conversations?limit=5");
+      const result = await response.json();
+      if (result.success) {
+        setRecentConversations(result.data.items || result.data || []);
+      }
+    } catch {
+      // Silent fail for conversations
+    } finally {
+      setConversationsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -378,8 +574,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (session?.user?.id) {
       fetchDashboardData(period);
+      fetchRecentConversations();
     }
-  }, [session?.user?.id, period, fetchDashboardData]);
+  }, [session?.user?.id, period, fetchDashboardData, fetchRecentConversations]);
 
   if (status === "loading" || (status === "authenticated" && isLoading && !data)) {
     return <FullPageLoading />;
@@ -402,18 +599,26 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex gap-2 bg-muted p-1 rounded-lg">
-          {(["week", "month", "all"] as PeriodType[]).map((p) => (
-            <Button
-              key={p}
-              variant={period === p ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setPeriod(p)}
-              className="min-w-[60px]"
-            >
-              {periodLabels[p]}
-            </Button>
-          ))}
+        <div className="flex items-center gap-3">
+          {/* Estimation Accuracy Dialog Button */}
+          {data && (
+            <EstimationAccuracyButton data={data.estimationAccuracyData} />
+          )}
+
+          {/* Period Selector */}
+          <div className="flex gap-2 bg-muted p-1 rounded-lg">
+            {(["week", "month", "all"] as PeriodType[]).map((p) => (
+              <Button
+                key={p}
+                variant={period === p ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setPeriod(p)}
+                className="min-w-[60px]"
+              >
+                {periodLabels[p]}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -430,7 +635,8 @@ export default function DashboardPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Stats Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard
               icon="schedule"
               iconColor="primary"
@@ -460,13 +666,30 @@ export default function DashboardPage() {
             />
           </div>
 
+          {/* Quick Actions Row - Chat Navigation */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <RelatedChatsCard
+              conversations={recentConversations}
+              isLoading={conversationsLoading}
+            />
+            <QuickActionCard
+              mode="explanation"
+              description="コードやエラーについて質問する"
+            />
+            <QuickActionCard
+              mode="generation"
+              description="コードを生成・改善する"
+            />
+          </div>
+
+          {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <LearningTimeChart data={data.learningTimeData} />
             <UnderstandingRadarChart data={data.understandingData} />
           </div>
 
+          {/* Bottom Row - Self Solve Rate */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <EstimationAccuracyChart data={data.estimationAccuracyData} />
             <SelfSolveRateCard rate={data.summary.selfSolveRate} />
           </div>
         </>

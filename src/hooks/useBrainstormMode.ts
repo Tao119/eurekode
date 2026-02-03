@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { BrainstormPhase, PlanStep, BrainstormModeState } from "@/types/chat";
+import type { BrainstormPhase, BrainstormSubMode, PlanStep, BrainstormModeState } from "@/types/chat";
 
 // BrainstormModeStateを再エクスポート（既存コードとの互換性のため）
 export type { BrainstormModeState } from "@/types/chat";
@@ -30,11 +30,10 @@ export const PHASE_INFO: Record<
 > = {
   verbalization: {
     title: "言語化",
-    description: "アイデアを一言で説明する",
+    description: "一言でアイデアを表現（詳細は後で）",
     icon: "lightbulb",
     questions: [
       "そのアイデア、一言で言うと何ですか？",
-      "30秒で説明するとしたら？",
     ],
     quickReplies: [
       { label: "タスク管理系", value: "タスク・予定管理系のサービスです" },
@@ -45,11 +44,10 @@ export const PHASE_INFO: Record<
   },
   persona: {
     title: "ペルソナ",
-    description: "ターゲットユーザーを明確化",
+    description: "誰の、どんな課題？",
     icon: "person",
     questions: [
       "誰のどんな課題を解決しますか？",
-      "その人は今どうやって対処していますか？",
     ],
     quickReplies: [
       { label: "学生向け", value: "主なターゲットは学生です" },
@@ -60,83 +58,79 @@ export const PHASE_INFO: Record<
   },
   market: {
     title: "市場検証",
-    description: "競合と差別化ポイント",
+    description: "競合との違いは？",
     icon: "trending_up",
     questions: [
-      "類似サービスとの違いは何ですか？",
-      "なぜ既存サービスでは満足できないのですか？",
+      "類似サービスとの違いは？",
     ],
     quickReplies: [
-      { label: "競合を知っている", value: "はい、類似サービスを知っています" },
-      { label: "競合を知らない", value: "類似サービスはまだ調べていません" },
-      { label: "競合と差別化できる", value: "明確な差別化ポイントがあります" },
-      { label: "差別化を考え中", value: "差別化ポイントを考え中です" },
+      { label: "競合を知っている", value: "類似サービスを知っています" },
+      { label: "競合を調べたい", value: "類似サービスを教えてください" },
+      { label: "差別化できる", value: "差別化ポイントがあります" },
+      { label: "一緒に考えたい", value: "差別化を一緒に考えてください" },
     ],
   },
   technology: {
     title: "技術検証",
-    description: "技術スタックの選定",
+    description: "どの技術で作る？",
     icon: "code",
     questions: [
-      "実現に必要な技術スタックは？",
-      "新しく学ぶ必要がある技術は？",
+      "どのプラットフォームで作りますか？",
     ],
     quickReplies: [
-      { label: "Webアプリ", value: "Webアプリ（PC向け）として実装したい" },
+      { label: "Webアプリ", value: "Webアプリとして実装したい" },
       { label: "モバイルアプリ", value: "モバイルアプリとして実装したい" },
-      { label: "デスクトップアプリ", value: "デスクトップアプリとして実装したい" },
-      { label: "複数プラットフォーム", value: "複数プラットフォームで展開したい" },
+      { label: "デスクトップ", value: "デスクトップアプリとして実装したい" },
+      { label: "提案してほしい", value: "技術スタックを提案してください" },
     ],
   },
   impact: {
     title: "インパクト",
-    description: "社会的価値を言語化",
+    description: "成功したらどう変わる？",
     icon: "public",
     questions: [
-      "このサービスが成功したら、世の中はどう変わりますか？",
-      "あなたがこれを作りたい理由は？",
+      "成功したらどんな変化が起きますか？",
     ],
     quickReplies: [
-      { label: "時間の節約", value: "ユーザーの時間を大幅に節約できます" },
+      { label: "時間の節約", value: "ユーザーの時間を節約できます" },
       { label: "コスト削減", value: "コストを削減できます" },
-      { label: "体験の向上", value: "ユーザー体験を大幅に向上できます" },
-      { label: "新しい価値", value: "これまでになかった新しい価値を提供できます" },
+      { label: "体験向上", value: "ユーザー体験を向上できます" },
+      { label: "新しい価値", value: "新しい価値を提供できます" },
     ],
   },
   mvp: {
     title: "MVP定義",
-    description: "最小限の検証機能を決定",
+    description: "最小限で何を作る？",
     icon: "rocket_launch",
     questions: [
-      "最小限、何ができれば検証できますか？",
-      "なくても検証できる機能は？",
+      "最小限、何があれば検証できますか？",
     ],
     quickReplies: [
       { label: "コア機能のみ", value: "コア機能だけに絞ります" },
-      { label: "提案をください", value: "MVPの範囲を提案してほしいです" },
-      { label: "もう決まっている", value: "MVPの範囲は決まっています" },
-      { label: "一緒に考えたい", value: "一緒にMVPの範囲を考えてほしいです" },
+      { label: "提案してほしい", value: "MVPを提案してください" },
+      { label: "決まっている", value: "MVPは決まっています" },
+      { label: "一緒に考えたい", value: "一緒に考えてください" },
     ],
   },
   "task-breakdown": {
     title: "タスク分解",
-    description: "実装ステップを整理",
+    description: "どんな順番で作る？",
     icon: "checklist",
     questions: [
-      "実際に作るとしたら、どんなステップで進めますか？",
-      "各ステップの優先度は？",
+      "実装ステップを整理しましょう",
     ],
     quickReplies: [
-      { label: "タスクを提案して", value: "タスクリストを提案してください" },
+      { label: "提案して", value: "タスクリストを提案してください" },
       { label: "自分で考える", value: "自分でタスクを考えます" },
-      { label: "一緒に整理", value: "一緒にタスクを整理してください" },
-      { label: "次のアクションだけ", value: "まず最初のアクションだけ教えて" },
+      { label: "一緒に整理", value: "一緒に整理してください" },
+      { label: "最初だけ", value: "最初のアクションだけ教えて" },
     ],
   },
 };
 
 // デフォルト初期状態
 const DEFAULT_BRAINSTORM_STATE: BrainstormModeState = {
+  subMode: "casual",
   currentPhase: "verbalization",
   completedPhases: [],
   ideaSummary: null,
@@ -196,21 +190,44 @@ export function useBrainstormMode(options?: UseBrainstormModeOptions) {
     });
   }, []);
 
-  // 特定のフェーズに移動
-  const goToPhase = useCallback((phase: BrainstormPhase) => {
+  // 特定のフェーズに移動（前後両方向可能）
+  const goToPhase = useCallback((phase: BrainstormPhase, allowSkip: boolean = false) => {
     setState((prev) => {
       const targetIndex = BRAINSTORM_PHASES.indexOf(phase);
       const currentIndex = BRAINSTORM_PHASES.indexOf(prev.currentPhase);
 
-      // 完了済みフェーズか現在のフェーズのみ移動可能
-      if (targetIndex > currentIndex) return prev;
+      // スキップが許可されていない場合は、完了済みフェーズか現在のフェーズのみ移動可能
+      if (!allowSkip && targetIndex > currentIndex) return prev;
+
+      // 前のフェーズに戻る場合
+      if (targetIndex < currentIndex) {
+        return {
+          ...prev,
+          currentPhase: phase,
+        };
+      }
+
+      // 前進またはスキップする場合: 途中のフェーズを完了済みにする
+      const phasesToComplete = BRAINSTORM_PHASES.slice(currentIndex, targetIndex);
+      const newCompletedPhases = [...prev.completedPhases];
+      for (const p of phasesToComplete) {
+        if (!newCompletedPhases.includes(p)) {
+          newCompletedPhases.push(p);
+        }
+      }
 
       return {
         ...prev,
+        completedPhases: newCompletedPhases,
         currentPhase: phase,
       };
     });
   }, []);
+
+  // フェーズをスキップして進む（特定のフェーズに直接移動）
+  const skipToPhase = useCallback((phase: BrainstormPhase) => {
+    goToPhase(phase, true);
+  }, [goToPhase]);
 
   // アイデアサマリーを設定
   const setIdeaSummary = useCallback((summary: string) => {
@@ -268,6 +285,11 @@ export function useBrainstormMode(options?: UseBrainstormModeOptions) {
     setState(DEFAULT_BRAINSTORM_STATE);
   }, []);
 
+  // サブモードを変更
+  const setSubMode = useCallback((subMode: BrainstormSubMode) => {
+    setState((prev) => ({ ...prev, subMode }));
+  }, []);
+
   // 進捗率を計算
   const progressPercentage =
     (state.completedPhases.length / BRAINSTORM_PHASES.length) * 100;
@@ -291,6 +313,7 @@ export function useBrainstormMode(options?: UseBrainstormModeOptions) {
     advancePhase,
     goBackPhase,
     goToPhase,
+    skipToPhase,
     setIdeaSummary,
     setPersona,
     addCompetitor,
@@ -300,6 +323,7 @@ export function useBrainstormMode(options?: UseBrainstormModeOptions) {
     toggleStepCompletion,
     addInsight,
     reset,
+    setSubMode,
     restoreState,
   };
 }
