@@ -1,0 +1,485 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
+interface AccessKey {
+  id: string;
+  keyCode: string;
+  status: "active" | "used" | "expired" | "revoked";
+  createdAt: string;
+  expiresAt: string | null;
+  usedAt: string | null;
+  dailyTokenLimit: number;
+  user: {
+    id: string;
+    displayName: string;
+  } | null;
+}
+
+interface KeysResponse {
+  keys: AccessKey[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+  summary: {
+    active: number;
+    used: number;
+    expired: number;
+    revoked: number;
+  };
+}
+
+const statusLabels: Record<AccessKey["status"], { label: string; color: string }> = {
+  active: { label: "未使用", color: "bg-green-500/20 text-green-400" },
+  used: { label: "使用中", color: "bg-blue-500/20 text-blue-400" },
+  expired: { label: "期限切れ", color: "bg-yellow-500/20 text-yellow-400" },
+  revoked: { label: "無効", color: "bg-red-500/20 text-red-400" },
+};
+
+export default function AccessKeysPage() {
+  const [data, setData] = useState<KeysResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createdKeys, setCreatedKeys] = useState<string[]>([]);
+  const [showCreatedDialog, setShowCreatedDialog] = useState(false);
+
+  // Form state for creating keys
+  const [keyCount, setKeyCount] = useState(1);
+  const [dailyTokenLimit, setDailyTokenLimit] = useState(1000);
+  const [expiresIn, setExpiresIn] = useState<"1week" | "1month" | "3months" | "never">("1month");
+
+  const fetchKeys = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set("search", searchQuery);
+      if (statusFilter) params.set("status", statusFilter);
+      params.set("limit", "50");
+
+      const response = await fetch(`/api/admin/keys?${params.toString()}`);
+      const result = await response.json();
+      if (result.success) {
+        setData(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch keys:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, statusFilter]);
+
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
+
+  const handleGenerateKeys = async () => {
+    setCreating(true);
+    try {
+      const response = await fetch("/api/admin/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          count: keyCount,
+          dailyTokenLimit,
+          expiresIn,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setCreatedKeys(result.data.keys.map((k: { keyCode: string }) => k.keyCode));
+        setCreateDialogOpen(false);
+        setShowCreatedDialog(true);
+        fetchKeys();
+      }
+    } catch (error) {
+      console.error("Failed to create keys:", error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleRevokeKey = async (keyId: string) => {
+    if (!confirm("このキーを無効化しますか？")) return;
+
+    try {
+      const response = await fetch(`/api/admin/keys/${keyId}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (result.success) {
+        fetchKeys();
+      }
+    } catch (error) {
+      console.error("Failed to revoke key:", error);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const copyAllKeys = () => {
+    navigator.clipboard.writeText(createdKeys.join("\n"));
+  };
+
+  const filteredKeys = data?.keys || [];
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">アクセスキー管理</h1>
+            <p className="text-muted-foreground">
+              メンバー用のアクセスキーを発行・管理します
+            </p>
+          </div>
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">アクセスキー管理</h1>
+          <p className="text-muted-foreground">
+            メンバー用のアクセスキーを発行・管理します
+          </p>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+          <span className="material-symbols-outlined text-xl">add</span>
+          新しいキーを発行
+        </Button>
+      </div>
+
+      {/* Stats */}
+      {data?.summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <button
+            onClick={() => setStatusFilter("")}
+            className={cn(
+              "p-4 rounded-lg border text-left transition-colors",
+              statusFilter === "" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+            )}
+          >
+            <p className="text-2xl font-bold">
+              {data.summary.active + data.summary.used + data.summary.expired + data.summary.revoked}
+            </p>
+            <p className="text-sm text-muted-foreground">総数</p>
+          </button>
+          <button
+            onClick={() => setStatusFilter("active")}
+            className={cn(
+              "p-4 rounded-lg border text-left transition-colors",
+              statusFilter === "active" ? "border-green-500 bg-green-500/10" : "border-border hover:border-green-500/50"
+            )}
+          >
+            <p className="text-2xl font-bold text-green-400">{data.summary.active}</p>
+            <p className="text-sm text-muted-foreground">未使用</p>
+          </button>
+          <button
+            onClick={() => setStatusFilter("used")}
+            className={cn(
+              "p-4 rounded-lg border text-left transition-colors",
+              statusFilter === "used" ? "border-blue-500 bg-blue-500/10" : "border-border hover:border-blue-500/50"
+            )}
+          >
+            <p className="text-2xl font-bold text-blue-400">{data.summary.used}</p>
+            <p className="text-sm text-muted-foreground">使用中</p>
+          </button>
+          <button
+            onClick={() => setStatusFilter("revoked")}
+            className={cn(
+              "p-4 rounded-lg border text-left transition-colors",
+              statusFilter === "revoked" ? "border-red-500 bg-red-500/10" : "border-border hover:border-red-500/50"
+            )}
+          >
+            <p className="text-2xl font-bold text-red-400">{data.summary.revoked}</p>
+            <p className="text-sm text-muted-foreground">無効</p>
+          </button>
+        </div>
+      )}
+
+      {/* Search */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              search
+            </span>
+            <Input
+              type="text"
+              placeholder="キーコードまたはユーザー名で検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Keys List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>発行済みキー</CardTitle>
+          <CardDescription>
+            {filteredKeys.length}件のキーが見つかりました
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    キーコード
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    ステータス
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    使用者
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    トークン上限
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    有効期限
+                  </th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredKeys.map((key) => {
+                  const status = statusLabels[key.status];
+                  return (
+                    <tr key={key.id} className="border-b border-border last:border-0">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                            {key.keyCode}
+                          </code>
+                          <button
+                            onClick={() => copyToClipboard(key.keyCode)}
+                            className="p-1 hover:bg-muted rounded transition-colors"
+                            title="コピー"
+                          >
+                            <span className="material-symbols-outlined text-sm text-muted-foreground">
+                              content_copy
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={cn(
+                            "px-2 py-1 rounded-full text-xs font-medium",
+                            status.color
+                          )}
+                        >
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {key.user?.displayName || (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        {key.dailyTokenLimit.toLocaleString()}/日
+                      </td>
+                      <td className="py-3 px-4">
+                        {key.expiresAt ? (
+                          new Date(key.expiresAt).toLocaleDateString("ja-JP")
+                        ) : (
+                          <span className="text-muted-foreground">無期限</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {key.status !== "revoked" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleRevokeKey(key.id)}
+                          >
+                            <span className="material-symbols-outlined text-lg">
+                              block
+                            </span>
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredKeys.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                      キーが見つかりません
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Create Key Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新しいアクセスキーを発行</DialogTitle>
+            <DialogDescription>
+              メンバーに配布するアクセスキーを発行します
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="keyCount">発行数</Label>
+              <Input
+                id="keyCount"
+                type="number"
+                min={1}
+                max={100}
+                value={keyCount}
+                onChange={(e) => setKeyCount(parseInt(e.target.value) || 1)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dailyTokenLimit">1日あたりのトークン上限</Label>
+              <Input
+                id="dailyTokenLimit"
+                type="number"
+                min={100}
+                max={100000}
+                value={dailyTokenLimit}
+                onChange={(e) => setDailyTokenLimit(parseInt(e.target.value) || 1000)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>有効期限</Label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "1week", label: "1週間" },
+                  { value: "1month", label: "1ヶ月" },
+                  { value: "3months", label: "3ヶ月" },
+                  { value: "never", label: "無期限" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setExpiresIn(option.value as typeof expiresIn)}
+                    className={cn(
+                      "px-3 py-2 rounded-lg border text-sm transition-colors",
+                      expiresIn === option.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCreateDialogOpen(false)}
+              disabled={creating}
+            >
+              キャンセル
+            </Button>
+            <Button onClick={handleGenerateKeys} disabled={creating}>
+              {creating ? "発行中..." : `${keyCount}件のキーを発行`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Created Keys Dialog */}
+      <Dialog open={showCreatedDialog} onOpenChange={setShowCreatedDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>キーを発行しました</DialogTitle>
+            <DialogDescription>
+              以下のキーをメンバーに配布してください
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4 max-h-64 overflow-y-auto">
+            {createdKeys.map((keyCode, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-2 bg-muted rounded-lg"
+              >
+                <code className="font-mono text-sm">{keyCode}</code>
+                <button
+                  onClick={() => copyToClipboard(keyCode)}
+                  className="p-1 hover:bg-background rounded transition-colors"
+                  title="コピー"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    content_copy
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={copyAllKeys}>
+              すべてコピー
+            </Button>
+            <Button onClick={() => setShowCreatedDialog(false)}>閉じる</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

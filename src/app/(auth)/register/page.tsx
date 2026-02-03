@@ -1,0 +1,381 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { Checkbox } from "@/components/ui/checkbox";
+
+const registerSchema = z
+  .object({
+    userType: z.enum(["individual", "admin"]),
+    email: z.string().email("有効なメールアドレスを入力してください"),
+    password: z
+      .string()
+      .min(8, "パスワードは8文字以上で入力してください")
+      .regex(
+        /^(?=.*[a-zA-Z])(?=.*\d)/,
+        "パスワードは英字と数字を含める必要があります"
+      ),
+    confirmPassword: z.string(),
+    displayName: z
+      .string()
+      .min(1, "表示名を入力してください")
+      .max(100, "表示名は100文字以内で入力してください"),
+    organizationName: z.string().optional(),
+    agreeTerms: z.boolean().refine((val) => val, {
+      message: "利用規約に同意してください",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "パスワードが一致しません",
+    path: ["confirmPassword"],
+  })
+  .refine(
+    (data) => data.userType !== "admin" || (data.organizationName && data.organizationName.length > 0),
+    {
+      message: "組織名を入力してください",
+      path: ["organizationName"],
+    }
+  );
+
+type RegisterFormData = z.infer<typeof registerSchema>;
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const form = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      userType: "individual",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      displayName: "",
+      organizationName: "",
+      agreeTerms: false,
+    },
+  });
+
+  const userType = form.watch("userType");
+
+  const onSubmit = async (data: RegisterFormData) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          displayName: data.displayName,
+          userType: data.userType,
+          organizationName: data.organizationName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setErrorMessage(result.error.message);
+        return;
+      }
+
+      // Auto sign in after registration
+      const signInResult = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        // Registration succeeded but sign-in failed, redirect to login
+        router.push("/login?registered=true");
+        return;
+      }
+
+      // Redirect based on user type
+      if (data.userType === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
+      router.refresh();
+    } catch {
+      setErrorMessage("登録に失敗しました。もう一度お試しください。");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold">新規登録</CardTitle>
+        <CardDescription>
+          アカウントを作成して学習を始めましょう
+        </CardDescription>
+      </CardHeader>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardContent className="space-y-4">
+            {errorMessage && (
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Account Type Selection */}
+            <FormField
+              control={form.control}
+              name="userType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>アカウントタイプ</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => field.onChange("individual")}
+                        className={`relative p-4 rounded-lg border-2 text-left transition-all ${
+                          field.value === "individual"
+                            ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                            : "border-border hover:border-muted-foreground/50"
+                        }`}
+                      >
+                        {field.value === "individual" && (
+                          <span className="absolute top-2 right-2 material-symbols-outlined text-primary text-lg">
+                            check_circle
+                          </span>
+                        )}
+                        <span className={`material-symbols-outlined text-2xl mb-2 block ${
+                          field.value === "individual" ? "text-primary" : "text-muted-foreground"
+                        }`}>
+                          person
+                        </span>
+                        <span className="font-medium block">自分用</span>
+                        <span className="text-xs text-muted-foreground">
+                          個人で学習
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => field.onChange("admin")}
+                        className={`relative p-4 rounded-lg border-2 text-left transition-all ${
+                          field.value === "admin"
+                            ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                            : "border-border hover:border-muted-foreground/50"
+                        }`}
+                      >
+                        {field.value === "admin" && (
+                          <span className="absolute top-2 right-2 material-symbols-outlined text-primary text-lg">
+                            check_circle
+                          </span>
+                        )}
+                        <span className={`material-symbols-outlined text-2xl mb-2 block ${
+                          field.value === "admin" ? "text-primary" : "text-muted-foreground"
+                        }`}>
+                          groups
+                        </span>
+                        <span className="font-medium block">管理者</span>
+                        <span className="text-xs text-muted-foreground">
+                          組織で利用
+                        </span>
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {userType === "admin" && (
+              <FormField
+                control={form.control}
+                name="organizationName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>組織名</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="株式会社○○"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>表示名</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="山田 太郎"
+                      autoComplete="name"
+                      disabled={isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>メールアドレス</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      autoComplete="email"
+                      disabled={isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>パスワード</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="8文字以上、英字と数字を含む"
+                        autoComplete="new-password"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">
+                          {showPassword ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>パスワード（確認）</FormLabel>
+                  <FormControl>
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="パスワードを再入力"
+                      autoComplete="new-password"
+                      disabled={isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="agreeTerms"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isLoading}
+                      className="mt-0.5"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-normal">
+                    <FormLabel className="text-sm font-normal cursor-pointer">
+                      <Link href="/terms" className="text-primary hover:underline">利用規約</Link>
+                      および
+                      <Link href="/privacy" className="text-primary hover:underline">プライバシーポリシー</Link>
+                      に同意します
+                    </FormLabel>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+
+          <CardFooter className="flex flex-col gap-4 pt-6">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  登録中...
+                </>
+              ) : (
+                "アカウントを作成"
+              )}
+            </Button>
+
+            <p className="text-sm text-center text-muted-foreground">
+              既にアカウントをお持ちの方は{" "}
+              <Link href="/login" className="text-primary hover:underline">
+                ログイン
+              </Link>
+            </p>
+          </CardFooter>
+        </form>
+      </Form>
+    </Card>
+  );
+}

@@ -1,0 +1,207 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Eurekode Design Tokens */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Sidebar */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  /* Charts */
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+
+  /* Core */
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Eurekode Custom Colors */
+  --color-cm-primary: #0f4b5c;
+  --color-cm-primary-hover: #166a82;
+  --color-cm-primary-light: #1a6b80;
+  --color-cm-surface: var(--cm-surface);
+  --color-cm-surface-darker: var(--cm-surface-darker);
+  --color-cm-border: var(--cm-border);
+  --color-cm-text-muted: var(--cm-text-muted);
+  --color-cm-code-bg: var(--cm-code-bg);
+
+  /* Semantic Colors */
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #0284c7;
+
+  /* Mode Colors */
+  --color-mode-explanation: #3b82f6;
+  --color-mode-generation: #eab308;
+  --color-mode-brainstorm: #a855f7;
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Light Mode (Eurekode) */
+  --background: #f6f7f8;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0f4b5c;
+  --primary-foreground: #ffffff;
+  --secondary: #e2e8f0;
+  --secondary-foreground: #0f4b5c;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #e36414;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0f4b5c;
+
+  /* Charts */
+  --chart-1: #0f4b5c;
+  --chart-2: #3b82f6;
+  --chart-3: #eab308;
+  --chart-4: #a855f7;
+  --chart-5: #059669;
+
+  /* Sidebar (Light) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #0f4b5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f4b5c;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #0f4b5c;
+
+  /* Eurekode Custom */
+  --cm-surface: #ffffff;
+  --cm-surface-darker: #f1f5f9;
+  --cm-border: #e2e8f0;
+  --cm-text-muted: #64748b;
+  --cm-code-bg: #1e293b;
+}
+
+.dark {
+  /* Dark Mode (Eurekode) */
+  --background: #121d20;
+  --foreground: #f1f5f9;
+  --card: #1b2d31;
+  --card-foreground: #f1f5f9;
+  --popover: #1b2d31;
+  --popover-foreground: #f1f5f9;
+  --primary: #5eead4;
+  --primary-foreground: #0f172a;
+  --secondary: #263e45;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1b2d31;
+  --muted-foreground: #a8c5cf;
+  --accent: #fb923c;
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444;
+  --border: #334d56;
+  --input: #334d56;
+  --ring: #5eead4;
+
+  /* Charts */
+  --chart-1: #166a82;
+  --chart-2: #60a5fa;
+  --chart-3: #facc15;
+  --chart-4: #c084fc;
+  --chart-5: #34d399;
+
+  /* Sidebar (Dark) */
+  --sidebar: #0e1618;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #0f4b5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1b2d31;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #263e45;
+  --sidebar-ring: #0f4b5c;
+
+  /* Eurekode Custom */
+  --cm-surface: #1b2d31;
+  --cm-surface-darker: #0e1618;
+  --cm-border: #263e45;
+  --cm-text-muted: #96bbc5;
+  --cm-code-bg: #0d1117;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cm-surface-darker);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cm-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cm-text-muted);
+}
+
+/* Code Syntax Highlighting (for future use) */
+.code-syntax-keyword { color: #ff7b72; }
+.code-syntax-func { color: #d2a8ff; }
+.code-syntax-string { color: #a5d6ff; }
+.code-syntax-num { color: #79c0ff; }
+.code-syntax-comment { color: #8b949e; }
