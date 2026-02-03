@@ -21,7 +21,7 @@ export function Footer() {
 
         {/* Copyright */}
         <p className="text-xs text-muted-foreground">
-          © 2026 Eurekode
+          © 2026 Eurecode
         </p>
       </div>
     </footer>

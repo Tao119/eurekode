@@ -65,17 +65,15 @@ export async function GET() {
     });
 
     // Merge with defaults to ensure all fields are present
+    const userSettings = user.settings as Partial<UserSettings> & { skipAllowed?: boolean } | null;
     const settings: UserSettings = {
       ...DEFAULT_USER_SETTINGS,
-      ...(user.settings as Partial<UserSettings> | null),
+      ...(userSettings || {}),
     };
 
-    // For member users, apply AccessKey settings (unlockSkipAllowed)
-    if (user.userType === "member" && user.accessKey?.settings) {
-      const accessKeySettings = user.accessKey.settings as { unlockSkipAllowed?: boolean };
-      if (accessKeySettings.unlockSkipAllowed !== undefined) {
-        settings.unlockSkipAllowed = accessKeySettings.unlockSkipAllowed;
-      }
+    // For member users, check if admin has set skipAllowed permission
+    if (user.userType === "member" && userSettings?.skipAllowed !== undefined) {
+      settings.unlockSkipAllowed = userSettings.skipAllowed;
     }
 
     // Get dailyTokenLimit from AccessKey or use default

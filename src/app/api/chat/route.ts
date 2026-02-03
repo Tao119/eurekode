@@ -138,6 +138,12 @@ const chatRequestSchema = z.object({
   conversationId: z.string().optional(),
   // 壁打ちモードのサブモード（casual/planning）
   brainstormSubMode: z.enum(["casual", "planning"]).optional(),
+  // 生成モード: 現在アクティブなアーティファクトの情報
+  activeArtifact: z.object({
+    id: z.string(),
+    title: z.string(),
+    language: z.string().optional(),
+  }).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -168,7 +174,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { mode, messages, conversationId, brainstormSubMode } = parsed.data;
+    const { mode, messages, conversationId, brainstormSubMode, activeArtifact } = parsed.data;
     const userId = session.user.id;
 
     // ユーザー設定を取得（スキップモードの判定用）
@@ -206,6 +212,19 @@ export async function POST(request: NextRequest) {
         return brainstormSubModePrompts[brainstormSubMode];
       }
       let basePrompt = systemPrompts[mode];
+
+      // 生成モードで現在のアーティファクト情報がある場合、コンテキストを追加
+      if (mode === "generation" && activeArtifact) {
+        basePrompt += `
+
+【現在のアーティファクト情報】
+- ID: "${activeArtifact.id}"
+- タイトル: "${activeArtifact.title}"
+${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
+
+**重要**: ユーザーが明示的に「新しいスクリプト」「別のファイル」と言わない限り、
+上記のアーティファクトID "${activeArtifact.id}" を使用してコードを更新してください。`;
+      }
 
       // 生成モードでスキップモードの場合、クイズを出さない指示を追加
       if (mode === "generation" && isSkipMode) {

@@ -55,7 +55,7 @@ export function Logo({
             sizeClasses.text
           )}
         >
-          Eurekode
+          Eurecode
         </span>
       )}
     </div>

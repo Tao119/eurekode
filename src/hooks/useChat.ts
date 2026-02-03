@@ -49,13 +49,20 @@ interface GenerationRecoveryInfo {
   error?: string;
 }
 
+// Active artifact context for generation mode
+export interface ActiveArtifactContext {
+  id: string;
+  title: string;
+  language?: string;
+}
+
 interface UseChatReturn {
   messages: Message[];
   isLoading: boolean;
   isLoadingHistory: boolean;
   error: Error | null;
   conversationId: string | null;
-  sendMessage: (content: string, attachments?: FileAttachment[]) => Promise<void>;
+  sendMessage: (content: string, attachments?: FileAttachment[], activeArtifact?: ActiveArtifactContext) => Promise<void>;
   clearMessages: () => void;
   loadConversation: (id: string) => Promise<void>;
   // Stop functionality
@@ -460,7 +467,7 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
   }, [messages.length]);
 
   const sendMessage = useCallback(
-    async (content: string, attachments?: FileAttachment[]) => {
+    async (content: string, attachments?: FileAttachment[], activeArtifact?: ActiveArtifactContext) => {
       if ((!content.trim() && (!attachments || attachments.length === 0)) || isLoading) return;
 
       // Create abort controller for this request
@@ -502,6 +509,7 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
             mode,
             messages: [...currentMessages, userMessage],
             brainstormSubMode: mode === "brainstorm" ? brainstormSubMode : undefined,
+            activeArtifact: mode === "generation" ? activeArtifact : undefined,
           }),
           signal: abortControllerRef.current.signal,
         });

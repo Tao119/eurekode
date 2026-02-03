@@ -19,9 +19,9 @@ export default function HelpPage() {
           </h2>
           <div className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-lg">
-              <h3 className="font-medium mb-2">Eurekodeとは？</h3>
+              <h3 className="font-medium mb-2">Eurecodeとは？</h3>
               <p className="text-sm text-muted-foreground">
-                Eurekodeは、AIを活用したプログラミング学習支援サービスです。
+                Eurecodeは、AIを活用したプログラミング学習支援サービスです。
                 コードの説明を受けたり、ブレインストーミングをしたり、
                 コード生成の練習をすることができます。
               </p>
@@ -106,7 +106,7 @@ export default function HelpPage() {
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-base">email</span>
-                support@eurekode.com
+                support@eurecode.com
               </li>
             </ul>
           </div>

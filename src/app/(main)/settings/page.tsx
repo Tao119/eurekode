@@ -351,7 +351,7 @@ export default function SettingsPage() {
                 <div className="flex-1">
                   <p className="font-medium">個人利用</p>
                   <p className="text-sm text-muted-foreground">
-                    現在、個人としてEurekodeを利用しています
+                    現在、個人としてEurecodeを利用しています
                   </p>
                 </div>
               </div>
@@ -495,14 +495,19 @@ export default function SettingsPage() {
                 enabled={settings.estimationTraining}
                 onChange={(value) => handleSettingToggle("estimationTraining", value)}
               />
-              {/* Show unlock skip setting only for individual users */}
-              {isIndividual && (
+              {/* Show unlock skip setting for individual users and members with permission */}
+              {(isIndividual || (isMember && settings.unlockSkipAllowed)) && (
                 <SettingToggle
                   icon="fast_forward"
                   title="制限解除モード"
-                  description="生成モードでヒントをスキップしてコードを直接表示できるようにします"
+                  description={
+                    isMember
+                      ? "管理者によってスキップが許可されています"
+                      : "生成モードでヒントをスキップしてコードを直接表示できるようにします"
+                  }
                   enabled={settings.unlockSkipAllowed}
                   onChange={(value) => handleSettingToggle("unlockSkipAllowed", value)}
+                  disabled={isMember}
                 />
               )}
             </>
@@ -692,15 +697,17 @@ function SettingToggle({
   description,
   enabled,
   onChange,
+  disabled = false,
 }: {
   icon: string;
   title: string;
   description: string;
   enabled: boolean;
   onChange: (value: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className={`flex items-center justify-between ${disabled ? "opacity-75" : ""}`}>
       <div className="flex items-start gap-3">
         <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground mt-0.5">
           <span className="material-symbols-outlined">{icon}</span>
@@ -714,10 +721,11 @@ function SettingToggle({
         type="button"
         role="switch"
         aria-checked={enabled}
-        onClick={() => onChange(!enabled)}
+        onClick={() => !disabled && onChange(!enabled)}
+        disabled={disabled}
         className={`relative h-6 w-11 rounded-full transition-colors ${
           enabled ? "bg-primary" : "bg-muted"
-        }`}
+        } ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
       >
         <span
           className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${

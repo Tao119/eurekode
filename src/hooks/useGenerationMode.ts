@@ -2,6 +2,14 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Artifact } from "@/types/chat";
+import {
+  upsertArtifact as apiUpsertArtifact,
+  updateArtifactProgress as apiUpdateProgress,
+  fetchArtifacts as apiFetchArtifacts,
+  apiResponseToArtifact,
+  apiResponseToProgress,
+} from "@/lib/artifactApi";
+import { estimateQuizCount } from "@/lib/quiz-generator";
 
 // 生成モードのフェーズ
 export type GenerationPhase =
@@ -181,7 +189,8 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
   skipAllowedRef.current = skipAllowed;
 
   // skipAllowed の場合: totalQuestions=0, unlockLevel=0 → 0 >= 0 で即アンロック
-  const defaultTotalQuestions = skipAllowed ? 0 : 3;
+  // Default to 2 questions; actual count is determined dynamically when artifact is created
+  const defaultTotalQuestions = skipAllowed ? 0 : 2;
 
   const [state, setState] = useState<GenerationModeState>(() => {
     const defaultState: GenerationModeState = {
@@ -206,7 +215,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         ...defaultState,
         phase: initialState.phase || "initial",
         unlockLevel: initialState.unlockLevel ?? 0,
-        totalQuestions: skipAllowed ? 0 : (initialState.totalQuestions ?? 3),
+        totalQuestions: skipAllowed ? 0 : (initialState.totalQuestions ?? 2),
         artifacts: initialState.artifacts || {},
         activeArtifactId: initialState.activeArtifactId || null,
         artifactProgress: initialState.artifactProgress || {},
@@ -379,21 +388,35 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     if (!state.currentQuiz) return false;
 
     const isCorrect = answer === state.currentQuiz.correctLabel;
+    const activeId = state.activeArtifactId;
+    const currentProgress = activeId ? state.artifactProgress[activeId] : null;
+
+    const newHistoryItem = {
+      level: state.currentQuiz.level,
+      question: state.currentQuiz.question,
+      userAnswer: answer,
+      isCorrect,
+    };
+
+    // API同期（非ブロッキング）- 正解時のみ進捗を更新
+    if (isCorrect && conversationId && activeId) {
+      const nextLevel = state.unlockLevel + 1;
+      apiUpdateProgress(conversationId, activeId, {
+        unlockLevel: nextLevel,
+        currentQuiz: null,
+        quizHistoryItem: newHistoryItem,
+      }).catch((e) => {
+        console.error("[answerQuiz] API progress sync failed:", e);
+      });
+    }
 
     setState((prev) => {
       if (prev.hintTimer) {
         clearTimeout(prev.hintTimer);
       }
 
-      const activeId = prev.activeArtifactId;
-      const currentProgress = activeId ? prev.artifactProgress[activeId] : null;
-
-      const newHistoryItem = {
-        level: prev.currentQuiz!.level,
-        question: prev.currentQuiz!.question,
-        userAnswer: answer,
-        isCorrect,
-      };
+      const prevActiveId = prev.activeArtifactId;
+      const prevProgress = prevActiveId ? prev.artifactProgress[prevActiveId] : null;
 
       const newHistory = [...prev.quizHistory, newHistoryItem];
 
@@ -402,15 +425,15 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         const totalQ = prev.totalQuestions;
         const newIsUnlocked = nextLevel >= totalQ;
 
-        const updatedProgress: Record<string, ArtifactProgress> = activeId
+        const updatedProgress: Record<string, ArtifactProgress> = prevActiveId
           ? {
               ...prev.artifactProgress,
-              [activeId]: {
+              [prevActiveId]: {
                 unlockLevel: nextLevel,
-                totalQuestions: currentProgress?.totalQuestions || totalQ,
+                totalQuestions: prevProgress?.totalQuestions || totalQ,
                 currentQuiz: null,
-                quizHistory: currentProgress
-                  ? [...currentProgress.quizHistory, newHistoryItem]
+                quizHistory: prevProgress
+                  ? [...prevProgress.quizHistory, newHistoryItem]
                   : [newHistoryItem],
               },
             }
@@ -437,20 +460,33 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     });
 
     return isCorrect;
-  }, [state.currentQuiz]);
+  }, [state.currentQuiz, state.activeArtifactId, state.artifactProgress, state.unlockLevel, conversationId]);
 
   // スキップ（手動アンロック）
   const skipToUnlock = useCallback(() => {
-    setState((prev) => {
-      const activeId = prev.activeArtifactId;
-      const currentProgress = activeId ? prev.artifactProgress[activeId] : null;
+    const activeId = state.activeArtifactId;
+    const currentProgress = activeId ? state.artifactProgress[activeId] : null;
 
-      const updatedProgress: Record<string, ArtifactProgress> = activeId && currentProgress
+    // API同期（非ブロッキング）
+    if (conversationId && activeId && currentProgress) {
+      apiUpdateProgress(conversationId, activeId, {
+        unlockLevel: currentProgress.totalQuestions,
+        currentQuiz: null,
+      }).catch((e) => {
+        console.error("[skipToUnlock] API progress sync failed:", e);
+      });
+    }
+
+    setState((prev) => {
+      const prevActiveId = prev.activeArtifactId;
+      const prevProgress = prevActiveId ? prev.artifactProgress[prevActiveId] : null;
+
+      const updatedProgress: Record<string, ArtifactProgress> = prevActiveId && prevProgress
         ? {
             ...prev.artifactProgress,
-            [activeId]: {
-              ...currentProgress,
-              unlockLevel: currentProgress.totalQuestions,
+            [prevActiveId]: {
+              ...prevProgress,
+              unlockLevel: prevProgress.totalQuestions,
               currentQuiz: null,
             },
           }
@@ -465,7 +501,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         artifactProgress: updatedProgress,
       };
     });
-  }, []);
+  }, [conversationId, state.activeArtifactId, state.artifactProgress]);
 
   const reset = useCallback(() => {
     setState({
@@ -491,6 +527,22 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
   // アーティファクトを追加または更新
   // 重要: 保存済みの進行状況を最優先で使用する
   const addOrUpdateArtifact = useCallback((artifact: Artifact) => {
+    // API同期（非ブロッキング）- conversationIdがある場合のみ
+    if (conversationId) {
+      // Estimate quiz count based on code complexity
+      const estimatedQuizCount = estimateQuizCount(artifact.content);
+      apiUpsertArtifact(conversationId, {
+        id: artifact.id,
+        type: artifact.type,
+        title: artifact.title,
+        content: artifact.content,
+        language: artifact.language,
+        totalQuestions: skipAllowedRef.current ? 0 : estimatedQuizCount,
+      }).catch((e) => {
+        console.error("[addOrUpdateArtifact] API sync failed:", e);
+      });
+    }
+
     setState((prev) => {
       const existing = prev.artifacts[artifact.id];
       const existingProgress = prev.artifactProgress[artifact.id];

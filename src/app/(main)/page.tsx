@@ -180,7 +180,7 @@ export default function HomePage() {
               学習を加速する3つのモード
             </h3>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Eurekodeは単なるコード生成ツールではありません。
+              Eurecodeは単なるコード生成ツールではありません。
               あなたの思考プロセスをサポートし、真の理解へと導きます。
             </p>
           </div>

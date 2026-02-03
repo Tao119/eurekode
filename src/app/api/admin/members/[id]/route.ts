@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
+}
+
+// User settings type
+interface UserSettings {
+  skipAllowed?: boolean;
+  [key: string]: unknown;
 }
 
 // GET /api/admin/members/:id - Get member details
@@ -138,6 +146,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       {} as Record<string, number>
     );
 
+    const memberSettings = (member.settings as UserSettings) || {};
+
     return NextResponse.json({
       success: true,
       data: {
@@ -148,6 +158,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           joinedAt: member.createdAt.toISOString(),
           lastActiveAt: lastActiveAt?.toISOString() || null,
           status: isActive ? "active" : "inactive",
+          skipAllowed: memberSettings.skipAllowed ?? false,
         },
         accessKey: member.accessKey
           ? {
@@ -191,6 +202,95 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
   } catch (error) {
     console.error("Get admin member detail error:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/admin/members/:id - Update member settings
+const updateMemberSchema = z.object({
+  skipAllowed: z.boolean().optional(),
+});
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "認証が必要です" } },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.userType !== "admin") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "管理者権限が必要です" } },
+        { status: 403 }
+      );
+    }
+
+    if (!session.user.organizationId) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "組織が見つかりません" } },
+        { status: 404 }
+      );
+    }
+
+    const { id } = await context.params;
+    const body = await request.json();
+    const parsed = updateMemberSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "入力が無効です", details: parsed.error.issues } },
+        { status: 400 }
+      );
+    }
+
+    // Verify member belongs to organization
+    const member = await prisma.user.findFirst({
+      where: {
+        id,
+        organizationId: session.user.organizationId,
+        userType: "member",
+      },
+      select: { id: true, settings: true },
+    });
+
+    if (!member) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "メンバーが見つかりません" } },
+        { status: 404 }
+      );
+    }
+
+    // Merge settings
+    const currentSettings = (member.settings as UserSettings) || {};
+    const newSettings: UserSettings = {
+      ...currentSettings,
+      ...(parsed.data.skipAllowed !== undefined && { skipAllowed: parsed.data.skipAllowed }),
+    };
+
+    // Update member settings
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { settings: newSettings as unknown as Prisma.InputJsonValue },
+      select: { id: true, settings: true },
+    });
+
+    const updatedSettings = (updated.settings as UserSettings) || {};
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: updated.id,
+        skipAllowed: updatedSettings.skipAllowed ?? false,
+      },
+    });
+  } catch (error) {
+    console.error("Update admin member error:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
       { status: 500 }

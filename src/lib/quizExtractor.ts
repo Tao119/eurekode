@@ -436,8 +436,12 @@ export function extractUnlockQuiz(
     levelTemplates[currentLevel]?.questions[0] ||
     "このコードについて確認しましょう";
 
-  // 正解は通常A（プロンプトで指示している）
-  const correctLabel = "A";
+  // Randomly select a correct answer position (fallback when AI doesn't specify)
+  // This ensures variety in quiz answers
+  const availableLabels = extracted.options.map(opt => opt.label);
+  const correctLabel = availableLabels.length > 0
+    ? availableLabels[Math.floor(Math.random() * availableLabels.length)]
+    : "A";
 
   return {
     level: currentLevel,

@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">1. はじめに</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Eurekode（以下「本サービス」）は、ユーザーのプライバシーを尊重し、
+            Eurecode（以下「本サービス」）は、ユーザーのプライバシーを尊重し、
             個人情報の保護に努めます。本プライバシーポリシーは、本サービスにおける
             個人情報の取り扱いについて説明するものです。
           </p>

@@ -101,6 +101,13 @@ enum ProjectPhase {
   development // 開発フェーズ
 }
 
+// アーティファクトタイプ
+enum ArtifactType {
+  code
+  component
+  config
+}
+
 // ============================================
 // Models
 // ============================================
@@ -143,6 +150,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   projects      Project[]
+  artifacts     Artifact[]
 
   @@index([organizationId])
   @@map("users")
@@ -231,6 +239,7 @@ model Conversation {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
   learnings Learning[]
+  artifacts Artifact[]
 
   @@index([userId, createdAt])
   @@index([userId, generationStatus])
@@ -370,6 +379,36 @@ model Task {
   @@map("tasks")
 }
 
+model Artifact {
+  id             String       @id @default(uuid())
+  conversationId String       @map("conversation_id")
+  userId         String       @map("user_id")
+
+  // コンテンツ
+  type           ArtifactType @default(code)
+  title          String
+  content        String       @db.Text
+  language       String?
+  version        Int          @default(1)
+
+  // アンロック進捗（埋め込み）
+  unlockLevel    Int          @default(0) @map("unlock_level")
+  totalQuestions Int          @default(0) @map("total_questions")
+  quizHistory    Json?        @map("quiz_history") // QuizHistoryItem[]
+  currentQuiz    Json?        @map("current_quiz") // UnlockQuiz or null
+
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([userId, createdAt])
+  @@map("artifacts")
+}
+
 // ============================================
 // JSON Type Definitions (for documentation)
 // ============================================
@@ -412,4 +451,19 @@ model Task {
 //   explanation: number
 //   generation: number
 //   brainstorm: number
+// }
+
+// QuizHistoryItem (stored in Artifact.quizHistory) {
+//   level: number
+//   question: string
+//   userAnswer: string
+//   isCorrect: boolean
+// }
+
+// UnlockQuiz (stored in Artifact.currentQuiz) {
+//   level: number
+//   question: string
+//   options: { label: string; text: string }[]
+//   correctLabel: string
+//   hint?: string
 // }

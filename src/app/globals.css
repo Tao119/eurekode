@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Eurekode Design Tokens */
+/* Eurecode Design Tokens */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -45,7 +45,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Eurekode Custom Colors */
+  /* Eurecode Custom Colors */
   --color-cm-primary: #0f4b5c;
   --color-cm-primary-hover: #166a82;
   --color-cm-primary-light: #1a6b80;
@@ -79,7 +79,7 @@
 :root {
   --radius: 0.5rem;
 
-  /* Light Mode (Eurekode) */
+  /* Light Mode (Eurecode) */
   --background: #f6f7f8;
   --foreground: #0f172a;
   --card: #ffffff;
@@ -116,7 +116,7 @@
   --sidebar-border: #e2e8f0;
   --sidebar-ring: #0f4b5c;
 
-  /* Eurekode Custom */
+  /* Eurecode Custom */
   --cm-surface: #ffffff;
   --cm-surface-darker: #f1f5f9;
   --cm-border: #e2e8f0;
@@ -125,7 +125,7 @@
 }
 
 .dark {
-  /* Dark Mode (Eurekode) */
+  /* Dark Mode (Eurecode) */
   --background: #121d20;
   --foreground: #f1f5f9;
   --card: #1b2d31;
@@ -162,7 +162,7 @@
   --sidebar-border: #263e45;
   --sidebar-ring: #0f4b5c;
 
-  /* Eurekode Custom */
+  /* Eurecode Custom */
   --cm-surface: #1b2d31;
   --cm-surface-darker: #0e1618;
   --cm-border: #263e45;

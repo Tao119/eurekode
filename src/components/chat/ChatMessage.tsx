@@ -320,7 +320,7 @@ export function ChatMessage({
       <div ref={messageRef} className="flex-1 min-w-0 space-y-2 relative">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm">
-            {isUser ? "あなた" : "Eurekode"}
+            {isUser ? "あなた" : "Eurecode"}
           </span>
           {isStreaming && (
             <span className="text-xs text-muted-foreground animate-pulse">

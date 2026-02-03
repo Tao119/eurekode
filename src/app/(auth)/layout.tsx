@@ -22,7 +22,7 @@ export default function AuthLayout({
       {/* Footer */}
       <footer className="border-t border-border py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <p>© 2026 Eurekode. All rights reserved.</p>
+          <p>© 2026 Eurecode. All rights reserved.</p>
         </div>
       </footer>
     </div>

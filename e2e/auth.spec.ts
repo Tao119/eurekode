@@ -122,7 +122,7 @@ test.describe("Authentication Pages", () => {
       await page.goto("/");
 
       // Check for main content
-      await expect(page.getByText("Eurekode").first()).toBeVisible();
+      await expect(page.getByText("Eurecode").first()).toBeVisible();
 
       // Should see login/register buttons (use first() since there are multiple)
       await expect(page.getByRole("link", { name: "無料で始める" }).first()).toBeVisible();
@@ -132,7 +132,7 @@ test.describe("Authentication Pages", () => {
       await page.goto("/");
 
       // Check for logo link
-      const logoLink = page.getByRole("link", { name: /Eurekode/i }).first();
+      const logoLink = page.getByRole("link", { name: /Eurecode/i }).first();
       await expect(logoLink).toBeVisible();
     });
 

@@ -23,11 +23,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Eurekode - 思考を渡す学習プラットフォーム",
-    template: "%s | Eurekode",
+    default: "Eurecode - 思考を渡す学習プラットフォーム",
+    template: "%s | Eurecode",
   },
   description:
-    "Eurekodeは「コードを渡すのではなく、思考プロセスを渡す」をコンセプトとした、プログラミング学習支援AIチャットサービスです。",
+    "Eurecodeは「コードを渡すのではなく、思考プロセスを渡す」をコンセプトとした、プログラミング学習支援AIチャットサービスです。",
   keywords: [
     "プログラミング学習",
     "AI学習",

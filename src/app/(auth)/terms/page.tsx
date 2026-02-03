@@ -14,7 +14,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">第1条（適用）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本規約は、Eurekode（以下「本サービス」）の利用に関する条件を定めるものです。
+            本規約は、Eurecode（以下「本サービス」）の利用に関する条件を定めるものです。
             ユーザーは本規約に同意した上で本サービスを利用するものとします。
           </p>
         </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,35 +41,50 @@ interface Member {
 }
 
 interface MemberDetail {
-  id: string;
-  displayName: string;
-  email: string | null;
-  joinedAt: string;
-  lastActiveAt: string | null;
-  tokensUsedToday: number;
-  dailyTokenLimit: number;
+  member: {
+    id: string;
+    displayName: string;
+    email: string | null;
+    joinedAt: string;
+    lastActiveAt: string | null;
+    status: string;
+    skipAllowed: boolean;
+  };
   accessKey: {
     id: string;
     keyCode: string;
+    dailyTokenLimit: number;
     status: string;
     expiresAt: string | null;
+    usedAt: string | null;
   } | null;
   statistics: {
+    tokensUsedToday: number;
+    tokensUsedWeek: number;
+    tokensUsedMonth: number;
     totalConversations: number;
     totalLearnings: number;
-    totalTokensUsed: number;
+    modeBreakdown: Record<string, number>;
   };
+  tokenHistory: {
+    date: string;
+    tokensUsed: number;
+    breakdown: Record<string, number> | null;
+  }[];
   recentConversations: {
     id: string;
     title: string;
     mode: string;
-    messagesCount: number;
+    tokensConsumed: number;
     createdAt: string;
     updatedAt: string;
   }[];
-  tokenHistory: {
-    date: string;
-    tokensUsed: number;
+  recentLearnings: {
+    id: string;
+    type: string;
+    content: string;
+    tags: string[];
+    createdAt: string;
   }[];
 }
 
@@ -95,6 +110,28 @@ export default function MembersPage() {
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const handleToggleSkipAllowed = async (memberId: string, newValue: boolean) => {
+    try {
+      const response = await fetch(`/api/admin/members/${memberId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skipAllowed: newValue }),
+      });
+      const result = await response.json();
+      if (result.success && selectedMember) {
+        startTransition(() => {
+          setSelectedMember({
+            ...selectedMember,
+            member: { ...selectedMember.member, skipAllowed: newValue },
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update skip allowed:", error);
+    }
+  };
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -333,10 +370,10 @@ export default function MembersPage() {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium text-sm">
-                            {member.displayName.charAt(0)}
+                            {member.displayName?.charAt(0) || "?"}
                           </div>
                           <div>
-                            <span className="font-medium">{member.displayName}</span>
+                            <span className="font-medium">{member.displayName || "名前未設定"}</span>
                             <p className="text-xs text-muted-foreground">
                               会話: {member.stats.totalConversations} | 学び: {member.stats.totalLearnings}
                             </p>
@@ -430,13 +467,42 @@ export default function MembersPage() {
               {/* Basic Info */}
               <div className="flex items-center gap-4">
                 <div className="size-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl">
-                  {selectedMember.displayName.charAt(0)}
+                  {selectedMember.member.displayName?.charAt(0) || "?"}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">{selectedMember.displayName}</h3>
+                  <h3 className="text-xl font-bold">{selectedMember.member.displayName || "名前未設定"}</h3>
                   <p className="text-muted-foreground">
-                    参加日: {new Date(selectedMember.joinedAt).toLocaleDateString("ja-JP")}
+                    参加日: {new Date(selectedMember.member.joinedAt).toLocaleDateString("ja-JP")}
                   </p>
+                </div>
+              </div>
+
+              {/* Settings */}
+              <div className="p-4 border rounded-lg">
+                <h4 className="font-medium mb-3">メンバー設定</h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">コードスキップを許可</p>
+                    <p className="text-xs text-muted-foreground">
+                      クイズをスキップしてコードを直接コピーできるようにします
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSkipAllowed(selectedMember.member.id, !selectedMember.member.skipAllowed)}
+                    disabled={isPending}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                      selectedMember.member.skipAllowed ? "bg-primary" : "bg-muted",
+                      isPending && "opacity-50"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        selectedMember.member.skipAllowed ? "translate-x-6" : "translate-x-1"
+                      )}
+                    />
+                  </button>
                 </div>
               </div>
 
@@ -451,8 +517,8 @@ export default function MembersPage() {
                   <p className="text-sm text-muted-foreground">学び数</p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-2xl font-bold">{selectedMember.statistics.totalTokensUsed.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">総トークン</p>
+                  <p className="text-2xl font-bold">{selectedMember.statistics.tokensUsedMonth.toLocaleString()}</p>
+                  <p className="text-sm text-muted-foreground">月間トークン</p>
                 </div>
               </div>
 
@@ -483,8 +549,8 @@ export default function MembersPage() {
                 <div>
                   <h4 className="font-medium mb-2">直近7日間のトークン使用量</h4>
                   <div className="flex items-end gap-1 h-16">
-                    {selectedMember.tokenHistory.map((day, index) => {
-                      const maxTokens = Math.max(...selectedMember.tokenHistory.map(d => d.tokensUsed), 1);
+                    {selectedMember.tokenHistory.slice(0, 7).map((day, index) => {
+                      const maxTokens = Math.max(...selectedMember.tokenHistory.slice(0, 7).map(d => d.tokensUsed), 1);
                       const heightPercent = (day.tokensUsed / maxTokens) * 100;
                       return (
                         <div key={index} className="flex-1 flex flex-col items-center gap-1">
@@ -516,7 +582,7 @@ export default function MembersPage() {
                         <div>
                           <p className="font-medium text-sm">{conv.title || "無題の会話"}</p>
                           <p className="text-xs text-muted-foreground">
-                            {conv.mode} | {conv.messagesCount}メッセージ
+                            {conv.mode} | {conv.tokensConsumed.toLocaleString()}トークン
                           </p>
                         </div>
                         <p className="text-xs text-muted-foreground">

@@ -25,6 +25,7 @@ import {
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
 import { MODE_CONFIG, MODE_ICON_SIZES } from "@/config/modes";
 import type { Message, ConversationBranch, Artifact, FileAttachment } from "@/types/chat";
+import type { ActiveArtifactContext } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { parseArtifacts } from "@/lib/artifacts";
 import {
@@ -38,8 +39,7 @@ import {
 interface GenerationChatContainerProps {
   messages: Message[];
   isLoading: boolean;
-  onSendMessage: (message: string, attachments?: FileAttachment[]) => void;
-  onSendMessageWithContext?: (message: string, context: Record<string, unknown>) => void;
+  onSendMessage: (message: string, attachments?: FileAttachment[], activeArtifact?: ActiveArtifactContext) => void;
   welcomeMessage?: string;
   inputPlaceholder?: string;
   canSkip?: boolean;
@@ -79,7 +79,6 @@ export function GenerationChatContainer({
   messages,
   isLoading,
   onSendMessage,
-  onSendMessageWithContext,
   welcomeMessage,
   inputPlaceholder,
   canSkip = false,
@@ -143,6 +142,36 @@ export function GenerationChatContainer({
 
   // Artifacts list from state
   const artifactsList = useMemo(() => Object.values(state.artifacts), [state.artifacts]);
+
+  // Per-artifact progress values (use artifact-specific progress if available)
+  const activeArtifactProgress = useMemo(() => {
+    const progress = state.activeArtifactId ? state.artifactProgress[state.activeArtifactId] : null;
+    const total = progress?.totalQuestions ?? state.totalQuestions;
+    const level = progress?.unlockLevel ?? state.unlockLevel;
+    const isUnlocked = total === 0 || level >= total;
+    return {
+      unlockLevel: level,
+      totalQuestions: total,
+      progressPercentage: total === 0 ? 100 : (level / total) * 100,
+      canCopy: isUnlocked,
+      isUnlocked,
+    };
+  }, [state.activeArtifactId, state.artifactProgress, state.totalQuestions, state.unlockLevel]);
+
+  // Wrapped sendMessage that includes active artifact context
+  const sendMessageWithArtifact = useCallback(
+    (message: string, attachments?: FileAttachment[]) => {
+      const artifactContext: ActiveArtifactContext | undefined = activeArtifact
+        ? {
+            id: activeArtifact.id,
+            title: activeArtifact.title,
+            language: activeArtifact.language,
+          }
+        : undefined;
+      onSendMessage(message, attachments, artifactContext);
+    },
+    [onSendMessage, activeArtifact]
+  );
 
   // 初期読み込み時にすべてのメッセージからアーティファクトを抽出
   useEffect(() => {
@@ -321,9 +350,9 @@ export function GenerationChatContainer({
         "step-by-step": "段階的に進めたいです。まず最小限の実装から始めてください。",
         "skip": "計画はスキップして、すぐにコードを生成してください。",
       };
-      onSendMessage(planMessages[planType] || planType);
+      sendMessageWithArtifact(planMessages[planType] || planType);
     },
-    [onSendMessage]
+    [sendMessageWithArtifact]
   );
 
   // クイズに回答（メッセージは送信せず、ローカルで処理）
@@ -337,8 +366,8 @@ export function GenerationChatContainer({
   // スキップ
   const handleSkip = useCallback(() => {
     skipToUnlock();
-    onSendMessage("アンロックをスキップしました。");
-  }, [skipToUnlock, onSendMessage]);
+    sendMessageWithArtifact("アンロックをスキップしました。");
+  }, [skipToUnlock, sendMessageWithArtifact]);
 
   // チャットメッセージを処理（アーティファクトのみ置換、通常コードブロックはそのまま）
   const getProcessedContent = useCallback((content: string) => {
@@ -459,7 +488,7 @@ export function GenerationChatContainer({
             {messages.length === 0 ? (
               <WelcomeScreen
                 welcomeMessage={welcomeMessage}
-                onSuggestionClick={onSendMessage}
+                onSuggestionClick={sendMessageWithArtifact}
               />
             ) : (
               <div className="mx-auto max-w-3xl pb-4">
@@ -479,7 +508,7 @@ export function GenerationChatContainer({
                       <ChatMessage
                         message={processedMessage}
                         isStreaming={isLoading && index === messages.length - 1 && message.role === "assistant"}
-                        onOptionSelect={!isLoading && isLastAssistantMessage ? onSendMessage : undefined}
+                        onOptionSelect={!isLoading && isLastAssistantMessage ? sendMessageWithArtifact : undefined}
                         onFork={onForkFromMessage ? () => onForkFromMessage(index) : undefined}
                         showForkButton={!isLoading && index < messages.length - 1}
                         onRegenerate={onRegenerate}
@@ -540,7 +569,7 @@ export function GenerationChatContainer({
                 })}
 
                 {/* クイズ（チャット内に表示） */}
-                {state.currentQuiz && (
+                {state.currentQuiz ? (
                   <div className="px-4 py-4">
                     <GenerationQuiz
                       quiz={state.currentQuiz}
@@ -550,6 +579,42 @@ export function GenerationChatContainer({
                       canSkip={canSkip}
                     />
                   </div>
+                ) : (
+                  /* クイズが表示されない場合の再生成ボタン */
+                  activeArtifact && !activeArtifactProgress.isUnlocked && !isLoading && (
+                    <div className="px-4 py-4">
+                      <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-yellow-400">quiz</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground/90">
+                              クイズが表示されていません
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              クイズに回答してコードをアンロックしましょう
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const fallbackQuiz = generateFallbackQuiz(
+                                activeArtifactProgress.unlockLevel as UnlockLevel,
+                                activeArtifact
+                              );
+                              setCurrentQuiz(fallbackQuiz);
+                            }}
+                            className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                          >
+                            <span className="material-symbols-outlined text-base mr-1.5">refresh</span>
+                            クイズを表示
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 <div ref={endRef} />
@@ -560,7 +625,7 @@ export function GenerationChatContainer({
           {/* Input */}
           <div className="shrink-0">
             <ChatInput
-              onSend={onSendMessage}
+              onSend={sendMessageWithArtifact}
               onStop={onStopGeneration}
               isLoading={isLoading}
               placeholder={inputPlaceholder}
@@ -681,16 +746,16 @@ export function GenerationChatContainer({
                   code={activeArtifact.content}
                   language={activeArtifact.language || "text"}
                   filename={activeArtifact.title}
-                  unlockLevel={state.unlockLevel}
-                  totalQuestions={state.totalQuestions}
-                  progressPercentage={progressPercentage}
-                  canCopy={canCopyCode}
+                  unlockLevel={activeArtifactProgress.unlockLevel}
+                  totalQuestions={activeArtifactProgress.totalQuestions}
+                  progressPercentage={activeArtifactProgress.progressPercentage}
+                  canCopy={activeArtifactProgress.canCopy}
                 />
               )}
             </div>
 
             {/* Code Panel Footer - Quick unlock hint */}
-            {!canCopyCode && (
+            {!activeArtifactProgress.canCopy && (
               <div className="shrink-0 px-4 py-3 border-t border-border bg-zinc-900/50">
                 <div className="flex items-center gap-2 text-xs text-zinc-500">
                   <span className="material-symbols-outlined text-sm">lightbulb</span>

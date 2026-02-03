@@ -2,6 +2,104 @@ import type { StructuredQuiz, Artifact } from "@/types/chat";
 import type { UnlockLevel, UnlockQuiz, QuizOption } from "@/hooks/useGenerationMode";
 
 /**
+ * Estimate the appropriate number of quiz questions based on code complexity
+ * - 1問: Simple code (< 15 lines, no complex patterns)
+ * - 2問: Normal code (15-50 lines, some patterns)
+ * - 3問: Complex code (> 50 lines, multiple complex patterns)
+ */
+export function estimateQuizCount(code: string): number {
+  if (!code || code.trim().length === 0) {
+    return 1;
+  }
+
+  const lines = code.split("\n").filter(line => line.trim().length > 0);
+  const lineCount = lines.length;
+
+  // Count complexity indicators
+  let complexityScore = 0;
+
+  // Line count factor
+  if (lineCount > 50) {
+    complexityScore += 2;
+  } else if (lineCount > 15) {
+    complexityScore += 1;
+  }
+
+  // Complex patterns (each adds to complexity)
+  const complexPatterns = [
+    /async\s+\w+|await\s+/,           // async/await
+    /useCallback|useMemo|useEffect/,   // React hooks
+    /\.reduce\s*\(/,                   // reduce
+    /try\s*\{[\s\S]*catch/,            // try-catch
+    /Promise\.all|Promise\.race/,      // Promise combinators
+    /class\s+\w+/,                     // classes
+    /interface\s+\w+|type\s+\w+\s*=/,  // TypeScript types
+    /\?\./,                            // optional chaining
+    /\?\?/,                            // nullish coalescing
+  ];
+
+  for (const pattern of complexPatterns) {
+    if (pattern.test(code)) {
+      complexityScore += 1;
+    }
+  }
+
+  // Determine quiz count based on complexity score
+  if (complexityScore >= 4) {
+    return 3;
+  } else if (complexityScore >= 2) {
+    return 2;
+  }
+  return 1;
+}
+
+/**
+ * Shuffle options and return the new correct label
+ * This ensures the correct answer isn't always in position A
+ */
+function shuffleOptions(options: QuizOption[], originalCorrectLabel: string): {
+  shuffledOptions: QuizOption[];
+  newCorrectLabel: string;
+} {
+  // Find the correct option
+  const correctOption = options.find(opt => opt.label === originalCorrectLabel);
+  if (!correctOption) {
+    return { shuffledOptions: options, newCorrectLabel: originalCorrectLabel };
+  }
+
+  // Create a copy of options without labels
+  const optionTexts = options.map(opt => ({
+    text: opt.text,
+    explanation: opt.explanation,
+    isCorrect: opt.label === originalCorrectLabel,
+  }));
+
+  // Shuffle the array (Fisher-Yates)
+  for (let i = optionTexts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [optionTexts[i], optionTexts[j]] = [optionTexts[j], optionTexts[i]];
+  }
+
+  // Reassign labels A, B, C, D
+  const labels = ["A", "B", "C", "D"];
+  let newCorrectLabel = "A";
+
+  const shuffledOptions: QuizOption[] = optionTexts.map((opt, index) => {
+    const label = labels[index];
+    if (opt.isCorrect) {
+      newCorrectLabel = label;
+    }
+    return {
+      label,
+      text: opt.text,
+      explanation: opt.explanation,
+    };
+  });
+
+  return { shuffledOptions, newCorrectLabel };
+}
+
+/**
  * Parse structured quiz from AI response
  * Format: <!--QUIZ:{"level":1,"question":"...","options":[...],"correctLabel":"A","hint":"..."}-->
  *
@@ -110,11 +208,16 @@ export function extractQuizFromText(
     text: m[2].trim(),
   }));
 
+  // Randomly select a correct answer position (should be specified by AI, this is fallback)
+  const randomCorrectLabel = options.length > 0
+    ? options[Math.floor(Math.random() * options.length)].label
+    : "A";
+
   return {
     level,
     question,
     options,
-    correctLabel: "A", // Default to A (should be specified by AI)
+    correctLabel: randomCorrectLabel,
     hint: "コードの内容をよく読んで考えてみてください。",
   };
 }
@@ -229,7 +332,10 @@ export function generateFallbackQuiz(
   const question = generateCodeSpecificQuestion(code, language);
 
   // Generate options that match the "なぜ〜？" question format
-  const options = generateReasonBasedOptions(code, question);
+  const originalOptions = generateReasonBasedOptions(code, question);
+
+  // Shuffle options to randomize correct answer position
+  const { shuffledOptions, newCorrectLabel } = shuffleOptions(originalOptions, "A");
 
   // Extract a relevant code snippet for display
   const codeSnippet = extractRelevantSnippet(code, question);
@@ -237,8 +343,8 @@ export function generateFallbackQuiz(
   return {
     level,
     question,
-    options,
-    correctLabel: "A",
+    options: shuffledOptions,
+    correctLabel: newCorrectLabel,
     hint: getHintFromCode(level, artifact),
     codeSnippet,
     codeLanguage: language,
