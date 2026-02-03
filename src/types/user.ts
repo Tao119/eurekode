@@ -6,6 +6,7 @@ export interface UserSettings {
   unlockMethod: "quiz" | "explanation" | "skip";
   hintSpeed: "immediate" | "30sec" | "none";
   estimationTraining: boolean;
+  unlockSkipAllowed: boolean; // Allow skipping unlock in generation mode (individual users only)
 }
 
 export interface OrganizationSettings {
@@ -38,6 +39,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   unlockMethod: "quiz",
   hintSpeed: "30sec",
   estimationTraining: true,
+  unlockSkipAllowed: false,
 };
 
 export const DEFAULT_ORGANIZATION_SETTINGS: OrganizationSettings = {

@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { useUserSettings } from "@/contexts/UserSettingsContext";
 import type { UserSettings } from "@/types/user";
 
-type LearningSettingKey = "quizEnabled" | "estimationTraining";
+type LearningSettingKey = "quizEnabled" | "estimationTraining" | "unlockSkipAllowed";
 type HintSpeedValue = UserSettings["hintSpeed"];
 
 interface OrganizationInfo {
@@ -495,6 +495,16 @@ export default function SettingsPage() {
                 enabled={settings.estimationTraining}
                 onChange={(value) => handleSettingToggle("estimationTraining", value)}
               />
+              {/* Show unlock skip setting only for individual users */}
+              {isIndividual && (
+                <SettingToggle
+                  icon="fast_forward"
+                  title="制限解除モード"
+                  description="生成モードでヒントをスキップしてコードを直接表示できるようにします"
+                  enabled={settings.unlockSkipAllowed}
+                  onChange={(value) => handleSettingToggle("unlockSkipAllowed", value)}
+                />
+              )}
             </>
           )}
         </CardContent>

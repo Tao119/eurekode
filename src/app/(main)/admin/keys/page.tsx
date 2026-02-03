@@ -23,6 +23,12 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+interface AccessKeySettings {
+  allowedModes?: ("explanation" | "generation" | "brainstorm")[];
+  allowedTechStacks?: string[];
+  unlockSkipAllowed?: boolean;
+}
+
 interface AccessKey {
   id: string;
   keyCode: string;
@@ -31,6 +37,7 @@ interface AccessKey {
   expiresAt: string | null;
   usedAt: string | null;
   dailyTokenLimit: number;
+  settings: AccessKeySettings | null;
   user: {
     id: string;
     displayName: string;
@@ -79,6 +86,7 @@ export default function AccessKeysPage() {
   const [editingKey, setEditingKey] = useState<AccessKey | null>(null);
   const [editDailyTokenLimit, setEditDailyTokenLimit] = useState(1000);
   const [editExpiresAt, setEditExpiresAt] = useState<string>("");
+  const [editUnlockSkipAllowed, setEditUnlockSkipAllowed] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   const fetchKeys = useCallback(async () => {
@@ -173,6 +181,7 @@ export default function AccessKeysPage() {
     setEditingKey(key);
     setEditDailyTokenLimit(key.dailyTokenLimit);
     setEditExpiresAt(key.expiresAt ? key.expiresAt.split("T")[0] : "");
+    setEditUnlockSkipAllowed(key.settings?.unlockSkipAllowed ?? false);
     setEditDialogOpen(true);
   };
 
@@ -187,6 +196,9 @@ export default function AccessKeysPage() {
         body: JSON.stringify({
           dailyTokenLimit: editDailyTokenLimit,
           expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+          settings: {
+            unlockSkipAllowed: editUnlockSkipAllowed,
+          },
         }),
       });
 
@@ -611,6 +623,31 @@ export default function AccessKeysPage() {
               <p className="text-xs text-muted-foreground">
                 空欄にすると無期限になります
               </p>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+              <div>
+                <Label className="font-medium">制限解除モード</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  生成モードでヒントをスキップしてコードを直接表示できるようにします
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={editUnlockSkipAllowed}
+                onClick={() => setEditUnlockSkipAllowed(!editUnlockSkipAllowed)}
+                className={cn(
+                  "relative h-6 w-11 rounded-full transition-colors shrink-0 ml-3",
+                  editUnlockSkipAllowed ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                    editUnlockSkipAllowed ? "translate-x-5" : "translate-x-0"
+                  )}
+                />
+              </button>
             </div>
           </div>
           <DialogFooter>

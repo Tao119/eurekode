@@ -11,6 +11,7 @@ const updateSettingsSchema = z.object({
   unlockMethod: z.enum(["quiz", "explanation", "skip"]).optional(),
   hintSpeed: z.enum(["immediate", "30sec", "none"]).optional(),
   estimationTraining: z.boolean().optional(),
+  unlockSkipAllowed: z.boolean().optional(),
 });
 
 // GET /api/user/settings - Get user settings
@@ -92,10 +93,10 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Get current settings
+    // Get current settings and user type
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { settings: true },
+      select: { settings: true, userType: true },
     });
 
     if (!user) {
@@ -105,12 +106,18 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // unlockSkipAllowed can only be modified by individual users (not members)
+    const updateData = { ...parsed.data };
+    if (user.userType === "member" && updateData.unlockSkipAllowed !== undefined) {
+      delete updateData.unlockSkipAllowed;
+    }
+
     // Merge settings
     const currentSettings = (user.settings as Partial<UserSettings> | null) || {};
     const newSettings: UserSettings = {
       ...DEFAULT_USER_SETTINGS,
       ...currentSettings,
-      ...parsed.data,
+      ...updateData,
     };
 
     // Update user settings (cast to Prisma JSON type via unknown)
