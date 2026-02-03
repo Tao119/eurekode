@@ -34,6 +34,8 @@ import {
   generateFallbackQuiz,
   structuredQuizToUnlockQuiz,
   removeQuizMarkerFromContent,
+  hasFallbackBeenUsed,
+  markFallbackAsUsed,
 } from "@/lib/quiz-generator";
 
 interface GenerationChatContainerProps {
@@ -325,20 +327,26 @@ export function GenerationChatContainer({
   }, [messages, isLoading, state.phase, state.unlockLevel, state.totalQuestions, setPhase, setCurrentQuiz, addOrUpdateArtifact]);
 
   // クイズが必要な場合に自動生成（フォールバック）
+  // 注意: フォールバックは1アーティファクトにつき1回のみ自動実行
   useEffect(() => {
     // unlocking フェーズで currentQuiz がなく、まだ完全アンロックではない場合
     const needsQuiz = state.totalQuestions > 0 && state.unlockLevel < state.totalQuestions;
+    const artifactId = state.activeArtifactId;
+
     if (
       state.phase === "unlocking" &&
       !state.currentQuiz &&
       needsQuiz &&
-      artifactsList.length > 0
+      artifactsList.length > 0 &&
+      artifactId &&
+      !hasFallbackBeenUsed(artifactId)
     ) {
-      // フォールバッククイズを生成
+      // フォールバック使用をマークしてからクイズを生成
+      markFallbackAsUsed(artifactId);
       const fallbackQuiz = generateFallbackQuiz(state.unlockLevel, activeArtifact);
       setCurrentQuiz(fallbackQuiz);
     }
-  }, [state.phase, state.currentQuiz, state.unlockLevel, activeArtifact, artifactsList.length, setCurrentQuiz]);
+  }, [state.phase, state.currentQuiz, state.unlockLevel, state.activeArtifactId, activeArtifact, artifactsList.length, setCurrentQuiz, state.totalQuestions]);
 
   // 簡易計画を選択して送信
   const handleQuickPlanSelect = useCallback(
@@ -593,23 +601,36 @@ export function GenerationChatContainer({
                               クイズが表示されていません
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              クイズに回答してコードをアンロックしましょう
+                              {hasFallbackBeenUsed(activeArtifact.id)
+                                ? "AIにクイズの再生成をリクエストできます"
+                                : "クイズに回答してコードをアンロックしましょう"}
                             </p>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const fallbackQuiz = generateFallbackQuiz(
-                                activeArtifactProgress.unlockLevel as UnlockLevel,
-                                activeArtifact
-                              );
-                              setCurrentQuiz(fallbackQuiz);
+                              if (hasFallbackBeenUsed(activeArtifact.id)) {
+                                // フォールバック使用済み: AIにクイズ再生成をリクエスト
+                                sendMessageWithArtifact(
+                                  "生成されたコードについて、理解度確認のクイズを出題してください。「なぜ〜していますか？」形式の質問でお願いします。"
+                                );
+                              } else {
+                                // フォールバック未使用: 自己評価型クイズを表示
+                                markFallbackAsUsed(activeArtifact.id);
+                                const fallbackQuiz = generateFallbackQuiz(
+                                  activeArtifactProgress.unlockLevel as UnlockLevel,
+                                  activeArtifact
+                                );
+                                setCurrentQuiz(fallbackQuiz);
+                              }
                             }}
                             className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
                           >
-                            <span className="material-symbols-outlined text-base mr-1.5">refresh</span>
-                            クイズを表示
+                            <span className="material-symbols-outlined text-base mr-1.5">
+                              {hasFallbackBeenUsed(activeArtifact.id) ? "smart_toy" : "quiz"}
+                            </span>
+                            {hasFallbackBeenUsed(activeArtifact.id) ? "AIに質問を依頼" : "クイズを表示"}
                           </Button>
                         </div>
                       </div>
