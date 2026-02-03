@@ -89,6 +89,9 @@ export default function AccessKeysPage() {
   const [editUnlockSkipAllowed, setEditUnlockSkipAllowed] = useState(false);
   const [updating, setUpdating] = useState(false);
 
+  // Re-issue state
+  const [reissuing, setReissuing] = useState<string | null>(null);
+
   const fetchKeys = useCallback(async () => {
     try {
       const params = new URLSearchParams();
@@ -174,6 +177,36 @@ export default function AccessKeysPage() {
       }
     } catch (error) {
       console.error("Failed to revoke key:", error);
+    }
+  };
+
+  const handleReissueKey = async (keyId: string) => {
+    if (!confirm("このキーを再発行しますか？\n\n既存のユーザーは新しいメールアドレスとパスワードで再登録する必要があります。")) return;
+
+    setReissuing(keyId);
+    try {
+      const response = await fetch(`/api/admin/keys/${keyId}`, {
+        method: "POST",
+      });
+
+      // Check for auth error
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        fetchKeys();
+        alert("キーを再発行しました。新しいメールアドレスとパスワードで登録できます。");
+      } else {
+        alert(result.error?.message || "再発行に失敗しました");
+      }
+    } catch (error) {
+      console.error("Failed to reissue key:", error);
+      alert("再発行に失敗しました");
+    } finally {
+      setReissuing(null);
     }
   };
 
@@ -459,6 +492,20 @@ export default function AccessKeysPage() {
                                 </span>
                               </Button>
                             </>
+                          )}
+                          {(key.status === "used" || key.status === "revoked") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-amber-500 hover:text-amber-400"
+                              onClick={() => handleReissueKey(key.id)}
+                              disabled={reissuing === key.id}
+                              title="再発行"
+                            >
+                              <span className="material-symbols-outlined text-lg">
+                                {reissuing === key.id ? "hourglass_empty" : "refresh"}
+                              </span>
+                            </Button>
                           )}
                         </div>
                       </td>

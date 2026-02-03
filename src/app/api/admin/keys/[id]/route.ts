@@ -199,6 +199,96 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   }
 }
 
+// POST /api/admin/keys/:id/reissue - Re-issue key (reset for new registration)
+export async function POST(request: NextRequest, context: RouteContext) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "認証が必要です" } },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.userType !== "admin") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "管理者権限が必要です" } },
+        { status: 403 }
+      );
+    }
+
+    if (!session.user.organizationId) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "組織が見つかりません" } },
+        { status: 404 }
+      );
+    }
+
+    const { id } = await context.params;
+
+    // Check key exists and belongs to organization
+    const existingKey = await prisma.accessKey.findFirst({
+      where: {
+        id,
+        organizationId: session.user.organizationId,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!existingKey) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "キーが見つかりません" } },
+        { status: 404 }
+      );
+    }
+
+    // Only allow re-issue for used or revoked keys
+    if (existingKey.status !== "used" && existingKey.status !== "revoked") {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_STATE", message: "このキーは再発行できません（使用済みまたは無効化済みのキーのみ再発行可能）" } },
+        { status: 400 }
+      );
+    }
+
+    // Use transaction to ensure consistency
+    await prisma.$transaction(async (tx) => {
+      // If key has an associated user, clear their email and password
+      // This forces re-registration with new credentials
+      if (existingKey.userId) {
+        await tx.user.update({
+          where: { id: existingKey.userId },
+          data: {
+            email: null,
+            passwordHash: null,
+          },
+        });
+      }
+
+      // Reset the key to active state
+      await tx.accessKey.update({
+        where: { id },
+        data: {
+          status: "active",
+          usedAt: null,
+        },
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: { message: "キーを再発行しました。新しいメールアドレスとパスワードで登録できます。" },
+    });
+  } catch (error) {
+    console.error("Re-issue admin key error:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/admin/keys/:id - Revoke key
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {

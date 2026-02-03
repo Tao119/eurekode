@@ -11,6 +11,8 @@ interface RouteContext {
 // User settings type
 interface UserSettings {
   skipAllowed?: boolean;
+  isEnabled?: boolean;
+  allowedModes?: ("explanation" | "generation" | "brainstorm")[];
   [key: string]: unknown;
 }
 
@@ -159,6 +161,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
           lastActiveAt: lastActiveAt?.toISOString() || null,
           status: isActive ? "active" : "inactive",
           skipAllowed: memberSettings.skipAllowed ?? false,
+          isEnabled: memberSettings.isEnabled !== false, // default to true
+          allowedModes: memberSettings.allowedModes ?? ["explanation", "generation", "brainstorm"],
         },
         accessKey: member.accessKey
           ? {
@@ -212,6 +216,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 // PATCH /api/admin/members/:id - Update member settings
 const updateMemberSchema = z.object({
   skipAllowed: z.boolean().optional(),
+  isEnabled: z.boolean().optional(),
+  allowedModes: z.array(z.enum(["explanation", "generation", "brainstorm"])).optional(),
 });
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
@@ -271,6 +277,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const newSettings: UserSettings = {
       ...currentSettings,
       ...(parsed.data.skipAllowed !== undefined && { skipAllowed: parsed.data.skipAllowed }),
+      ...(parsed.data.isEnabled !== undefined && { isEnabled: parsed.data.isEnabled }),
+      ...(parsed.data.allowedModes !== undefined && { allowedModes: parsed.data.allowedModes }),
     };
 
     // Update member settings
@@ -287,10 +295,110 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data: {
         id: updated.id,
         skipAllowed: updatedSettings.skipAllowed ?? false,
+        isEnabled: updatedSettings.isEnabled !== false,
+        allowedModes: updatedSettings.allowedModes ?? ["explanation", "generation", "brainstorm"],
       },
     });
   } catch (error) {
     console.error("Update admin member error:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/admin/members/:id - Delete member
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "認証が必要です" } },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.userType !== "admin") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "管理者権限が必要です" } },
+        { status: 403 }
+      );
+    }
+
+    if (!session.user.organizationId) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "組織が見つかりません" } },
+        { status: 404 }
+      );
+    }
+
+    const { id } = await context.params;
+
+    // Verify member belongs to organization
+    const member = await prisma.user.findFirst({
+      where: {
+        id,
+        organizationId: session.user.organizationId,
+        userType: "member",
+      },
+      include: {
+        accessKey: true,
+      },
+    });
+
+    if (!member) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "メンバーが見つかりません" } },
+        { status: 404 }
+      );
+    }
+
+    // Delete member and related data in transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete artifacts
+      await tx.artifact.deleteMany({
+        where: { userId: id },
+      });
+
+      // Delete conversations
+      await tx.conversation.deleteMany({
+        where: { userId: id },
+      });
+
+      // Delete learnings
+      await tx.learning.deleteMany({
+        where: { userId: id },
+      });
+
+      // Delete token usage
+      await tx.tokenUsage.deleteMany({
+        where: { userId: id },
+      });
+
+      // Revoke access key if exists (don't delete, keep for audit)
+      if (member.accessKey) {
+        await tx.accessKey.update({
+          where: { id: member.accessKey.id },
+          data: {
+            userId: null,
+            status: "revoked",
+          },
+        });
+      }
+
+      // Delete the user
+      await tx.user.delete({
+        where: { id },
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: { message: "メンバーを削除しました" },
+    });
+  } catch (error) {
+    console.error("Delete admin member error:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
       { status: 500 }

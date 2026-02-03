@@ -63,6 +63,22 @@ export default function SettingsPage() {
   const [todayTokenUsage, setTodayTokenUsage] = useState(0);
   const [isLoadingTokenUsage, setIsLoadingTokenUsage] = useState(false);
 
+  // Password change state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+
+  // Delete dialogs state
+  const [showDeleteHistoryDialog, setShowDeleteHistoryDialog] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState("");
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState("");
+  const [isDeletingHistory, setIsDeletingHistory] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login?callbackUrl=/settings");
@@ -257,6 +273,116 @@ export default function SettingsPage() {
     }
   };
 
+  const handlePasswordChange = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error("新しいパスワードが一致しません");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("パスワードは8文字以上で入力してください");
+      return;
+    }
+
+    if (!/[a-zA-Z]/.test(newPassword)) {
+      toast.error("パスワードには英字を含めてください");
+      return;
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      toast.error("パスワードには数字を含めてください");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const response = await fetch("/api/user/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("パスワードを変更しました");
+        setShowPasswordDialog(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setShowPasswords(false);
+      } else {
+        toast.error(data.error?.message || "パスワードの変更に失敗しました");
+      }
+    } catch {
+      toast.error("パスワードの変更に失敗しました");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleDeleteHistory = async () => {
+    if (deleteHistoryConfirm !== "履歴を削除する") {
+      toast.error("確認テキストが一致しません");
+      return;
+    }
+
+    setIsDeletingHistory(true);
+    try {
+      const response = await fetch("/api/user/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmText: deleteHistoryConfirm }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("すべての会話履歴を削除しました");
+        setShowDeleteHistoryDialog(false);
+        setDeleteHistoryConfirm("");
+      } else {
+        toast.error(data.error?.message || "削除に失敗しました");
+      }
+    } catch {
+      toast.error("削除に失敗しました");
+    } finally {
+      setIsDeletingHistory(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteAccountConfirm !== "アカウントを削除する") {
+      toast.error("確認テキストが一致しません");
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      const response = await fetch("/api/user/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmText: deleteAccountConfirm }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("アカウントを削除しました");
+        router.push("/login");
+      } else {
+        toast.error(data.error?.message || "削除に失敗しました");
+      }
+    } catch {
+      toast.error("削除に失敗しました");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   const isIndividual = session?.user.userType === "individual";
   const isMember = session?.user.userType === "member";
 
@@ -297,6 +423,21 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">
                 メールアドレスは変更できません
               </p>
+            </div>
+          )}
+
+          {session?.user.email && (
+            <div className="space-y-2">
+              <Label>パスワード</Label>
+              <div className="flex items-center gap-3">
+                <Input value="••••••••" disabled className="flex-1" />
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPasswordDialog(true)}
+                >
+                  変更
+                </Button>
+              </div>
             </div>
           )}
 
@@ -569,10 +710,14 @@ export default function SettingsPage() {
             <div>
               <p className="font-medium">会話履歴を削除</p>
               <p className="text-sm text-muted-foreground">
-                すべての会話履歴を削除します
+                すべての会話履歴と学びを削除します
               </p>
             </div>
-            <Button variant="outline" className="border-destructive text-destructive">
+            <Button
+              variant="outline"
+              className="border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteHistoryDialog(true)}
+            >
               削除
             </Button>
           </div>
@@ -580,10 +725,18 @@ export default function SettingsPage() {
             <div>
               <p className="font-medium">アカウントを削除</p>
               <p className="text-sm text-muted-foreground">
-                アカウントとすべてのデータを完全に削除します
+                {isMember
+                  ? "メンバーはアカウントを削除できません"
+                  : "アカウントとすべてのデータを完全に削除します"}
               </p>
             </div>
-            <Button variant="destructive">削除</Button>
+            <Button
+              variant="destructive"
+              onClick={() => setShowDeleteAccountDialog(true)}
+              disabled={isMember}
+            >
+              削除
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -682,6 +835,221 @@ export default function SettingsPage() {
                 </>
               ) : (
                 "退出する"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Change Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={(open) => {
+        setShowPasswordDialog(open);
+        if (!open) {
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+          setShowPasswords(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>パスワードを変更</DialogTitle>
+            <DialogDescription>
+              新しいパスワードを設定してください
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">現在のパスワード</Label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showPasswords ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="現在のパスワードを入力"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">新しいパスワード</Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showPasswords ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="8文字以上（英字・数字を含む）"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">新しいパスワード（確認）</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showPasswords ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="新しいパスワードを再入力"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPasswords(!showPasswords)}
+                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {showPasswords ? "visibility_off" : "visibility"}
+                </span>
+                {showPasswords ? "パスワードを隠す" : "パスワードを表示"}
+              </button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handlePasswordChange}
+              disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+            >
+              {isChangingPassword ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  変更中...
+                </>
+              ) : (
+                "変更する"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete History Dialog */}
+      <Dialog open={showDeleteHistoryDialog} onOpenChange={(open) => {
+        setShowDeleteHistoryDialog(open);
+        if (!open) {
+          setDeleteHistoryConfirm("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">会話履歴を削除</DialogTitle>
+            <DialogDescription>
+              この操作は取り消すことができません。すべての会話履歴と学びが完全に削除されます。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+              <p className="text-sm font-medium text-destructive">削除される内容:</p>
+              <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                <li>・ すべての会話履歴</li>
+                <li>・ すべての学び（インサイト）</li>
+                <li>・ 生成されたコードアーティファクト</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deleteHistoryConfirm">
+                確認のため「<span className="font-mono text-destructive">履歴を削除する</span>」と入力してください
+              </Label>
+              <Input
+                id="deleteHistoryConfirm"
+                value={deleteHistoryConfirm}
+                onChange={(e) => setDeleteHistoryConfirm(e.target.value)}
+                placeholder="履歴を削除する"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteHistoryDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteHistory}
+              disabled={isDeletingHistory || deleteHistoryConfirm !== "履歴を削除する"}
+            >
+              {isDeletingHistory ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  削除中...
+                </>
+              ) : (
+                "完全に削除する"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={showDeleteAccountDialog} onOpenChange={(open) => {
+        setShowDeleteAccountDialog(open);
+        if (!open) {
+          setDeleteAccountConfirm("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">アカウントを削除</DialogTitle>
+            <DialogDescription>
+              この操作は取り消すことができません。アカウントとすべてのデータが完全に削除されます。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+              <p className="text-sm font-medium text-destructive">削除される内容:</p>
+              <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                <li>・ アカウント情報</li>
+                <li>・ すべての会話履歴</li>
+                <li>・ すべての学び（インサイト）</li>
+                <li>・ トークン使用履歴</li>
+                <li>・ 設定情報</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deleteAccountConfirm">
+                確認のため「<span className="font-mono text-destructive">アカウントを削除する</span>」と入力してください
+              </Label>
+              <Input
+                id="deleteAccountConfirm"
+                value={deleteAccountConfirm}
+                onChange={(e) => setDeleteAccountConfirm(e.target.value)}
+                placeholder="アカウントを削除する"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteAccountDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount || deleteAccountConfirm !== "アカウントを削除する"}
+            >
+              {isDeletingAccount ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  削除中...
+                </>
+              ) : (
+                "完全に削除する"
               )}
             </Button>
           </DialogFooter>

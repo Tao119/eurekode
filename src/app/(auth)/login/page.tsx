@@ -99,6 +99,10 @@ function LoginForm() {
           setErrorMessage(
             "メールアドレスの確認が完了していません。メールをご確認ください。"
           );
+        } else if (result.error === "ACCOUNT_DISABLED") {
+          setErrorMessage(
+            "このアカウントは無効化されています。管理者にお問い合わせください。"
+          );
         } else {
           setErrorMessage(
             "メールアドレスまたはパスワードが正しくありません"

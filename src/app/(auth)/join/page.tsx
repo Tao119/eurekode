@@ -34,6 +34,19 @@ const joinSchema = z.object({
     .string()
     .min(1, "表示名を入力してください")
     .max(100, "表示名は100文字以内で入力してください"),
+  email: z
+    .string()
+    .min(1, "メールアドレスを入力してください")
+    .email("正しいメールアドレスを入力してください"),
+  password: z
+    .string()
+    .min(8, "パスワードは8文字以上で入力してください")
+    .regex(/[a-zA-Z]/, "パスワードには英字を含めてください")
+    .regex(/[0-9]/, "パスワードには数字を含めてください"),
+  passwordConfirm: z.string(),
+}).refine((data) => data.password === data.passwordConfirm, {
+  message: "パスワードが一致しません",
+  path: ["passwordConfirm"],
 });
 
 type JoinFormData = z.infer<typeof joinSchema>;
@@ -42,6 +55,7 @@ export default function JoinPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const form = useForm<JoinFormData>({
@@ -49,6 +63,9 @@ export default function JoinPage() {
     defaultValues: {
       keySegments: ["", "", "", ""],
       displayName: "",
+      email: "",
+      password: "",
+      passwordConfirm: "",
     },
   });
 
@@ -129,6 +146,8 @@ export default function JoinPage() {
       const result = await signIn("access-key", {
         keyCode,
         displayName: data.displayName,
+        email: data.email,
+        password: data.password,
         redirect: false,
       });
 
@@ -140,8 +159,14 @@ export default function JoinPage() {
           case "KEY_EXPIRED":
             setErrorMessage("このアクセスキーは有効期限が切れています");
             break;
-          case "KEY_ALREADY_USED":
-            setErrorMessage("このアクセスキーは既に使用されています");
+          case "KEY_ALREADY_REGISTERED":
+            setErrorMessage("登録済み招待キーです。メールアドレスとパスワードでログインしてください。");
+            break;
+          case "EMAIL_ALREADY_EXISTS":
+            setErrorMessage("このメールアドレスは既に使用されています");
+            break;
+          case "EMAIL_PASSWORD_REQUIRED":
+            setErrorMessage("メールアドレスとパスワードを入力してください");
             break;
           default:
             setErrorMessage("参加に失敗しました。もう一度お試しください。");
@@ -161,9 +186,9 @@ export default function JoinPage() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">キー入力</CardTitle>
+        <CardTitle className="text-2xl font-bold">招待キーで参加</CardTitle>
         <CardDescription>
-          管理者から発行されたアクセスキーを入力してください
+          管理者から発行されたアクセスキーを入力し、アカウントを作成してください
         </CardDescription>
       </CardHeader>
 
@@ -221,27 +246,106 @@ export default function JoinPage() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="displayName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>表示名</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="山田 太郎"
-                      autoComplete="name"
-                      disabled={isLoading}
-                      {...field}
-                    />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    この名前は管理者や他のメンバーに表示されます
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="border-t pt-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                以下の情報でアカウントを作成します。2回目以降はメールアドレスとパスワードでログインしてください。
+              </p>
+
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="displayName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>表示名</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="山田 太郎"
+                          autoComplete="name"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        この名前は管理者や他のメンバーに表示されます
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>メールアドレス</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="example@email.com"
+                          autoComplete="email"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>パスワード</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="8文字以上（英字・数字を含む）"
+                            autoComplete="new-password"
+                            disabled={isLoading}
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            <span className="material-symbols-outlined text-xl">
+                              {showPassword ? "visibility_off" : "visibility"}
+                            </span>
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="passwordConfirm"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>パスワード（確認）</FormLabel>
+                      <FormControl>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="パスワードを再入力"
+                          autoComplete="new-password"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col gap-4">
@@ -249,10 +353,10 @@ export default function JoinPage() {
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  参加中...
+                  アカウント作成中...
                 </>
               ) : (
-                "参加する"
+                "アカウントを作成して参加"
               )}
             </Button>
 
@@ -269,7 +373,7 @@ export default function JoinPage() {
 
             <div className="flex flex-col gap-2 w-full text-sm text-center">
               <p className="text-muted-foreground">
-                アカウントをお持ちの方は{" "}
+                既にアカウントをお持ちの方は{" "}
                 <Link href="/login" className="text-primary hover:underline">
                   ログイン
                 </Link>

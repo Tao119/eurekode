@@ -60,6 +60,8 @@ const loginSchema = z.object({
 const accessKeySchema = z.object({
   keyCode: z.string().regex(/^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/),
   displayName: z.string().min(1).max(100),
+  email: z.string().email().optional(),
+  password: z.string().min(8).optional(),
 });
 
 export const authConfig: NextAuthConfig = {
@@ -116,6 +118,14 @@ export const authConfig: NextAuthConfig = {
           throw new Error("EMAIL_NOT_VERIFIED");
         }
 
+        // Check if member is disabled
+        if (user.userType === "member") {
+          const userSettings = user.settings as { isEnabled?: boolean } | null;
+          if (userSettings?.isEnabled === false) {
+            throw new Error("ACCOUNT_DISABLED");
+          }
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -125,13 +135,15 @@ export const authConfig: NextAuthConfig = {
         };
       },
     }),
-    // Access Key authentication
+    // Access Key authentication (first-time registration with email/password)
     Credentials({
       id: "access-key",
       name: "Access Key",
       credentials: {
         keyCode: { label: "Access Key", type: "text" },
         displayName: { label: "Display Name", type: "text" },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         const parsed = accessKeySchema.safeParse(credentials);
@@ -139,7 +151,7 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
-        const { keyCode, displayName } = parsed.data;
+        const { keyCode, displayName, email, password } = parsed.data;
 
         // Find the access key
         const accessKey = await prisma.accessKey.findUnique({
@@ -173,42 +185,71 @@ export const authConfig: NextAuthConfig = {
           throw new Error("KEY_EXPIRED");
         }
 
-        // If key already has a user, return that user
-        if (accessKey.user) {
-          return {
-            id: accessKey.user.id,
-            email: accessKey.user.email,
-            displayName: accessKey.user.displayName,
-            userType: accessKey.user.userType,
-            organizationId: accessKey.user.organizationId,
-          };
+        // If key already has a user with email registered, it's already used
+        if (accessKey.user && accessKey.user.email) {
+          throw new Error("KEY_ALREADY_REGISTERED");
         }
 
-        // Create new member user
-        const newUser = await prisma.user.create({
-          data: {
-            displayName,
-            userType: "member",
-            organizationId: accessKey.organizationId,
-          },
+        // For new registration, email and password are required
+        if (!email || !password) {
+          throw new Error("EMAIL_PASSWORD_REQUIRED");
+        }
+
+        // Check if email is already used by another user
+        const existingUser = await prisma.user.findUnique({
+          where: { email },
         });
+        if (existingUser) {
+          throw new Error("EMAIL_ALREADY_EXISTS");
+        }
+
+        // Hash password
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        let targetUser;
+
+        // Check if this is a re-registration (key has user but no email/password)
+        if (accessKey.user && !accessKey.user.email) {
+          // Re-registration: Update existing user with new credentials
+          targetUser = await prisma.user.update({
+            where: { id: accessKey.user.id },
+            data: {
+              email,
+              passwordHash,
+              displayName,
+              emailVerified: new Date(), // Auto-verify for access key registration
+            },
+          });
+        } else {
+          // First registration: Create new member user with email and password
+          targetUser = await prisma.user.create({
+            data: {
+              email,
+              passwordHash,
+              displayName,
+              userType: "member",
+              organizationId: accessKey.organizationId,
+              emailVerified: new Date(), // Auto-verify for access key registration
+            },
+          });
+        }
 
         // Update access key
         await prisma.accessKey.update({
           where: { id: accessKey.id },
           data: {
-            userId: newUser.id,
+            userId: targetUser.id,
             usedAt: new Date(),
             status: "used",
           },
         });
 
         return {
-          id: newUser.id,
-          email: null,
-          displayName: newUser.displayName,
-          userType: newUser.userType,
-          organizationId: newUser.organizationId,
+          id: targetUser.id,
+          email: targetUser.email,
+          displayName: targetUser.displayName,
+          userType: targetUser.userType,
+          organizationId: targetUser.organizationId,
         };
       },
     }),

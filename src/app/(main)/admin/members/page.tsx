@@ -10,15 +10,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 interface Member {
   id: string;
@@ -40,6 +44,8 @@ interface Member {
   };
 }
 
+type ChatMode = "explanation" | "generation" | "brainstorm";
+
 interface MemberDetail {
   member: {
     id: string;
@@ -49,6 +55,8 @@ interface MemberDetail {
     lastActiveAt: string | null;
     status: string;
     skipAllowed: boolean;
+    isEnabled: boolean;
+    allowedModes: ChatMode[];
   };
   accessKey: {
     id: string;
@@ -112,6 +120,17 @@ export default function MembersPage() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Password reset state
+  const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+
+  // Delete member state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleToggleSkipAllowed = async (memberId: string, newValue: boolean) => {
     try {
       const response = await fetch(`/api/admin/members/${memberId}`, {
@@ -130,6 +149,139 @@ export default function MembersPage() {
       }
     } catch (error) {
       console.error("Failed to update skip allowed:", error);
+    }
+  };
+
+  const handleToggleEnabled = async (memberId: string, newValue: boolean) => {
+    try {
+      const response = await fetch(`/api/admin/members/${memberId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isEnabled: newValue }),
+      });
+      const result = await response.json();
+      if (result.success && selectedMember) {
+        startTransition(() => {
+          setSelectedMember({
+            ...selectedMember,
+            member: { ...selectedMember.member, isEnabled: newValue },
+          });
+        });
+        toast.success(newValue ? "メンバーを有効にしました" : "メンバーを無効にしました");
+      }
+    } catch (error) {
+      console.error("Failed to update enabled status:", error);
+      toast.error("更新に失敗しました");
+    }
+  };
+
+  const handleToggleMode = async (memberId: string, mode: ChatMode, currentModes: ChatMode[]) => {
+    const newModes = currentModes.includes(mode)
+      ? currentModes.filter(m => m !== mode)
+      : [...currentModes, mode];
+
+    // Must have at least one mode
+    if (newModes.length === 0) {
+      toast.error("少なくとも1つのモードを許可してください");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/members/${memberId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedModes: newModes }),
+      });
+      const result = await response.json();
+      if (result.success && selectedMember) {
+        startTransition(() => {
+          setSelectedMember({
+            ...selectedMember,
+            member: { ...selectedMember.member, allowedModes: newModes },
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update allowed modes:", error);
+      toast.error("更新に失敗しました");
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!selectedMember) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/members/${selectedMember.member.id}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("メンバーを削除しました");
+        setShowDeleteDialog(false);
+        setShowDetailDialog(false);
+        setSelectedMember(null);
+        fetchMembers();
+      } else {
+        toast.error(result.error?.message || "削除に失敗しました");
+      }
+    } catch (error) {
+      console.error("Failed to delete member:", error);
+      toast.error("削除に失敗しました");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!selectedMember) return;
+
+    if (newPassword !== confirmPassword) {
+      toast.error("パスワードが一致しません");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("パスワードは8文字以上で入力してください");
+      return;
+    }
+
+    if (!/[a-zA-Z]/.test(newPassword)) {
+      toast.error("パスワードには英字を含めてください");
+      return;
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      toast.error("パスワードには数字を含めてください");
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const response = await fetch("/api/user/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUserId: selectedMember.member.id,
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("パスワードをリセットしました");
+        setShowPasswordResetDialog(false);
+        setNewPassword("");
+        setConfirmPassword("");
+        setShowPasswords(false);
+      } else {
+        toast.error(data.error?.message || "パスワードのリセットに失敗しました");
+      }
+    } catch {
+      toast.error("パスワードのリセットに失敗しました");
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -477,10 +629,72 @@ export default function MembersPage() {
                 </div>
               </div>
 
-              {/* Settings */}
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-medium mb-3">メンバー設定</h4>
+              {/* Account Status */}
+              <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-medium">アカウント状態</h4>
                 <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">アカウント有効</p>
+                    <p className="text-xs text-muted-foreground">
+                      無効にするとメンバーはログインできなくなります
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleToggleEnabled(selectedMember.member.id, !selectedMember.member.isEnabled)}
+                    disabled={isPending}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                      selectedMember.member.isEnabled ? "bg-green-500" : "bg-muted",
+                      isPending && "opacity-50"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        selectedMember.member.isEnabled ? "translate-x-6" : "translate-x-1"
+                      )}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Feature Settings */}
+              <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-medium">機能設定</h4>
+
+                {/* Allowed Modes */}
+                <div>
+                  <p className="font-medium text-sm mb-2">利用可能なモード</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: "explanation" as ChatMode, label: "解説モード", icon: "school" },
+                      { value: "generation" as ChatMode, label: "生成モード", icon: "code" },
+                      { value: "brainstorm" as ChatMode, label: "壁打ちモード", icon: "lightbulb" },
+                    ].map((mode) => (
+                      <button
+                        key={mode.value}
+                        onClick={() => handleToggleMode(selectedMember.member.id, mode.value, selectedMember.member.allowedModes)}
+                        disabled={isPending}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors",
+                          selectedMember.member.allowedModes.includes(mode.value)
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50",
+                          isPending && "opacity-50"
+                        )}
+                      >
+                        <span className="material-symbols-outlined text-lg">{mode.icon}</span>
+                        {mode.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    選択されたモードのみ利用できます
+                  </p>
+                </div>
+
+                {/* Skip Allowed */}
+                <div className="flex items-center justify-between pt-3 border-t">
                   <div>
                     <p className="font-medium text-sm">コードスキップを許可</p>
                     <p className="text-xs text-muted-foreground">
@@ -503,6 +717,45 @@ export default function MembersPage() {
                       )}
                     />
                   </button>
+                </div>
+
+                {/* Password Reset */}
+                {selectedMember.member.email && (
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div>
+                      <p className="font-medium text-sm">パスワードリセット</p>
+                      <p className="text-xs text-muted-foreground">
+                        メンバーのパスワードを新しいものに変更します
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPasswordResetDialog(true)}
+                    >
+                      リセット
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Danger Zone */}
+              <div className="p-4 border border-destructive/50 rounded-lg">
+                <h4 className="font-medium text-destructive mb-3">危険な操作</h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">メンバーを削除</p>
+                    <p className="text-xs text-muted-foreground">
+                      メンバーとすべてのデータを完全に削除します
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    削除
+                  </Button>
                 </div>
               </div>
 
@@ -599,6 +852,128 @@ export default function MembersPage() {
               データの読み込みに失敗しました
             </p>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={showPasswordResetDialog} onOpenChange={(open) => {
+        setShowPasswordResetDialog(open);
+        if (!open) {
+          setNewPassword("");
+          setConfirmPassword("");
+          setShowPasswords(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>パスワードをリセット</DialogTitle>
+            <DialogDescription>
+              {selectedMember?.member.displayName}さんの新しいパスワードを設定します
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">新しいパスワード</Label>
+              <Input
+                id="newPassword"
+                type={showPasswords ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="8文字以上（英字・数字を含む）"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">新しいパスワード（確認）</Label>
+              <Input
+                id="confirmPassword"
+                type={showPasswords ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="新しいパスワードを再入力"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPasswords(!showPasswords)}
+                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {showPasswords ? "visibility_off" : "visibility"}
+                </span>
+                {showPasswords ? "パスワードを隠す" : "パスワードを表示"}
+              </button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordResetDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handlePasswordReset}
+              disabled={isResettingPassword || !newPassword || !confirmPassword}
+            >
+              {isResettingPassword ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  リセット中...
+                </>
+              ) : (
+                "リセットする"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Member Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">メンバーを削除</DialogTitle>
+            <DialogDescription>
+              {selectedMember?.member.displayName}さんを削除しますか？
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+              <p className="text-sm font-medium text-destructive">削除される内容:</p>
+              <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                <li>・ アカウント情報</li>
+                <li>・ すべての会話履歴</li>
+                <li>・ すべての学び（インサイト）</li>
+                <li>・ トークン使用履歴</li>
+              </ul>
+              <p className="text-xs text-muted-foreground mt-3">
+                ※ アクセスキーは無効化され、再利用できなくなります
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteMember}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  削除中...
+                </>
+              ) : (
+                "削除する"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
