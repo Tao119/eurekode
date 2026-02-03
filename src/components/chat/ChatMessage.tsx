@@ -56,9 +56,10 @@ function detectInteractiveQuiz(content: string): InteractiveQuizForm | null {
   let questionId = 0;
 
   // First, try to detect multiple independent quizzes (e.g., 質問1, 質問2, etc.)
+  // Also handles single quiz when content has multiple A-D sets (to avoid duplicate label issues)
   const multipleQuizzes = extractMultipleQuizzes(content);
-  if (multipleQuizzes && multipleQuizzes.quizzes.length >= 2) {
-    // Convert multiple quizzes to InteractiveQuestion format
+  if (multipleQuizzes && multipleQuizzes.quizzes.length >= 1) {
+    // Convert quizzes to InteractiveQuestion format
     for (const quiz of multipleQuizzes.quizzes) {
       questions.push({
         id: `choice-${questionId++}`,
@@ -68,10 +69,13 @@ function detectInteractiveQuiz(content: string): InteractiveQuizForm | null {
       });
     }
 
-    return {
-      questions,
-      contentWithoutQuestions: multipleQuizzes.contentWithoutQuizzes,
-    };
+    // Return if we have at least one quiz with proper options
+    if (questions.length >= 1) {
+      return {
+        questions,
+        contentWithoutQuestions: multipleQuizzes.contentWithoutQuizzes,
+      };
+    }
   }
 
   // Check for fill-in-the-blank patterns (????, ???, or similar)

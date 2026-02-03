@@ -231,29 +231,37 @@ function splitByOptionSets(content: string): string[] {
   let currentSection: string[] = [];
   let lastOptionLabel = "";
   let optionCount = 0;
+  let seenLabels = new Set<string>();
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const optionMatch = line.match(/^\s*[A-Da-dＡ-Ｄ][)）.:：]\s*.+/);
 
     if (optionMatch) {
-      const label = line.trim()[0].toUpperCase();
+      const rawLabel = line.trim()[0];
+      const label = rawLabel.toUpperCase().replace(/[Ａ-Ｄ]/g, c =>
+        String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+      );
 
       // 新しいAが見つかり、前のセクションに選択肢があった場合
-      if ((label === "A" || label === "Ａ") && optionCount >= 2) {
+      // または既に見たラベルが再度出現した場合（重複）
+      if ((label === "A" && optionCount >= 2) ||
+          (seenLabels.has(label) && optionCount >= 2)) {
         sections.push(currentSection.join("\n"));
         currentSection = [];
         optionCount = 0;
+        seenLabels = new Set<string>();
       }
 
       currentSection.push(line);
       lastOptionLabel = label;
+      seenLabels.add(label);
       optionCount++;
     } else {
       currentSection.push(line);
 
       // D/Ｄの後で、次の行が選択肢でない場合、セクション終了の可能性
-      if ((lastOptionLabel === "D" || lastOptionLabel === "Ｄ") && optionCount >= 2) {
+      if (lastOptionLabel === "D" && optionCount >= 2) {
         // 空行または質問っぽいテキストが続く場合はセクション区切り
         const nextOptionLine = lines.slice(i + 1, i + 5).find((l) =>
           /^\s*[A-Da-dＡ-Ｄ][)）.:：]\s*.+/.test(l)
@@ -263,6 +271,7 @@ function splitByOptionSets(content: string): string[] {
           currentSection = [];
           optionCount = 0;
           lastOptionLabel = "";
+          seenLabels = new Set<string>();
         }
       }
     }

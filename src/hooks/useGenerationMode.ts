@@ -230,6 +230,13 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     initialStateAppliedRef.current = true;
     canSaveRef.current = true; // 初期状態が適用されたので保存を許可
 
+    console.log("[useGenerationMode] Initial state applied:", {
+      phase: initialState.phase,
+      unlockLevel: initialState.unlockLevel,
+      totalQuestions: initialState.totalQuestions,
+      artifactProgressKeys: Object.keys(initialState.artifactProgress || {}),
+    });
+
     setState((prev) => ({
       ...prev,
       phase: initialState.phase || prev.phase,
@@ -249,9 +256,10 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
 
     const timeout = setTimeout(() => {
       if (!canSaveRef.current) {
+        console.warn("[useGenerationMode] Initial state timeout - enabling save. This may indicate slow network or missing initial state.");
         canSaveRef.current = true;
       }
-    }, 2000); // 2秒後に初期状態がなければ新規会話と判断
+    }, 5000); // 5秒後に初期状態がなければ新規会話と判断
 
     return () => clearTimeout(timeout);
   }, []);
@@ -520,6 +528,25 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         };
       }
 
+      // 初期状態がまだ適用されていない場合（conversationId ありで canSave=false）
+      // アーティファクトだけ追加し、進行状況は作成しない（初期状態を待つ）
+      if (!canSaveRef.current && conversationId) {
+        return {
+          ...prev,
+          artifacts: {
+            ...prev.artifacts,
+            [artifact.id]: updatedArtifact,
+          },
+          activeArtifactId: artifact.id,
+          generatedCode: {
+            language: artifact.language || "text",
+            code: artifact.content,
+            filename: artifact.title,
+          },
+          // 進行状況は作成せず、フェーズも変更しない（初期状態の読み込みを待つ）
+        };
+      }
+
       // 新規アーティファクトの場合のみデフォルト値を設定
       const newProgress: ArtifactProgress = {
         unlockLevel: 0,
@@ -553,7 +580,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         },
       };
     });
-  }, []);
+  }, [conversationId]);
 
   const setActiveArtifact = useCallback((id: string) => {
     setState((prev) => {
