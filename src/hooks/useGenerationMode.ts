@@ -158,6 +158,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
   const { conversationId, initialState, ...generationOptions } = options;
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef<string>("");
+  const initialStateAppliedRef = useRef(false);
 
   const [state, setState] = useState<GenerationModeState>(() => {
     const defaultState: GenerationModeState = {
@@ -176,6 +177,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
 
     // 初期状態があれば適用
     if (initialState) {
+      initialStateAppliedRef.current = true;
       return {
         ...defaultState,
         phase: initialState.phase || "initial",
@@ -196,6 +198,22 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     ...DEFAULT_OPTIONS,
     ...generationOptions,
   });
+
+  // 非同期で読み込まれた初期状態を適用
+  useEffect(() => {
+    if (!initialState || initialStateAppliedRef.current) return;
+
+    initialStateAppliedRef.current = true;
+    setState((prev) => ({
+      ...prev,
+      phase: initialState.phase || prev.phase,
+      unlockLevel: initialState.unlockLevel || prev.unlockLevel,
+      artifacts: { ...prev.artifacts, ...initialState.artifacts },
+      activeArtifactId: initialState.activeArtifactId || prev.activeArtifactId,
+      artifactProgress: { ...prev.artifactProgress, ...initialState.artifactProgress },
+      quizHistory: initialState.quizHistory?.length ? initialState.quizHistory : prev.quizHistory,
+    }));
+  }, [initialState]);
 
   // 状態が変更されたらAPIに保存（デバウンス付き）
   useEffect(() => {
@@ -431,15 +449,12 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
           }
         : artifact;
 
-      // 新しいアーティファクトの場合、進行状況を初期化
-      const newProgress: ArtifactProgress = existingProgress || {
+      // 既存の進行状況を使用、なければ初期化
+      const progress: ArtifactProgress = existingProgress || {
         unlockLevel: 1,
         currentQuiz: null,
         quizHistory: [],
       };
-
-      // 新しいアーティファクトに切り替えた場合、そのアーティファクトの進行状況を使用
-      const activeProgress = prev.artifactProgress[artifact.id] || newProgress;
 
       return {
         ...prev,
@@ -449,21 +464,24 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         },
         activeArtifactId: artifact.id,
         // アクティブなアーティファクトの進行状況を反映
-        unlockLevel: activeProgress.unlockLevel,
+        unlockLevel: progress.unlockLevel,
         // 新規またはアンロック済みの場合はクイズをクリア
-        currentQuiz: isNewArtifact || activeProgress.unlockLevel >= 4 ? null : activeProgress.currentQuiz,
-        quizHistory: activeProgress.quizHistory,
+        currentQuiz: isNewArtifact || progress.unlockLevel >= 4 ? null : progress.currentQuiz,
+        quizHistory: progress.quizHistory,
         // Also set generatedCode for backward compatibility
         generatedCode: {
           language: artifact.language || "text",
           code: artifact.content,
           filename: artifact.title,
         },
-        phase: prev.phase === "initial" ? "coding" : (activeProgress.unlockLevel >= 4 ? "unlocked" : "unlocking"),
-        artifactProgress: {
-          ...prev.artifactProgress,
-          [artifact.id]: newProgress,
-        },
+        phase: prev.phase === "initial" ? "coding" : (progress.unlockLevel >= 4 ? "unlocked" : "unlocking"),
+        // 既存の進行状況を保持（新規アーティファクトのみ初期化）
+        artifactProgress: existingProgress
+          ? prev.artifactProgress
+          : {
+              ...prev.artifactProgress,
+              [artifact.id]: progress,
+            },
       };
     });
   }, []);
