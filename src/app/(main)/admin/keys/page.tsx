@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { isAuthError, handleAuthError } from "@/lib/auth-error-handler";
 import {
   Card,
   CardContent,
@@ -81,6 +82,13 @@ export default function AccessKeysPage() {
       params.set("limit", "50");
 
       const response = await fetch(`/api/admin/keys?${params.toString()}`);
+
+      // Check for auth error
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
+
       const result = await response.json();
       if (result.success) {
         setData(result.data);
@@ -108,12 +116,21 @@ export default function AccessKeysPage() {
           expiresIn,
         }),
       });
+
+      // Check for auth error
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
+
       const result = await response.json();
       if (result.success) {
         setCreatedKeys(result.data.keys.map((k: { keyCode: string }) => k.keyCode));
         setCreateDialogOpen(false);
         setShowCreatedDialog(true);
         fetchKeys();
+      } else {
+        console.error("Failed to create keys:", result.error);
       }
     } catch (error) {
       console.error("Failed to create keys:", error);
@@ -129,6 +146,13 @@ export default function AccessKeysPage() {
       const response = await fetch(`/api/admin/keys/${keyId}`, {
         method: "DELETE",
       });
+
+      // Check for auth error
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
+
       const result = await response.json();
       if (result.success) {
         fetchKeys();

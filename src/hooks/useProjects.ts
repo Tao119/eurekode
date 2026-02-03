@@ -13,6 +13,7 @@ import type {
   ProjectStatus,
   TaskStatus,
 } from "@/types/project";
+import { isAuthError, handleAuthError } from "@/lib/auth-error-handler";
 
 interface UseProjectsOptions {
   initialLimit?: number;
@@ -54,6 +55,13 @@ export function useProjects(options: UseProjectsOptions = {}) {
         if (filters.search) params.set("search", filters.search);
 
         const response = await fetch(`/api/projects?${params}`);
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return;
+        }
+
         const data = await response.json();
 
         if (!data.success) {
@@ -81,6 +89,12 @@ export function useProjects(options: UseProjectsOptions = {}) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
 
         const result = await response.json();
 
@@ -110,6 +124,12 @@ export function useProjects(options: UseProjectsOptions = {}) {
           body: JSON.stringify(data),
         });
 
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
+
         const result = await response.json();
 
         if (!result.success) {
@@ -136,6 +156,12 @@ export function useProjects(options: UseProjectsOptions = {}) {
         const response = await fetch(`/api/projects/${id}`, {
           method: "DELETE",
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return false;
+        }
 
         const result = await response.json();
 
@@ -217,6 +243,13 @@ export function useProject(options: UseProjectOptions) {
 
     try {
       const response = await fetch(`/api/projects/${projectId}`);
+
+      // Check for auth error
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
+
       const data = await response.json();
 
       if (!data.success) {
@@ -239,6 +272,12 @@ export function useProject(options: UseProjectOptions) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
 
         const result = await response.json();
 
@@ -264,6 +303,12 @@ export function useProject(options: UseProjectOptions) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
 
         const result = await response.json();
 
@@ -291,6 +336,12 @@ export function useProject(options: UseProjectOptions) {
           body: JSON.stringify({ tasks }),
         });
 
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return 0;
+        }
+
         const result = await response.json();
 
         if (!result.success) {
@@ -316,6 +367,12 @@ export function useProject(options: UseProjectOptions) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
 
         const result = await response.json();
 
@@ -347,6 +404,12 @@ export function useProject(options: UseProjectOptions) {
         const response = await fetch(`/api/tasks/${taskId}`, {
           method: "DELETE",
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return false;
+        }
 
         const result = await response.json();
 
@@ -381,6 +444,12 @@ export function useProject(options: UseProjectOptions) {
           body: JSON.stringify({ action: "start" }),
         });
 
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
+
         const result = await response.json();
 
         if (!result.success) {
@@ -412,6 +481,12 @@ export function useProject(options: UseProjectOptions) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "stop" }),
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
 
         const result = await response.json();
 
@@ -498,6 +573,12 @@ export async function createProjectFromBrainstorm(
       }),
     });
 
+    // Check for auth error
+    if (isAuthError(projectResponse)) {
+      await handleAuthError();
+      return null;
+    }
+
     const projectResult = await projectResponse.json();
 
     if (!projectResult.success) {
@@ -519,6 +600,12 @@ export async function createProjectFromBrainstorm(
           })),
         }),
       });
+
+      // Check for auth error
+      if (isAuthError(tasksResponse)) {
+        await handleAuthError();
+        return null;
+      }
 
       const tasksResult = await tasksResponse.json();
 

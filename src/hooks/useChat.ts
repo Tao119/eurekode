@@ -10,6 +10,21 @@ import type {
   BrainstormModeState,
   BrainstormSubMode,
 } from "@/types/chat";
+import type { ApiError } from "@/types/api";
+import { isAuthError, handleAuthError } from "@/lib/auth-error-handler";
+
+// Custom error class to carry API error details
+export class ChatApiError extends Error {
+  code: string;
+  details?: Record<string, unknown>;
+
+  constructor(apiError: ApiError) {
+    super(apiError.message);
+    this.name = "ChatApiError";
+    this.code = apiError.code;
+    this.details = apiError.details;
+  }
+}
 
 const EMPTY_MESSAGES: Message[] = [];
 
@@ -172,6 +187,11 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
           }),
           signal: saveAbortControllerRef.current.signal,
         });
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return;
+        }
         // Check if response is ok
         if (!response.ok && isMountedRef.current) {
           console.warn("Failed to save conversation:", response.status);
@@ -189,6 +209,11 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
           }),
           signal: saveAbortControllerRef.current.signal,
         });
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return;
+        }
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data?.id && isMountedRef.current) {
@@ -241,6 +266,11 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
     setRestoredMetadata(null);
     try {
       const response = await fetch(`/api/conversations/${id}`);
+      // Check for auth error
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
       const data = await response.json();
       if (data.success && data.data) {
         const conversation = data.data;
@@ -417,9 +447,18 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
           signal: abortControllerRef.current.signal,
         });
 
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return;
+        }
+
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error?.message || "チャットの送信に失敗しました");
+          if (errorData.error) {
+            throw new ChatApiError(errorData.error);
+          }
+          throw new Error("チャットの送信に失敗しました");
         }
 
         // Handle streaming response
@@ -631,9 +670,18 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
         signal: abortControllerRef.current.signal,
       });
 
+      // Check for auth error
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || "チャットの送信に失敗しました");
+        if (errorData.error) {
+          throw new ChatApiError(errorData.error);
+        }
+        throw new Error("チャットの送信に失敗しました");
       }
 
       // Handle streaming response

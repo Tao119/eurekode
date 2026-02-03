@@ -10,6 +10,7 @@ import type {
   LearningsResponse,
   LearningType,
 } from "@/types/learning";
+import { isAuthError, handleAuthError } from "@/lib/auth-error-handler";
 
 // Must match the value in @/lib/token-limit.ts (can't import due to server-only dependencies)
 const TOKEN_LIMIT_EXCEEDED_CODE = "TOKEN_LIMIT_EXCEEDED";
@@ -105,6 +106,13 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
       try {
         const queryString = buildQueryString(offset);
         const response = await fetch(`/api/learnings?${queryString}`);
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return;
+        }
+
         const data = await response.json();
 
         if (!data.success) {
@@ -139,6 +147,12 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
 
         const result = await response.json();
 
@@ -177,6 +191,12 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
           body: JSON.stringify(data),
         });
 
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return null;
+        }
+
         const result = await response.json();
 
         if (!result.success) {
@@ -205,6 +225,12 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
         const response = await fetch(`/api/learnings/${id}`, {
           method: "DELETE",
         });
+
+        // Check for auth error
+        if (isAuthError(response)) {
+          await handleAuthError();
+          return false;
+        }
 
         const result = await response.json();
 
