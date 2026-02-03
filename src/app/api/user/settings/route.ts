@@ -33,6 +33,12 @@ export async function GET() {
         accessKey: {
           select: {
             settings: true,
+            dailyTokenLimit: true,
+            organization: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
@@ -72,11 +78,20 @@ export async function GET() {
       }
     }
 
+    // Get dailyTokenLimit from AccessKey or use default
+    const defaultLimit = Number(process.env.DEFAULT_DAILY_TOKEN_LIMIT) || 10000;
+    const dailyTokenLimit = user.accessKey?.dailyTokenLimit || defaultLimit;
+
+    // Get organization name for member users
+    const organizationName = user.userType === "member" ? user.accessKey?.organization?.name : null;
+
     return NextResponse.json({
       success: true,
       data: {
         ...settings,
         tokenUsage: tokenUsage?.tokensUsed || 0,
+        dailyTokenLimit,
+        organizationName,
       },
     });
   } catch (error) {

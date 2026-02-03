@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { ChatModeSelector } from "./ChatModeSelector";
 import { BrainstormPhaseIndicator } from "./BrainstormPhaseIndicator";
 import { PlanStepList, SuggestedPlan } from "./PlanStepList";
 import { ProjectSaveModal } from "@/components/projects/ProjectSaveModal";
@@ -323,7 +324,6 @@ export function BrainstormChatContainer({
     setSuggestedSteps([]);
   }, [onSendMessage]);
 
-  const modeConfig = MODE_CONFIG.brainstorm;
   const [showPhaseMenu, setShowPhaseMenu] = useState(false);
 
   return (
@@ -332,21 +332,8 @@ export function BrainstormChatContainer({
       <div className="shrink-0 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/80 relative z-20">
         <div className="mx-auto max-w-4xl px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Icon + Title (collapsible on mobile) */}
-            <div className={cn(
-              "rounded-lg flex items-center justify-center shrink-0",
-              "size-8 sm:size-10",
-              modeConfig.bgColor,
-              modeConfig.color
-            )}>
-              <span className="material-symbols-outlined text-lg sm:text-xl">{modeConfig.icon}</span>
-            </div>
-            <div className="flex-1 min-w-0 hidden sm:block">
-              <h1 className="font-bold text-base sm:text-lg">{modeConfig.title}</h1>
-              <p className="text-xs text-muted-foreground truncate">
-                {modeConfig.shortDescription}
-              </p>
-            </div>
+            {/* Mode Selector (dropdown with new chat option) */}
+            <ChatModeSelector currentMode="brainstorm" conversationId={conversationId} />
 
             {/* Header Extra (Project Selector etc.) */}
             {headerExtra}

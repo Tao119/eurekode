@@ -142,6 +142,12 @@ export function Header() {
                           {session.user.email}
                         </p>
                       )}
+                      {tokenUsage?.organizationName && (
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">corporate_fare</span>
+                          {tokenUsage.organizationName}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">
                         {session.user.plan.toUpperCase()} プラン
                       </p>

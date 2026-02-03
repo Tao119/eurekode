@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { ChatModeSelector } from "./ChatModeSelector";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { MODE_CONFIG, MODE_ICON_SIZES } from "@/config/modes";
 import type { Message, ChatMode, ConversationBranch, FileAttachment } from "@/types/chat";
@@ -48,8 +49,6 @@ export function ChatContainer({
   conversationId,
 }: ChatContainerProps) {
   const { containerRef, endRef } = useAutoScroll(messages);
-  const config = MODE_CONFIG[mode];
-  const iconSize = MODE_ICON_SIZES.header;
   const [showBranchSelector, setShowBranchSelector] = useState(false);
 
   const hasBranches = branches.length > 1;
@@ -61,26 +60,8 @@ export function ChatContainer({
       <div className="shrink-0 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto max-w-4xl px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "rounded-lg flex items-center justify-center",
-                  iconSize.container,
-                  config.bgColor,
-                  config.color
-                )}
-              >
-                <span className={cn("material-symbols-outlined", iconSize.icon)}>
-                  {config.icon}
-                </span>
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">{config.title}</h1>
-                <p className="text-xs text-muted-foreground">
-                  {config.shortDescription}
-                </p>
-              </div>
-            </div>
+            {/* Mode Selector (dropdown with new chat option) */}
+            <ChatModeSelector currentMode={mode} conversationId={conversationId} />
 
             {/* Header Extra (Project Selector etc.) */}
             <div className="flex items-center gap-2">

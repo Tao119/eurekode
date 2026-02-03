@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { ChatModeSelector } from "./ChatModeSelector";
 import { BlurredCode } from "./BlurredCode";
 import { GenerationQuiz } from "./GenerationQuiz";
 import { GenerationOptionsPopover } from "./GenerationOptionsPopover";
@@ -354,9 +355,6 @@ export function GenerationChatContainer({
     return processed;
   }, []);
 
-  const modeConfig = MODE_CONFIG.generation;
-  const iconSize = MODE_ICON_SIZES.header;
-
   const hasCodeToShow = artifactsList.length > 0;
 
   return (
@@ -365,20 +363,11 @@ export function GenerationChatContainer({
       <div className="shrink-0 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className={cn(
-              "rounded-lg flex items-center justify-center",
-              iconSize.container,
-              modeConfig.bgColor,
-              modeConfig.color
-            )}>
-              <span className={cn("material-symbols-outlined", iconSize.icon)}>{modeConfig.icon}</span>
-            </div>
-            <div className="flex-1">
-              <h1 className="font-bold text-lg">{modeConfig.title}</h1>
-              <p className="text-xs text-muted-foreground">
-                {modeConfig.shortDescription}
-              </p>
-            </div>
+            {/* Mode Selector (dropdown with new chat option) */}
+            <ChatModeSelector currentMode="generation" conversationId={conversationId} />
+
+            {/* Spacer to push other elements to the right */}
+            <div className="flex-1" />
 
             {/* Header Extra (Project Selector etc.) */}
             {headerExtra}

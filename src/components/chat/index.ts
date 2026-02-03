@@ -2,6 +2,7 @@
 export { ChatMessage } from "./ChatMessage";
 export { ChatInput } from "./ChatInput";
 export { ChatContainer } from "./ChatContainer";
+export { ChatModeSelector } from "./ChatModeSelector";
 
 // Generation mode components
 export { GenerationChatContainer } from "./GenerationChatContainer";

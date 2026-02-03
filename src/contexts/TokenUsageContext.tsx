@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 interface TokenUsageContextValue {
   todayUsage: number;
   dailyLimit: number;
+  organizationName: string | null;
   isLoading: boolean;
   refreshUsage: () => Promise<void>;
   addUsage: (tokens: number) => void;
@@ -13,13 +14,15 @@ interface TokenUsageContextValue {
 
 const TokenUsageContext = createContext<TokenUsageContextValue | null>(null);
 
+const DEFAULT_DAILY_LIMIT = 10000;
+
 export function TokenUsageProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [todayUsage, setTodayUsage] = useState(0);
+  const [dailyLimit, setDailyLimit] = useState(DEFAULT_DAILY_LIMIT);
+  const [organizationName, setOrganizationName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const hasFetchedRef = useRef(false);
-
-  const dailyLimit = session?.user?.dailyTokenLimit || 1000;
 
   const refreshUsage = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -28,8 +31,16 @@ export function TokenUsageProvider({ children }: { children: React.ReactNode }) 
     try {
       const response = await fetch("/api/user/settings");
       const data = await response.json();
-      if (data.success && data.data.tokenUsage !== undefined) {
-        setTodayUsage(data.data.tokenUsage);
+      if (data.success) {
+        if (data.data.tokenUsage !== undefined) {
+          setTodayUsage(data.data.tokenUsage);
+        }
+        if (data.data.dailyTokenLimit !== undefined) {
+          setDailyLimit(data.data.dailyTokenLimit);
+        }
+        if (data.data.organizationName !== undefined) {
+          setOrganizationName(data.data.organizationName);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch token usage:", error);
@@ -53,6 +64,8 @@ export function TokenUsageProvider({ children }: { children: React.ReactNode }) 
     if (status === "unauthenticated") {
       hasFetchedRef.current = false;
       setTodayUsage(0);
+      setDailyLimit(DEFAULT_DAILY_LIMIT);
+      setOrganizationName(null);
     }
   }, [status, session?.user?.id, refreshUsage]);
 
@@ -61,6 +74,7 @@ export function TokenUsageProvider({ children }: { children: React.ReactNode }) 
       value={{
         todayUsage,
         dailyLimit,
+        organizationName,
         isLoading,
         refreshUsage,
         addUsage,
