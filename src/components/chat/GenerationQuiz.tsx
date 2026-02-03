@@ -49,19 +49,20 @@ export function GenerationQuiz({
     setSelectedOption(label);
     setShowResult(true);
     setIsCorrect(label === quiz.correctLabel);
-
-    // 正解の場合は少し待ってから次へ
-    if (label === quiz.correctLabel) {
-      setTimeout(() => {
-        onAnswer(label);
-      }, 1500);
-    }
+    // 自動で次へ進まず、解説を表示してから「次へ」ボタンで進む
   };
 
-  const handleRetry = () => {
-    setSelectedOption(null);
-    setShowResult(false);
-    setIsCorrect(false);
+  // 解説を見た後、次へ進む
+  const handleNext = () => {
+    // 正解の場合のみonAnswerを呼び出す
+    if (isCorrect && selectedOption) {
+      onAnswer(selectedOption);
+    } else {
+      // 不正解の場合はリトライ
+      setSelectedOption(null);
+      setShowResult(false);
+      setIsCorrect(false);
+    }
   };
 
   const levelInfo = LEVEL_LABELS[quiz.level];
@@ -209,32 +210,98 @@ export function GenerationQuiz({
               </span>
               <div className="flex-1">
                 {isCorrect ? (
-                  <>
-                    <p className="font-medium text-green-400 mb-1">正解です</p>
-                    <p className="text-sm text-foreground/80">
-                      次のレベルにアンロックします...
-                    </p>
-                  </>
+                  <p className="font-medium text-green-400 mb-1">正解です</p>
                 ) : (
-                  <>
-                    <p className="font-medium text-red-400 mb-1">もう一度考えてみましょう</p>
-                    <p className="text-sm text-foreground/80">
-                      ヒントを参考に、正解を見つけてください。
-                    </p>
-                  </>
+                  <p className="font-medium text-red-400 mb-1">不正解です</p>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* ヒント */}
-        {hintVisible && quiz.hint && !isCorrect && (
-          <div className="mt-4 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+        {/* 解説（正解・不正解どちらでも表示） */}
+        {showResult && (
+          <div className="mt-4 space-y-3">
+            {/* メイン解説 */}
+            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-blue-400 text-xl">school</span>
+                <div className="flex-1">
+                  <p className="font-medium text-blue-400 mb-2">解説</p>
+
+                  {/* 正解の説明 */}
+                  {(() => {
+                    const correctOption = quiz.options.find(o => o.label === quiz.correctLabel);
+                    return (
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                          <span className="text-sm font-medium text-green-400">
+                            正解: {quiz.correctLabel}) {correctOption?.text}
+                          </span>
+                        </div>
+                        {correctOption?.explanation ? (
+                          <p className="text-sm text-foreground/80 ml-6">{correctOption.explanation}</p>
+                        ) : quiz.hint ? (
+                          <p className="text-sm text-foreground/80 ml-6">{quiz.hint}</p>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+
+                  {/* 詳細解説 */}
+                  {quiz.detailedExplanation && (
+                    <p className="text-sm text-foreground/70 mb-3 p-2 bg-blue-500/5 rounded">
+                      {quiz.detailedExplanation}
+                    </p>
+                  )}
+
+                  {/* 他の選択肢の解説 */}
+                  <div className="border-t border-blue-500/20 pt-3 mt-3">
+                    <p className="text-xs font-medium text-foreground/60 mb-2">なぜ他の選択肢は不正解なのか:</p>
+                    <div className="space-y-2">
+                      {quiz.options
+                        .filter(option => option.label !== quiz.correctLabel)
+                        .map(option => (
+                          <div key={option.label} className="flex items-start gap-2">
+                            <span className="material-symbols-outlined text-red-400/70 text-sm mt-0.5">close</span>
+                            <div className="flex-1">
+                              <span className="text-sm text-foreground/70">
+                                <span className="font-medium">{option.label})</span> {option.text}
+                              </span>
+                              {option.explanation && (
+                                <p className="text-xs text-foreground/50 mt-0.5">{option.explanation}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* あなたの回答（不正解の場合） */}
+            {!isCorrect && selectedOption && (
+              <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="material-symbols-outlined text-red-400 text-base">info</span>
+                  <span className="text-foreground/70">
+                    あなたの回答: <span className="font-medium text-red-400">{selectedOption}</span>
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ヒント（回答前のみ表示） */}
+        {!showResult && hintVisible && quiz.hint && (
+          <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
             <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-blue-400 text-xl">lightbulb</span>
+              <span className="material-symbols-outlined text-yellow-400 text-xl">lightbulb</span>
               <div>
-                <p className="font-medium text-blue-400 mb-1">ヒント</p>
+                <p className="font-medium text-yellow-400 mb-1">ヒント</p>
                 <p className="text-sm text-foreground/80">{quiz.hint}</p>
               </div>
             </div>
@@ -243,18 +310,24 @@ export function GenerationQuiz({
 
         {/* アクションボタン */}
         <div className="mt-4 flex items-center gap-3">
-          {showResult && !isCorrect && (
+          {showResult && (
             <Button
-              onClick={handleRetry}
-              variant="outline"
-              className="flex-1"
+              onClick={handleNext}
+              className={cn(
+                "flex-1",
+                isCorrect
+                  ? "bg-green-600 hover:bg-green-700 text-white"
+                  : "bg-yellow-600 hover:bg-yellow-700 text-white"
+              )}
             >
-              <span className="material-symbols-outlined text-lg mr-2">refresh</span>
-              もう一度挑戦
+              <span className="material-symbols-outlined text-lg mr-2">
+                {isCorrect ? "arrow_forward" : "refresh"}
+              </span>
+              {isCorrect ? "次のレベルへ" : "もう一度挑戦"}
             </Button>
           )}
 
-          {canSkip && (
+          {canSkip && !showResult && (
             <Button
               onClick={onSkip}
               variant="ghost"

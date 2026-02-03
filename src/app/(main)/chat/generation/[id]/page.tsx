@@ -1,16 +1,30 @@
 "use client";
 
-import { useEffect, use } from "react";
+import { useEffect, use, useCallback, useMemo } from "react";
 import { GenerationChatContainer } from "@/components/chat";
 import { useChat } from "@/hooks/useChat";
+import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { toast } from "sonner";
+import type { PersistedGenerationState } from "@/hooks/useGenerationMode";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+// 拡張されたConversationMetadata型（generationStateを含む）
+interface ExtendedConversationMetadata {
+  generationState?: PersistedGenerationState;
+  // その他のフィールドは省略
+}
+
 export default function GenerationRoomPage({ params }: PageProps) {
   const { id: conversationId } = use(params);
+  const tokenUsage = useTokenUsageOptional();
+
+  // Update token usage when response completes
+  const handleTokensUsed = useCallback((tokens: number) => {
+    tokenUsage?.addUsage(tokens);
+  }, [tokenUsage]);
 
   const {
     messages,
@@ -26,12 +40,14 @@ export default function GenerationRoomPage({ params }: PageProps) {
     canRegenerate,
     generationRecovery,
     clearGenerationRecovery,
+    restoredMetadata,
   } = useChat({
     mode: "generation",
     conversationId,
     onError: (error) => {
       toast.error(error.message);
     },
+    onTokensUsed: handleTokensUsed,
   });
 
   // Load conversation on mount (only when conversationId changes)
@@ -63,6 +79,12 @@ export default function GenerationRoomPage({ params }: PageProps) {
     }
   }, [generationRecovery, clearGenerationRecovery]);
 
+  // 会話metadataから生成モード状態を取得
+  const initialGenerationState = useMemo(() => {
+    const extendedMetadata = restoredMetadata as ExtendedConversationMetadata | null;
+    return extendedMetadata?.generationState || undefined;
+  }, [restoredMetadata]);
+
   return (
     <GenerationChatContainer
       messages={messages}
@@ -78,6 +100,8 @@ export default function GenerationRoomPage({ params }: PageProps) {
       onSwitchBranch={switchBranch}
       onRegenerate={regenerateLastMessage}
       canRegenerate={canRegenerate}
+      conversationId={conversationId}
+      initialGenerationState={initialGenerationState}
     />
   );
 }

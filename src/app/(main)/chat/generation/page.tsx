@@ -1,20 +1,32 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { GenerationChatContainer } from "@/components/chat";
+import { ProjectSelector } from "@/components/chat/ProjectSelector";
 import { useChat } from "@/hooks/useChat";
+import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { toast } from "sonner";
 
 export default function GenerationModePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const conversationId = searchParams.get("id");
+  const initialProjectId = searchParams.get("projectId");
+  const tokenUsage = useTokenUsageOptional();
+
+  // Project selection state (can be changed before first message)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId);
 
   // Navigate to the room route when a new conversation is created
   const handleConversationCreated = useCallback((id: string) => {
     router.replace(`/chat/generation/${id}`);
   }, [router]);
+
+  // Update token usage when response completes
+  const handleTokensUsed = useCallback((tokens: number) => {
+    tokenUsage?.addUsage(tokens);
+  }, [tokenUsage]);
 
   const {
     messages,
@@ -33,11 +45,16 @@ export default function GenerationModePage() {
   } = useChat({
     mode: "generation",
     conversationId: conversationId || undefined,
+    projectId: selectedProjectId || undefined,
     onError: (error) => {
       toast.error(error.message);
     },
     onConversationCreated: handleConversationCreated,
+    onTokensUsed: handleTokensUsed,
   });
+
+  // Disable project change once conversation has started
+  const canChangeProject = messages.length === 0 && !conversationId;
 
   // Load conversation from history if ID is provided (legacy query param support)
   useEffect(() => {
@@ -84,6 +101,14 @@ export default function GenerationModePage() {
       onSwitchBranch={switchBranch}
       onRegenerate={regenerateLastMessage}
       canRegenerate={canRegenerate}
+      conversationId={conversationId || undefined}
+      headerExtra={
+        <ProjectSelector
+          selectedProjectId={selectedProjectId}
+          onProjectChange={setSelectedProjectId}
+          disabled={!canChangeProject}
+        />
+      }
     />
   );
 }

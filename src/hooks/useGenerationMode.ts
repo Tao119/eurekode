@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import type { Artifact } from "@/types/chat";
 
 // 生成モードのフェーズ
 export type GenerationPhase =
@@ -13,13 +14,21 @@ export type GenerationPhase =
 // アンロックレベル（要件定義書 3.3.3 より）
 export type UnlockLevel = 1 | 2 | 3 | 4;
 
+// クイズの選択肢
+export interface QuizOption {
+  label: string;
+  text: string;
+  explanation?: string; // 各選択肢の解説（なぜ正解/不正解か）
+}
+
 // クイズの質問タイプ
 export interface UnlockQuiz {
   level: UnlockLevel;
   question: string;
-  options: { label: string; text: string }[];
+  options: QuizOption[];
   correctLabel: string;
-  hint?: string;
+  hint?: string; // メインの解説
+  detailedExplanation?: string; // より詳細な解説
 }
 
 // 生成されたコード情報
@@ -34,13 +43,24 @@ export interface GeneratedCode {
 export interface Plan {
   steps: string[];
   estimatedTime?: number; // 分単位
-  userEstimate?: number;  // ユーザーの見積もり
+}
+
+// アーティファクトごとの進行状況
+export interface ArtifactProgress {
+  unlockLevel: UnlockLevel;
+  currentQuiz: UnlockQuiz | null;
+  quizHistory: {
+    level: UnlockLevel;
+    question: string;
+    userAnswer: string;
+    isCorrect: boolean;
+  }[];
 }
 
 // 生成モードの状態
 export interface GenerationModeState {
   phase: GenerationPhase;
-  unlockLevel: UnlockLevel;
+  unlockLevel: UnlockLevel; // 後方互換性のため残す（アクティブなアーティファクトのレベル）
   generatedCode: GeneratedCode | null;
   plan: Plan | null;
   quizHistory: {
@@ -52,20 +72,33 @@ export interface GenerationModeState {
   currentQuiz: UnlockQuiz | null;
   hintVisible: boolean;
   hintTimer: number | null;
+  // Artifact system
+  artifacts: Record<string, Artifact>;
+  activeArtifactId: string | null;
+  // アーティファクトごとの進行状況
+  artifactProgress: Record<string, ArtifactProgress>;
 }
 
 // オプション設定
 export interface GenerationOptions {
   unlockMethod: "quiz" | "explanation" | "skip";
   hintSpeed: "immediate" | "30sec" | "none";
-  estimationTraining: boolean;
 }
 
 const DEFAULT_OPTIONS: GenerationOptions = {
   unlockMethod: "quiz",
   hintSpeed: "30sec",
-  estimationTraining: true,
 };
+
+// 永続化する状態の型（タイマーなどは除外）
+export interface PersistedGenerationState {
+  phase: GenerationPhase;
+  unlockLevel: UnlockLevel;
+  artifacts: Record<string, Artifact>;
+  activeArtifactId: string | null;
+  artifactProgress: Record<string, ArtifactProgress>;
+  quizHistory: GenerationModeState["quizHistory"];
+}
 
 // レベルごとのぼかし強度（Tailwind CSSクラス）
 export const BLUR_LEVELS: Record<UnlockLevel, string> = {
@@ -83,22 +116,114 @@ export const LEVEL_LABELS: Record<UnlockLevel, { title: string; description: str
   4: { title: "完了", description: "コピー可能" },
 };
 
-export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
-  const [state, setState] = useState<GenerationModeState>({
-    phase: "initial",
-    unlockLevel: 1,
-    generatedCode: null,
-    plan: null,
-    quizHistory: [],
-    currentQuiz: null,
-    hintVisible: false,
-    hintTimer: null,
+// API経由で生成モード状態を保存
+async function saveGenerationStateToAPI(
+  conversationId: string,
+  state: GenerationModeState
+): Promise<void> {
+  try {
+    const generationState: PersistedGenerationState = {
+      phase: state.phase,
+      unlockLevel: state.unlockLevel,
+      artifacts: state.artifacts,
+      activeArtifactId: state.activeArtifactId,
+      artifactProgress: state.artifactProgress,
+      quizHistory: state.quizHistory,
+    };
+
+    await fetch(`/api/conversations/${conversationId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        metadata: {
+          generationState,
+        },
+      }),
+    });
+  } catch (e) {
+    console.error("Failed to save generation state:", e);
+  }
+}
+
+export interface UseGenerationModeOptions extends Partial<GenerationOptions> {
+  conversationId?: string; // 永続化用の会話ID
+  initialState?: PersistedGenerationState; // 初期状態（会話metadataから）
+}
+
+export function useGenerationMode(options: UseGenerationModeOptions = {}) {
+  const { conversationId, initialState, ...generationOptions } = options;
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedStateRef = useRef<string>("");
+
+  const [state, setState] = useState<GenerationModeState>(() => {
+    const defaultState: GenerationModeState = {
+      phase: "initial",
+      unlockLevel: 1,
+      generatedCode: null,
+      plan: null,
+      quizHistory: [],
+      currentQuiz: null,
+      hintVisible: false,
+      hintTimer: null,
+      artifacts: {},
+      activeArtifactId: null,
+      artifactProgress: {},
+    };
+
+    // 初期状態があれば適用
+    if (initialState) {
+      return {
+        ...defaultState,
+        phase: initialState.phase || "initial",
+        unlockLevel: initialState.unlockLevel || 1,
+        artifacts: initialState.artifacts || {},
+        activeArtifactId: initialState.activeArtifactId || null,
+        artifactProgress: initialState.artifactProgress || {},
+        quizHistory: initialState.quizHistory || [],
+        // アクティブなアーティファクトの進行状況からcurrentQuizを設定しない（表示バグ防止）
+        currentQuiz: null,
+      };
+    }
+
+    return defaultState;
   });
 
   const [currentOptions, setCurrentOptions] = useState<GenerationOptions>({
     ...DEFAULT_OPTIONS,
-    ...options,
+    ...generationOptions,
   });
+
+  // 状態が変更されたらAPIに保存（デバウンス付き）
+  useEffect(() => {
+    if (!conversationId || state.phase === "initial") return;
+
+    // 状態の変更を検出
+    const stateHash = JSON.stringify({
+      phase: state.phase,
+      unlockLevel: state.unlockLevel,
+      artifactProgress: state.artifactProgress,
+      activeArtifactId: state.activeArtifactId,
+    });
+
+    // 同じ状態なら保存しない
+    if (stateHash === lastSavedStateRef.current) return;
+
+    // デバウンス: 500ms後に保存
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      lastSavedStateRef.current = stateHash;
+      saveGenerationStateToAPI(conversationId, state);
+    }, 500);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [conversationId, state]);
 
   // フェーズを変更
   const setPhase = useCallback((phase: GenerationPhase) => {
@@ -130,12 +255,34 @@ export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
 
   // クイズを設定
   const setCurrentQuiz = useCallback((quiz: UnlockQuiz) => {
-    setState((prev) => ({
-      ...prev,
-      currentQuiz: quiz,
-      phase: "unlocking",
-      hintVisible: currentOptions.hintSpeed === "immediate",
-    }));
+    setState((prev) => {
+      const activeId = prev.activeArtifactId;
+      const currentProgress = activeId ? prev.artifactProgress[activeId] : null;
+
+      // アンロック済みの場合はクイズを設定しない
+      if (currentProgress && currentProgress.unlockLevel >= 4) {
+        return prev;
+      }
+
+      // アーティファクトごとの進行状況も更新
+      const updatedProgress: Record<string, ArtifactProgress> = activeId && currentProgress
+        ? {
+            ...prev.artifactProgress,
+            [activeId]: {
+              ...currentProgress,
+              currentQuiz: quiz,
+            },
+          }
+        : prev.artifactProgress;
+
+      return {
+        ...prev,
+        currentQuiz: quiz,
+        phase: "unlocking",
+        hintVisible: currentOptions.hintSpeed === "immediate",
+        artifactProgress: updatedProgress,
+      };
+    });
 
     // 30秒後にヒント表示
     if (currentOptions.hintSpeed === "30sec") {
@@ -158,26 +305,46 @@ export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
         clearTimeout(prev.hintTimer);
       }
 
-      const newHistory = [
-        ...prev.quizHistory,
-        {
-          level: prev.currentQuiz!.level,
-          question: prev.currentQuiz!.question,
-          userAnswer: answer,
-          isCorrect,
-        },
-      ];
+      const activeId = prev.activeArtifactId;
+      const currentProgress = activeId ? prev.artifactProgress[activeId] : null;
+
+      const newHistoryItem = {
+        level: prev.currentQuiz!.level,
+        question: prev.currentQuiz!.question,
+        userAnswer: answer,
+        isCorrect,
+      };
+
+      const newHistory = [...prev.quizHistory, newHistoryItem];
 
       if (isCorrect) {
         const nextLevel = (prev.unlockLevel + 1) as UnlockLevel;
+        const clampedLevel = nextLevel > 4 ? 4 : nextLevel;
+
+        // アーティファクトごとの進行状況も更新
+        const updatedProgress: Record<string, ArtifactProgress> = activeId
+          ? {
+              ...prev.artifactProgress,
+              [activeId]: {
+                unlockLevel: clampedLevel,
+                currentQuiz: null,
+                quizHistory: currentProgress
+                  ? [...currentProgress.quizHistory, newHistoryItem]
+                  : [newHistoryItem],
+              },
+            }
+          : prev.artifactProgress;
+
         return {
           ...prev,
           quizHistory: newHistory,
-          unlockLevel: nextLevel > 4 ? 4 : nextLevel,
+          unlockLevel: clampedLevel,
+          // 正解時はクイズをクリア（フォールバックで次のクイズを生成）
           currentQuiz: null,
           phase: nextLevel > 3 ? "unlocked" : "unlocking",
           hintVisible: false,
           hintTimer: null,
+          artifactProgress: updatedProgress,
         };
       }
 
@@ -195,13 +362,31 @@ export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
 
   // スキップ（管理者設定で許可されている場合）
   const skipToUnlock = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      unlockLevel: 4,
-      phase: "unlocked",
-      currentQuiz: null,
-      hintVisible: false,
-    }));
+    setState((prev) => {
+      const activeId = prev.activeArtifactId;
+      const currentProgress = activeId ? prev.artifactProgress[activeId] : null;
+
+      // アーティファクトごとの進行状況も更新
+      const updatedProgress: Record<string, ArtifactProgress> = activeId && currentProgress
+        ? {
+            ...prev.artifactProgress,
+            [activeId]: {
+              ...currentProgress,
+              unlockLevel: 4,
+              currentQuiz: null,
+            },
+          }
+        : prev.artifactProgress;
+
+      return {
+        ...prev,
+        unlockLevel: 4,
+        phase: "unlocked",
+        currentQuiz: null,
+        hintVisible: false,
+        artifactProgress: updatedProgress,
+      };
+    });
   }, []);
 
   // リセット
@@ -215,6 +400,9 @@ export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
       currentQuiz: null,
       hintVisible: false,
       hintTimer: null,
+      artifacts: {},
+      activeArtifactId: null,
+      artifactProgress: {},
     });
   }, []);
 
@@ -222,6 +410,98 @@ export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
   const updateOptions = useCallback((newOptions: Partial<GenerationOptions>) => {
     setCurrentOptions((prev) => ({ ...prev, ...newOptions }));
   }, []);
+
+  // アーティファクトを追加または更新
+  const addOrUpdateArtifact = useCallback((artifact: Artifact) => {
+    setState((prev) => {
+      const existing = prev.artifacts[artifact.id];
+      const existingProgress = prev.artifactProgress[artifact.id];
+      const isNewArtifact = !existing;
+
+      const updatedArtifact: Artifact = existing
+        ? {
+            ...artifact,
+            version: existing.version + 1,
+            updatedAt: new Date().toISOString(),
+            createdAt: existing.createdAt,
+          }
+        : artifact;
+
+      // 新しいアーティファクトの場合、進行状況を初期化
+      const newProgress: ArtifactProgress = existingProgress || {
+        unlockLevel: 1,
+        currentQuiz: null,
+        quizHistory: [],
+      };
+
+      // 新しいアーティファクトに切り替えた場合、そのアーティファクトの進行状況を使用
+      const activeProgress = prev.artifactProgress[artifact.id] || newProgress;
+
+      return {
+        ...prev,
+        artifacts: {
+          ...prev.artifacts,
+          [artifact.id]: updatedArtifact,
+        },
+        activeArtifactId: artifact.id,
+        // アクティブなアーティファクトの進行状況を反映
+        unlockLevel: activeProgress.unlockLevel,
+        // 新規またはアンロック済みの場合はクイズをクリア
+        currentQuiz: isNewArtifact || activeProgress.unlockLevel >= 4 ? null : activeProgress.currentQuiz,
+        quizHistory: activeProgress.quizHistory,
+        // Also set generatedCode for backward compatibility
+        generatedCode: {
+          language: artifact.language || "text",
+          code: artifact.content,
+          filename: artifact.title,
+        },
+        phase: prev.phase === "initial" ? "coding" : (activeProgress.unlockLevel >= 4 ? "unlocked" : "unlocking"),
+        artifactProgress: {
+          ...prev.artifactProgress,
+          [artifact.id]: newProgress,
+        },
+      };
+    });
+  }, []);
+
+  // アクティブなアーティファクトを設定
+  const setActiveArtifact = useCallback((id: string) => {
+    setState((prev) => {
+      const artifact = prev.artifacts[id];
+      if (!artifact) return prev;
+
+      // アーティファクトの進行状況を取得
+      const progress = prev.artifactProgress[id] || {
+        unlockLevel: 1 as UnlockLevel,
+        currentQuiz: null,
+        quizHistory: [],
+      };
+
+      // アンロック済みの場合はクイズをクリア
+      const isUnlocked = progress.unlockLevel >= 4;
+
+      return {
+        ...prev,
+        activeArtifactId: id,
+        // アクティブなアーティファクトの進行状況を反映
+        unlockLevel: progress.unlockLevel,
+        // アンロック済みの場合はクイズを表示しない
+        currentQuiz: isUnlocked ? null : progress.currentQuiz,
+        quizHistory: progress.quizHistory,
+        phase: isUnlocked ? "unlocked" : "unlocking",
+        generatedCode: {
+          language: artifact.language || "text",
+          code: artifact.content,
+          filename: artifact.title,
+        },
+      };
+    });
+  }, []);
+
+  // アクティブなアーティファクトを取得
+  const activeArtifact = state.activeArtifactId
+    ? state.artifacts[state.activeArtifactId]
+    : null;
 
   // コードをコピー可能かどうか
   const canCopyCode = state.unlockLevel === 4;
@@ -234,6 +514,7 @@ export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
     options: currentOptions,
     canCopyCode,
     progressPercentage,
+    activeArtifact,
     setPhase,
     setPlan,
     setUserEstimate,
@@ -243,5 +524,8 @@ export function useGenerationMode(options: Partial<GenerationOptions> = {}) {
     skipToUnlock,
     reset,
     updateOptions,
+    // Artifact management
+    addOrUpdateArtifact,
+    setActiveArtifact,
   };
 }

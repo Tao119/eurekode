@@ -4,21 +4,35 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { BlurredCode } from "./BlurredCode";
-import { GenerationQuiz, QUIZ_TEMPLATES } from "./GenerationQuiz";
+import { GenerationQuiz } from "./GenerationQuiz";
 import { GenerationOptionsPopover } from "./GenerationOptionsPopover";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import {
   useGenerationMode,
   type UnlockLevel,
   type UnlockQuiz,
-  type GeneratedCode,
-  type GenerationOptions,
+  type UseGenerationModeOptions,
+  type PersistedGenerationState,
 } from "@/hooks/useGenerationMode";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
 import { MODE_CONFIG, MODE_ICON_SIZES } from "@/config/modes";
-import type { Message, ConversationBranch } from "@/types/chat";
+import type { Message, ConversationBranch, Artifact } from "@/types/chat";
 import { cn } from "@/lib/utils";
+import { parseArtifacts } from "@/lib/artifacts";
+import {
+  parseStructuredQuiz,
+  extractQuizFromText,
+  generateFallbackQuiz,
+  structuredQuizToUnlockQuiz,
+  removeQuizMarkerFromContent,
+} from "@/lib/quiz-generator";
 
 interface GenerationChatContainerProps {
   messages: Message[];
@@ -37,55 +51,27 @@ interface GenerationChatContainerProps {
   // Regenerate functionality
   onRegenerate?: () => void;
   canRegenerate?: boolean;
+  // Project selector
+  headerExtra?: React.ReactNode;
+  // Persistence
+  conversationId?: string; // クイズ進行状況を保存するためのID
+  // 初期状態（会話metadataから読み込み）
+  initialGenerationState?: PersistedGenerationState;
 }
 
-// AIレスポンスからコードブロックを抽出
-function extractCodeBlock(content: string): GeneratedCode | null {
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/;
-  const match = content.match(codeBlockRegex);
-
-  if (match) {
-    return {
-      language: match[1] || "text",
-      code: match[2].trim(),
-    };
-  }
-
-  return null;
-}
-
-// AIレスポンスからクイズを抽出
+/**
+ * Extract quiz from AI response content
+ * Priority: 1. Structured quiz format 2. Text-based extraction
+ */
 function extractQuizFromResponse(content: string, level: UnlockLevel): UnlockQuiz | null {
-  // 選択肢パターン: A) text or A. text
-  const optionPattern = /^([A-D])[).\:：]\s*(.+)$/gm;
-  const matches = [...content.matchAll(optionPattern)];
-
-  if (matches.length >= 2) {
-    // 質問を探す（選択肢の前の質問文）
-    const questionMatch = content.match(/.*[？?]\s*(?=\n*[A-D][).:])/);
-    const question = questionMatch
-      ? questionMatch[0].trim()
-      : QUIZ_TEMPLATES[level].questions[0];
-
-    const options = matches.map((m) => ({
-      label: m[1],
-      text: m[2].trim(),
-    }));
-
-    // 正解を推測（通常はAが正解として設定されることが多いが、コンテキストから判断）
-    // ここでは仮にAを正解とする（実際のAIレスポンスに正解情報を含める必要がある）
-    const correctLabel = "A";
-
-    return {
-      level,
-      question,
-      options,
-      correctLabel,
-      hint: `この問題は${QUIZ_TEMPLATES[level].questions[0]}に関する理解を確認しています。`,
-    };
+  // Try structured quiz format first
+  const structuredQuiz = parseStructuredQuiz(content);
+  if (structuredQuiz) {
+    return structuredQuizToUnlockQuiz(structuredQuiz);
   }
 
-  return null;
+  // Fallback to text-based extraction
+  return extractQuizFromText(content, level);
 }
 
 export function GenerationChatContainer({
@@ -103,9 +89,13 @@ export function GenerationChatContainer({
   onSwitchBranch,
   onRegenerate,
   canRegenerate = false,
+  headerExtra,
+  conversationId,
+  initialGenerationState,
 }: GenerationChatContainerProps) {
   const { containerRef, endRef } = useAutoScroll(messages);
   const [showBranchSelector, setShowBranchSelector] = useState(false);
+  const [isCodePanelCollapsed, setIsCodePanelCollapsed] = useState(false);
   const hasBranches = branches.length > 1;
   const currentBranch = branches.find((b) => b.id === currentBranchId);
 
@@ -113,34 +103,102 @@ export function GenerationChatContainer({
   const userSettingsContext = useUserSettingsOptional();
 
   // Convert user settings to generation options
-  const initialOptions = useMemo<Partial<GenerationOptions>>(() => {
-    if (!userSettingsContext) return {};
+  const initialOptions = useMemo<UseGenerationModeOptions>(() => {
+    const baseOptions: UseGenerationModeOptions = {
+      conversationId,
+      initialState: initialGenerationState,
+    };
+
+    if (!userSettingsContext) return baseOptions;
+
     const { settings } = userSettingsContext;
     return {
+      ...baseOptions,
       unlockMethod: settings.unlockMethod,
       hintSpeed: settings.hintSpeed,
-      estimationTraining: settings.estimationTraining,
     };
-  }, [userSettingsContext]);
+  }, [userSettingsContext, conversationId, initialGenerationState]);
 
   const {
     state,
     options,
     canCopyCode,
     progressPercentage,
+    activeArtifact,
     setPhase,
     setGeneratedCode,
     setCurrentQuiz,
     answerQuiz,
     skipToUnlock,
     updateOptions,
+    addOrUpdateArtifact,
+    setActiveArtifact,
   } = useGenerationMode(initialOptions);
 
   const [showPlanningHelper, setShowPlanningHelper] = useState(false);
-  const prevMessagesLengthRef = useRef(messages.length);
+  const prevMessagesLengthRef = useRef(0);
+  const initializedRef = useRef(false);
+
+  // Artifacts list from state
+  const artifactsList = useMemo(() => Object.values(state.artifacts), [state.artifacts]);
+
+  // 初期読み込み時にすべてのメッセージからアーティファクトを抽出
+  useEffect(() => {
+    if (initializedRef.current || messages.length === 0) return;
+    initializedRef.current = true;
+    prevMessagesLengthRef.current = messages.length;
+
+    // すでにunlocked状態（localStorageから復元）ならスキップ
+    if (state.phase === "unlocked" && state.unlockLevel === 4) {
+      // アーティファクトのみ抽出（フェーズは変更しない）
+      for (const message of messages) {
+        if (message.role === "assistant") {
+          const { artifacts } = parseArtifacts(message.content);
+          for (const artifact of artifacts) {
+            addOrUpdateArtifact(artifact);
+          }
+        }
+      }
+      return;
+    }
+
+    // すべてのアシスタントメッセージからアーティファクト形式のみを抽出
+    // 通常のコードブロックはアーティファクトとして扱わない
+    let hasArtifacts = false;
+    let lastAssistantContent = "";
+
+    for (const message of messages) {
+      if (message.role === "assistant") {
+        lastAssistantContent = message.content;
+        const { artifacts } = parseArtifacts(message.content);
+        if (artifacts.length > 0) {
+          hasArtifacts = true;
+          for (const artifact of artifacts) {
+            addOrUpdateArtifact(artifact);
+          }
+        }
+      }
+    }
+
+    // アーティファクトがあればcodingフェーズに移行（ただしunlockedでない場合のみ）
+    if (hasArtifacts && state.phase !== "unlocked") {
+      // localStorageから復元された状態を尊重
+      if (state.phase === "initial" || state.phase === "planning") {
+        setPhase("coding");
+      }
+      // クイズは完全アンロック前のみ抽出
+      if (state.unlockLevel < 4) {
+        const quiz = extractQuizFromResponse(lastAssistantContent, state.unlockLevel);
+        if (quiz) {
+          setCurrentQuiz(quiz);
+        }
+      }
+    }
+  }, [messages, addOrUpdateArtifact, setPhase, setCurrentQuiz, state.unlockLevel, state.phase]);
 
   // メッセージが追加されたときの処理
   useEffect(() => {
+    if (!initializedRef.current) return;
     if (messages.length <= prevMessagesLengthRef.current) {
       prevMessagesLengthRef.current = messages.length;
       return;
@@ -154,6 +212,19 @@ export function GenerationChatContainer({
 
     const content = lastMessage.content;
 
+    // アーティファクト形式のコードのみを抽出（通常のコードブロックは対象外）
+    const { artifacts } = parseArtifacts(content);
+    if (artifacts.length > 0) {
+      for (const artifact of artifacts) {
+        addOrUpdateArtifact(artifact);
+      }
+      // アーティファクトが見つかったらcodingフェーズに移行
+      if (state.phase === "initial" || state.phase === "planning") {
+        setPhase("coding");
+        setShowPlanningHelper(false);
+      }
+    }
+
     // フェーズに応じた処理
     if (state.phase === "initial" || state.phase === "planning") {
       // 計画を促すメッセージがあれば計画フェーズへ
@@ -161,22 +232,31 @@ export function GenerationChatContainer({
         setPhase("planning");
         setShowPlanningHelper(true);
       }
-
-      // コードブロックがあれば抽出
-      const codeBlock = extractCodeBlock(content);
-      if (codeBlock) {
-        setGeneratedCode(codeBlock);
-      }
     }
 
-    if (state.phase === "coding" || state.phase === "unlocking") {
-      // クイズを抽出
+    // クイズを抽出（アーティファクトがある場合、またはcoding/unlockingフェーズの場合）
+    if (artifacts.length > 0 || state.phase === "coding" || state.phase === "unlocking") {
       const quiz = extractQuizFromResponse(content, state.unlockLevel);
       if (quiz) {
         setCurrentQuiz(quiz);
       }
     }
-  }, [messages, state.phase, state.unlockLevel, setPhase, setGeneratedCode, setCurrentQuiz]);
+  }, [messages, state.phase, state.unlockLevel, setPhase, setCurrentQuiz, addOrUpdateArtifact]);
+
+  // クイズが必要な場合に自動生成（フォールバック）
+  useEffect(() => {
+    // unlocking フェーズで currentQuiz がなく、まだ完全アンロックではない場合
+    if (
+      state.phase === "unlocking" &&
+      !state.currentQuiz &&
+      state.unlockLevel < 4 &&
+      artifactsList.length > 0
+    ) {
+      // フォールバッククイズを生成
+      const fallbackQuiz = generateFallbackQuiz(state.unlockLevel, activeArtifact);
+      setCurrentQuiz(fallbackQuiz);
+    }
+  }, [state.phase, state.currentQuiz, state.unlockLevel, activeArtifact, artifactsList.length, setCurrentQuiz]);
 
   // 簡易計画を選択して送信
   const handleQuickPlanSelect = useCallback(
@@ -193,19 +273,12 @@ export function GenerationChatContainer({
     [onSendMessage]
   );
 
-  // クイズに回答
+  // クイズに回答（メッセージは送信せず、ローカルで処理）
   const handleQuizAnswer = useCallback(
     (answer: string) => {
-      const isCorrect = answerQuiz(answer);
-
-      // 回答をチャットに送信
-      const answerText = isCorrect
-        ? `${answer}を選択しました。正解です！`
-        : `${answer}を選択しました。`;
-
-      onSendMessage(answerText);
+      answerQuiz(answer);
     },
-    [answerQuiz, onSendMessage]
+    [answerQuiz]
   );
 
   // スキップ
@@ -214,19 +287,31 @@ export function GenerationChatContainer({
     onSendMessage("アンロックをスキップしました。");
   }, [skipToUnlock, onSendMessage]);
 
-  // アンロック開始
-  const handleStartUnlock = useCallback(() => {
-    onSendMessage("コードを理解するためのクイズを始めます。");
-  }, [onSendMessage]);
+  // チャットメッセージを処理（アーティファクトのみ置換、通常コードブロックはそのまま）
+  const getProcessedContent = useCallback((content: string) => {
+    let processed = content;
+
+    // Remove quiz markers from display
+    processed = removeQuizMarkerFromContent(processed);
+
+    // アーティファクト形式のコードのみをプレースホルダーに置換
+    // 通常のコードブロックはそのまま表示
+    const { contentWithoutArtifacts } = parseArtifacts(processed);
+    processed = contentWithoutArtifacts;
+
+    return processed;
+  }, []);
 
   const modeConfig = MODE_CONFIG.generation;
   const iconSize = MODE_ICON_SIZES.header;
+
+  const hasCodeToShow = artifactsList.length > 0;
 
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Mode Header */}
       <div className="shrink-0 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="mx-auto max-w-4xl px-4 py-3">
+        <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex items-center gap-3">
             <div className={cn(
               "rounded-lg flex items-center justify-center",
@@ -242,6 +327,9 @@ export function GenerationChatContainer({
                 {modeConfig.shortDescription}
               </p>
             </div>
+
+            {/* Header Extra (Project Selector etc.) */}
+            {headerExtra}
 
             {/* 設定ポップオーバー */}
             <GenerationOptionsPopover
@@ -267,6 +355,24 @@ export function GenerationChatContainer({
                   {Math.round(progressPercentage)}%
                 </div>
               </div>
+            )}
+
+            {/* Code Panel Toggle */}
+            {hasCodeToShow && (
+              <button
+                onClick={() => setIsCodePanelCollapsed(!isCodePanelCollapsed)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors text-sm",
+                  isCodePanelCollapsed
+                    ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20"
+                    : "border-border bg-card hover:bg-muted/50"
+                )}
+              >
+                <span className="material-symbols-outlined text-base">
+                  {isCodePanelCollapsed ? "dock_to_left" : "dock_to_right"}
+                </span>
+                <span>{isCodePanelCollapsed ? "コードを表示" : "コードを非表示"}</span>
+              </button>
             )}
 
             {/* Branch Selector */}
@@ -300,125 +406,248 @@ export function GenerationChatContainer({
         </div>
       </div>
 
-      {/* Messages */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto min-h-0">
-        {messages.length === 0 ? (
-          <WelcomeScreen
-            welcomeMessage={welcomeMessage}
-            onSuggestionClick={onSendMessage}
-          />
-        ) : (
-          <div className="mx-auto max-w-4xl pb-4">
-            {messages.map((message, index) => {
-              // Find if this is the last assistant message
-              const isLastAssistantMessage =
-                message.role === "assistant" &&
-                !messages.slice(index + 1).some((m) => m.role === "assistant");
+      {/* Main Content - Split View */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left Panel - Chat */}
+        <div className={cn(
+          "flex flex-col min-h-0 transition-all duration-300",
+          hasCodeToShow && !isCodePanelCollapsed ? "w-1/2" : "w-full"
+        )}>
+          {/* Messages */}
+          <div ref={containerRef} className="flex-1 overflow-y-auto min-h-0">
+            {messages.length === 0 ? (
+              <WelcomeScreen
+                welcomeMessage={welcomeMessage}
+                onSuggestionClick={onSendMessage}
+              />
+            ) : (
+              <div className="mx-auto max-w-3xl pb-4">
+                {messages.map((message, index) => {
+                  // Find if this is the last assistant message
+                  const isLastAssistantMessage =
+                    message.role === "assistant" &&
+                    !messages.slice(index + 1).some((m) => m.role === "assistant");
 
-              return (
-              <div key={message.id || index}>
-                <ChatMessage
-                  message={message}
-                  isStreaming={isLoading && index === messages.length - 1 && message.role === "assistant"}
-                  onOptionSelect={!isLoading && isLastAssistantMessage ? onSendMessage : undefined}
-                  onFork={onForkFromMessage ? () => onForkFromMessage(index) : undefined}
-                  showForkButton={!isLoading && index < messages.length - 1}
-                  onRegenerate={onRegenerate}
-                  showRegenerateButton={!isLoading && isLastAssistantMessage && canRegenerate}
-                />
+                  // Process message content (remove quiz markers and artifact placeholders)
+                  const processedMessage = message.role === "assistant"
+                    ? { ...message, content: getProcessedContent(message.content) }
+                    : message;
 
-                {/* 簡易計画選択（AIが計画を促した後に表示） */}
-                {message.role === "assistant" &&
-                  showPlanningHelper &&
-                  index === messages.length - 1 &&
-                  !isLoading && (
-                    <div className="px-4 py-4">
-                      <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
-                        <p className="text-sm text-foreground/80 mb-3">
-                          どのように進めますか？
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuickPlanSelect("basic")}
-                            className="text-xs"
-                          >
-                            基本実装で進める
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuickPlanSelect("detailed")}
-                            className="text-xs"
-                          >
-                            詳細設計から
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuickPlanSelect("step-by-step")}
-                            className="text-xs"
-                          >
-                            段階的に進める
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleQuickPlanSelect("skip")}
-                            className="text-xs text-muted-foreground"
-                          >
-                            スキップ
-                          </Button>
-                        </div>
-                      </div>
+                  return (
+                    <div key={message.id || index}>
+                      <ChatMessage
+                        message={processedMessage}
+                        isStreaming={isLoading && index === messages.length - 1 && message.role === "assistant"}
+                        onOptionSelect={!isLoading && isLastAssistantMessage ? onSendMessage : undefined}
+                        onFork={onForkFromMessage ? () => onForkFromMessage(index) : undefined}
+                        showForkButton={!isLoading && index < messages.length - 1}
+                        onRegenerate={onRegenerate}
+                        showRegenerateButton={!isLoading && isLastAssistantMessage && canRegenerate}
+                        mode="generation"
+                        conversationId={conversationId}
+                      />
+
+                      {/* 簡易計画選択（AIが計画を促した後に表示） */}
+                      {message.role === "assistant" &&
+                        showPlanningHelper &&
+                        index === messages.length - 1 &&
+                        !isLoading && (
+                          <div className="px-4 py-4">
+                            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+                              <p className="text-sm text-foreground/80 mb-3">
+                                どのように進めますか？
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuickPlanSelect("basic")}
+                                  className="text-xs"
+                                >
+                                  基本実装で進める
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuickPlanSelect("detailed")}
+                                  className="text-xs"
+                                >
+                                  詳細設計から
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuickPlanSelect("step-by-step")}
+                                  className="text-xs"
+                                >
+                                  段階的に進める
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleQuickPlanSelect("skip")}
+                                  className="text-xs text-muted-foreground"
+                                >
+                                  スキップ
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                     </div>
-                  )}
-              </div>
-              );
-            })}
+                  );
+                })}
 
-            {/* 生成されたコード（ぼかし表示） */}
-            {state.generatedCode && (
-              <div className="px-4 py-4">
+                {/* クイズ（チャット内に表示） */}
+                {state.currentQuiz && (
+                  <div className="px-4 py-4">
+                    <GenerationQuiz
+                      quiz={state.currentQuiz}
+                      onAnswer={handleQuizAnswer}
+                      hintVisible={state.hintVisible}
+                      onSkip={canSkip ? handleSkip : undefined}
+                      canSkip={canSkip}
+                    />
+                  </div>
+                )}
+
+                <div ref={endRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="shrink-0">
+            <ChatInput
+              onSend={onSendMessage}
+              onStop={onStopGeneration}
+              isLoading={isLoading}
+              placeholder={inputPlaceholder}
+            />
+          </div>
+        </div>
+
+        {/* Right Panel - Code (Artifact-style) */}
+        {hasCodeToShow && !isCodePanelCollapsed && (
+          <div className="w-1/2 border-l border-border bg-zinc-950 flex flex-col min-h-0">
+            {/* Code Panel Header */}
+            <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-zinc-900/80">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-yellow-400">code</span>
+                  <span className="font-medium">生成されたコード</span>
+                </div>
+
+                {/* Artifact dropdown selector */}
+                {artifactsList.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-sm ml-4">
+                        <span className="text-yellow-400 truncate max-w-[150px]">
+                          {activeArtifact?.title || `${activeArtifact?.language} #${activeArtifact?.version}`}
+                        </span>
+                        <span className="material-symbols-outlined text-base text-zinc-400">expand_more</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-64 bg-zinc-900 border-zinc-700">
+                      {artifactsList.map((artifact) => {
+                        const isActive = state.activeArtifactId === artifact.id;
+                        const progress = state.artifactProgress[artifact.id];
+                        const unlockLevel = progress?.unlockLevel || 1;
+                        return (
+                          <DropdownMenuItem
+                            key={artifact.id}
+                            onClick={() => setActiveArtifact(artifact.id)}
+                            className={cn(
+                              "flex items-center justify-between cursor-pointer",
+                              isActive && "bg-yellow-500/10"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={cn(
+                                "material-symbols-outlined text-base",
+                                isActive ? "text-yellow-400" : "text-zinc-500"
+                              )}>
+                                {unlockLevel >= 4 ? "lock_open" : "lock"}
+                              </span>
+                              <span className={cn(
+                                "truncate",
+                                isActive ? "text-yellow-400 font-medium" : "text-zinc-300"
+                              )}>
+                                {artifact.title || `${artifact.language} #${artifact.version}`}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 ml-2">
+                              {[1, 2, 3, 4].map((level) => (
+                                <div
+                                  key={level}
+                                  className={cn(
+                                    "size-1.5 rounded-full",
+                                    level <= unlockLevel ? "bg-yellow-500" : "bg-zinc-600"
+                                  )}
+                                />
+                              ))}
+                            </div>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Unlock progress */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-zinc-500">レベル {state.unlockLevel}/4</span>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4].map((level) => (
+                      <div
+                        key={level}
+                        className={cn(
+                          "size-1.5 rounded-full",
+                          level <= state.unlockLevel ? "bg-yellow-500" : "bg-zinc-700"
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Collapse button */}
+                <button
+                  onClick={() => setIsCodePanelCollapsed(true)}
+                  className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-base text-zinc-400">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Code Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {activeArtifact && (
                 <BlurredCode
-                  code={state.generatedCode.code}
-                  language={state.generatedCode.language}
-                  filename={state.generatedCode.filename}
+                  code={activeArtifact.content}
+                  language={activeArtifact.language || "text"}
+                  filename={activeArtifact.title}
                   unlockLevel={state.unlockLevel}
                   progressPercentage={progressPercentage}
                   canCopy={canCopyCode}
-                  onUnlockClick={handleStartUnlock}
                 />
+              )}
+            </div>
+
+            {/* Code Panel Footer - Quick unlock hint */}
+            {!canCopyCode && (
+              <div className="shrink-0 px-4 py-3 border-t border-border bg-zinc-900/50">
+                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <span className="material-symbols-outlined text-sm">lightbulb</span>
+                  <span>クイズに答えてコードをアンロックしましょう。重要な部分から段階的に解除されます。</span>
+                </div>
               </div>
             )}
-
-            {/* クイズ */}
-            {state.currentQuiz && (
-              <div className="px-4 py-4">
-                <GenerationQuiz
-                  quiz={state.currentQuiz}
-                  onAnswer={handleQuizAnswer}
-                  hintVisible={state.hintVisible}
-                  onSkip={canSkip ? handleSkip : undefined}
-                  canSkip={canSkip}
-                />
-              </div>
-            )}
-
-            <div ref={endRef} />
           </div>
         )}
-      </div>
-
-      {/* Input */}
-      <div className="shrink-0">
-        <ChatInput
-          onSend={onSendMessage}
-          onStop={onStopGeneration}
-          isLoading={isLoading}
-          placeholder={inputPlaceholder}
-        />
       </div>
     </div>
   );
@@ -550,7 +779,7 @@ function WelcomeScreen({
           </li>
           <li className="flex items-start gap-2">
             <span className={cn("material-symbols-outlined text-sm mt-0.5", config.color)}>check</span>
-            生成されたコードは最初ぼかされています
+            生成されたコードは右パネルに表示されます
           </li>
           <li className="flex items-start gap-2">
             <span className={cn("material-symbols-outlined text-sm mt-0.5", config.color)}>check</span>
