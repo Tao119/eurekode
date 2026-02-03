@@ -591,7 +591,7 @@ export function GenerationChatContainer({
                 </div>
 
                 {/* Artifact dropdown selector */}
-                {artifactsList.length > 1 && (
+                {artifactsList.length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-sm ml-4">
