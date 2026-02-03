@@ -459,6 +459,7 @@ function getHintFromCode(level: UnlockLevel, artifact: Artifact | null): string 
 export function structuredQuizToUnlockQuiz(quiz: StructuredQuiz): UnlockQuiz {
   return {
     level: quiz.level as UnlockLevel,
+    totalQuestions: quiz.totalQuestions,
     question: quiz.question,
     options: quiz.options,
     correctLabel: quiz.correctLabel,

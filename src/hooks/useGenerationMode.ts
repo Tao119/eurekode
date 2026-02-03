@@ -294,6 +294,10 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     setState((prev) => {
       // totalQuestions=0 または既にアンロック済みの場合はクイズを設定しない
       if (prev.totalQuestions === 0 || prev.unlockLevel >= prev.totalQuestions) {
+        console.log("[setCurrentQuiz] Skipped: already unlocked", {
+          totalQuestions: prev.totalQuestions,
+          unlockLevel: prev.unlockLevel,
+        });
         return prev;
       }
 
@@ -301,8 +305,15 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
       const currentProgress = activeId ? prev.artifactProgress[activeId] : null;
 
       if (currentProgress && currentProgress.unlockLevel >= currentProgress.totalQuestions) {
+        console.log("[setCurrentQuiz] Skipped: artifact already unlocked", {
+          activeId,
+          progressUnlockLevel: currentProgress.unlockLevel,
+          progressTotalQuestions: currentProgress.totalQuestions,
+        });
         return prev;
       }
+
+      console.log("[setCurrentQuiz] Setting quiz:", quiz.question.substring(0, 50));
 
       const updatedProgress: Record<string, ArtifactProgress> = activeId && currentProgress
         ? {

@@ -233,21 +233,30 @@ export function GenerationChatContainer({
     }
   }, [isLoading, messages, addOrUpdateArtifact, state.phase, setPhase]);
 
-  // メッセージが追加されたときの処理
+  // メッセージが追加されたとき、またはストリーミング完了時の処理
+  const lastProcessedContentRef = useRef<string>("");
+
   useEffect(() => {
     if (!initializedRef.current) return;
-    if (messages.length <= prevMessagesLengthRef.current) {
-      prevMessagesLengthRef.current = messages.length;
-      return;
-    }
-
-    prevMessagesLengthRef.current = messages.length;
+    if (messages.length === 0) return;
 
     // 最新のアシスタントメッセージを取得
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.role !== "assistant") return;
 
     const content = lastMessage.content;
+
+    // ストリーミング中は部分的な処理のみ
+    // ストリーミング完了時（isLoading=false）に完全な処理を行う
+    const isNewMessage = messages.length > prevMessagesLengthRef.current;
+    const isStreamingComplete = !isLoading && lastProcessedContentRef.current !== content;
+
+    if (!isNewMessage && !isStreamingComplete) {
+      return;
+    }
+
+    prevMessagesLengthRef.current = messages.length;
+    lastProcessedContentRef.current = content;
 
     // アーティファクト形式のコードのみを抽出（通常のコードブロックは対象外）
     const { artifacts } = parseArtifacts(content);
@@ -271,16 +280,19 @@ export function GenerationChatContainer({
       }
     }
 
-    // クイズを抽出（アーティファクトがある場合、またはcoding/unlockingフェーズの場合）
+    // クイズを抽出（ストリーミング完了後のみ、部分的なタグを避けるため）
     // ただし、totalQuestions=0 (制限解除モード) の場合はスキップ
-    const isFullyUnlocked = state.totalQuestions === 0 || state.unlockLevel >= state.totalQuestions;
-    if (!isFullyUnlocked && (artifacts.length > 0 || state.phase === "coding" || state.phase === "unlocking")) {
-      const quiz = extractQuizFromResponse(content, state.unlockLevel);
-      if (quiz) {
-        setCurrentQuiz(quiz);
+    if (!isLoading) {
+      const isFullyUnlocked = state.totalQuestions === 0 || state.unlockLevel >= state.totalQuestions;
+      if (!isFullyUnlocked && (artifacts.length > 0 || state.phase === "coding" || state.phase === "unlocking")) {
+        const quiz = extractQuizFromResponse(content, state.unlockLevel);
+        if (quiz) {
+          console.log("[Quiz] Extracted quiz:", quiz.question);
+          setCurrentQuiz(quiz);
+        }
       }
     }
-  }, [messages, state.phase, state.unlockLevel, state.totalQuestions, setPhase, setCurrentQuiz, addOrUpdateArtifact]);
+  }, [messages, isLoading, state.phase, state.unlockLevel, state.totalQuestions, setPhase, setCurrentQuiz, addOrUpdateArtifact]);
 
   // クイズが必要な場合に自動生成（フォールバック）
   useEffect(() => {

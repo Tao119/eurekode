@@ -487,8 +487,27 @@ function OptionButtons({
 // Code component that uses context to determine if it should be locked
 function CodeComponent({ className, children }: { className?: string; children?: React.ReactNode }) {
   const { shouldLockCode } = useContext(CodeBlockContext);
+  const [copied, setCopied] = useState(false);
   const isInline = !className;
   const codeString = String(children).replace(/\n$/, "");
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(codeString);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = codeString;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [codeString]);
 
   if (isInline) {
     return (
@@ -510,26 +529,64 @@ function CodeComponent({ className, children }: { className?: string; children?:
     );
   }
 
+  // Get display name for language
+  const languageDisplayNames: Record<string, string> = {
+    typescript: "TypeScript",
+    javascript: "JavaScript",
+    python: "Python",
+    java: "Java",
+    html: "HTML",
+    css: "CSS",
+    json: "JSON",
+    bash: "Bash",
+    shell: "Shell",
+    sql: "SQL",
+    tsx: "TSX",
+    jsx: "JSX",
+    text: "Text",
+  };
+  const displayLanguage = languageDisplayNames[language.toLowerCase()] || language;
+
   return (
-    <SyntaxHighlighter
-      style={oneDark}
-      language={language}
-      PreTag="div"
-      customStyle={{
-        margin: 0,
-        padding: "1rem",
-        borderRadius: "0.5rem",
-        fontSize: "0.875rem",
-        lineHeight: "1.5",
-      }}
-      codeTagProps={{
-        style: {
-          fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-        },
-      }}
-    >
-      {codeString}
-    </SyntaxHighlighter>
+    <div className="relative group">
+      {/* Header with language and copy button */}
+      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800 border-b border-zinc-700 rounded-t-lg">
+        <span className="text-xs text-zinc-400 font-mono">{displayLanguage}</span>
+        <button
+          onClick={handleCopy}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded text-xs transition-all",
+            copied
+              ? "text-green-400 bg-green-500/10"
+              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
+          )}
+        >
+          <span className="material-symbols-outlined text-sm">
+            {copied ? "check" : "content_copy"}
+          </span>
+          <span>{copied ? "コピーしました" : "コピー"}</span>
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={oneDark}
+        language={language}
+        PreTag="div"
+        customStyle={{
+          margin: 0,
+          padding: "1rem",
+          borderRadius: "0 0 0.5rem 0.5rem",
+          fontSize: "0.875rem",
+          lineHeight: "1.5",
+        }}
+        codeTagProps={{
+          style: {
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+          },
+        }}
+      >
+        {codeString}
+      </SyntaxHighlighter>
+    </div>
   );
 }
 
