@@ -196,6 +196,40 @@ export function GenerationChatContainer({
     }
   }, [messages, addOrUpdateArtifact, setPhase, setCurrentQuiz, state.unlockLevel, state.phase]);
 
+  // ストリーミング中のアーティファクト検出（即座にパネルを開く）
+  const streamingArtifactRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    // ストリーミング中でない場合、または初期化前はスキップ
+    if (!isLoading || !initializedRef.current || messages.length === 0) {
+      // ストリーミング終了時にセットをリセット
+      if (!isLoading) {
+        streamingArtifactRef.current.clear();
+      }
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role !== "assistant") return;
+
+    // ストリーミング中のコンテンツからアーティファクトを抽出
+    const { artifacts } = parseArtifacts(lastMessage.content);
+    if (artifacts.length > 0) {
+      for (const artifact of artifacts) {
+        // 既に追加済みのアーティファクトはスキップ（重複防止）
+        if (!streamingArtifactRef.current.has(artifact.id)) {
+          streamingArtifactRef.current.add(artifact.id);
+          addOrUpdateArtifact(artifact);
+        }
+      }
+      // アーティファクトが見つかったらcodingフェーズに移行
+      if (state.phase === "initial" || state.phase === "planning") {
+        setPhase("coding");
+        setShowPlanningHelper(false);
+      }
+    }
+  }, [isLoading, messages, addOrUpdateArtifact, state.phase, setPhase]);
+
   // メッセージが追加されたときの処理
   useEffect(() => {
     if (!initializedRef.current) return;
