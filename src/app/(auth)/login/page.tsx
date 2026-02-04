@@ -74,6 +74,9 @@ function LoginForm() {
       ? "メールアドレスまたはパスワードが正しくありません"
       : null
   );
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -86,6 +89,8 @@ function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setErrorMessage(null);
+    setShowResendVerification(false);
+    setResendSuccess(false);
 
     try {
       const result = await signIn("credentials", {
@@ -99,6 +104,7 @@ function LoginForm() {
           setErrorMessage(
             "メールアドレスの確認が完了していません。メールをご確認ください。"
           );
+          setShowResendVerification(true);
         } else if (result.error === "ACCOUNT_DISABLED") {
           setErrorMessage(
             "このアカウントは無効化されています。管理者にお問い合わせください。"
@@ -120,6 +126,41 @@ function LoginForm() {
     }
   };
 
+  const handleResendVerification = async () => {
+    const email = form.getValues("email");
+    if (!email) {
+      setErrorMessage("メールアドレスを入力してください");
+      return;
+    }
+
+    setIsResending(true);
+    setResendSuccess(false);
+
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setResendSuccess(true);
+        setErrorMessage(null);
+        if (result.data?.alreadyVerified) {
+          setShowResendVerification(false);
+          setErrorMessage("メールアドレスは既に確認済みです。ログインしてください。");
+        }
+      } else {
+        setErrorMessage(result.error?.message || "再送信に失敗しました");
+      }
+    } catch {
+      setErrorMessage("再送信中にエラーが発生しました");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
@@ -132,9 +173,24 @@ function LoginForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
+            {resendSuccess && (
+              <div className="p-3 text-sm text-green-600 bg-green-500/10 border border-green-500/20 rounded-md">
+                確認メールを送信しました。メールをご確認ください。
+              </div>
+            )}
             {errorMessage && (
               <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
-                {errorMessage}
+                <p>{errorMessage}</p>
+                {showResendVerification && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={isResending}
+                    className="mt-2 text-primary hover:underline disabled:opacity-50"
+                  >
+                    {isResending ? "送信中..." : "確認メールを再送信"}
+                  </button>
+                )}
               </div>
             )}
 

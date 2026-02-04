@@ -2,9 +2,7 @@
 
 import { useEffect, use, useCallback } from "react";
 import { ChatContainer } from "@/components/chat";
-import { useChat, ChatApiError } from "@/hooks/useChat";
-import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
-import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
+import { useChat } from "@/hooks/useChat";
 import { toast } from "sonner";
 
 interface PageProps {
@@ -13,31 +11,11 @@ interface PageProps {
 
 export default function ExplanationRoomPage({ params }: PageProps) {
   const { id: conversationId } = use(params);
-  const tokenUsage = useTokenUsageOptional();
-  const { showTokenLimitError, TokenLimitDialog } = useTokenLimitDialog();
 
-  // Update token usage when response completes
-  const handleTokensUsed = useCallback((tokens: number) => {
-    tokenUsage?.addUsage(tokens);
-  }, [tokenUsage]);
-
-  // Handle errors including token limit exceeded
+  // Handle errors
   const handleError = useCallback((error: Error) => {
-    if (error instanceof ChatApiError && error.code === "TOKEN_LIMIT_EXCEEDED") {
-      const handled = showTokenLimitError({
-        code: error.code,
-        message: error.message,
-        details: error.details as {
-          currentUsage: number;
-          dailyLimit: number;
-          remaining: number;
-          required: number;
-        },
-      });
-      if (handled) return;
-    }
     toast.error(error.message);
-  }, [showTokenLimitError]);
+  }, []);
 
   const {
     messages,
@@ -57,7 +35,6 @@ export default function ExplanationRoomPage({ params }: PageProps) {
     mode: "explanation",
     conversationId,
     onError: handleError,
-    onTokensUsed: handleTokensUsed,
   });
 
   // Load conversation on mount (only when conversationId changes)
@@ -90,24 +67,21 @@ export default function ExplanationRoomPage({ params }: PageProps) {
   }, [generationRecovery, clearGenerationRecovery]);
 
   return (
-    <>
-      <ChatContainer
-        mode="explanation"
-        messages={messages}
-        isLoading={isLoading}
-        onSendMessage={sendMessage}
-        welcomeMessage="コードや技術的な概念について質問してください。わかりやすく解説します。"
-        inputPlaceholder="コードを貼り付けるか、質問を入力してください..."
-        onStopGeneration={stopGeneration}
-        onForkFromMessage={forkFromMessage}
-        branches={branches}
-        currentBranchId={currentBranchId}
-        onSwitchBranch={switchBranch}
-        onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
-        conversationId={conversationId}
-      />
-      <TokenLimitDialog />
-    </>
+    <ChatContainer
+      mode="explanation"
+      messages={messages}
+      isLoading={isLoading}
+      onSendMessage={sendMessage}
+      welcomeMessage="コードや技術的な概念について質問してください。わかりやすく解説します。"
+      inputPlaceholder="コードを貼り付けるか、質問を入力してください..."
+      onStopGeneration={stopGeneration}
+      onForkFromMessage={forkFromMessage}
+      branches={branches}
+      currentBranchId={currentBranchId}
+      onSwitchBranch={switchBranch}
+      onRegenerate={regenerateLastMessage}
+      canRegenerate={canRegenerate}
+      conversationId={conversationId}
+    />
   );
 }

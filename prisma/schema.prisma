@@ -310,6 +310,8 @@ model Subscription {
   // 組織プラン（organizationIdがある場合）
   organizationPlan     OrganizationPlan?  @map("organization_plan")
   status               SubscriptionStatus @default(active)
+  // トライアル期間の終了日（null = トライアルなし or 終了済み）
+  trialEnd             DateTime?          @map("trial_end")
   currentPeriodStart   DateTime           @map("current_period_start")
   currentPeriodEnd     DateTime           @map("current_period_end")
   stripeCustomerId     String?            @map("stripe_customer_id")

@@ -7,16 +7,12 @@ import { ProjectSelector } from "@/components/chat/ProjectSelector";
 import type { ClaudeModel } from "@/types/chat";
 import { DEFAULT_MODEL } from "@/types/chat";
 import { useChat, ChatApiError } from "@/hooks/useChat";
-import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
-import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
 import { toast } from "sonner";
 
 export default function ExplanationModePage() {
   const searchParams = useSearchParams();
   const initialConversationId = searchParams.get("id");
   const initialProjectId = searchParams.get("projectId");
-  const tokenUsage = useTokenUsageOptional();
-  const { showTokenLimitError, TokenLimitDialog } = useTokenLimitDialog();
 
   // Track conversation ID in state to avoid page navigation
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(initialConversationId);
@@ -38,28 +34,10 @@ export default function ExplanationModePage() {
     }
   }, []);
 
-  // Update token usage when response completes
-  const handleTokensUsed = useCallback((tokens: number) => {
-    tokenUsage?.addUsage(tokens);
-  }, [tokenUsage]);
-
-  // Handle errors including token limit exceeded
+  // Handle errors
   const handleError = useCallback((error: Error) => {
-    if (error instanceof ChatApiError && error.code === "TOKEN_LIMIT_EXCEEDED") {
-      const handled = showTokenLimitError({
-        code: error.code,
-        message: error.message,
-        details: error.details as {
-          currentUsage: number;
-          dailyLimit: number;
-          remaining: number;
-          required: number;
-        },
-      });
-      if (handled) return;
-    }
     toast.error(error.message);
-  }, [showTokenLimitError]);
+  }, []);
 
   const {
     messages,
@@ -81,7 +59,6 @@ export default function ExplanationModePage() {
     projectId: selectedProjectId || undefined,
     onError: handleError,
     onConversationCreated: handleConversationCreated,
-    onTokensUsed: handleTokensUsed,
     model: selectedModel,
   });
 
@@ -119,38 +96,35 @@ export default function ExplanationModePage() {
   }, [generationRecovery, clearGenerationRecovery]);
 
   return (
-    <>
-      <ChatContainer
-        mode="explanation"
-        messages={messages}
-        isLoading={isLoading}
-        onSendMessage={sendMessage}
-        welcomeMessage="コードや技術的な概念について質問してください。わかりやすく解説します。"
-        inputPlaceholder="コードを貼り付けるか、質問を入力してください..."
-        onStopGeneration={stopGeneration}
-        onForkFromMessage={forkFromMessage}
-        branches={branches}
-        currentBranchId={currentBranchId}
-        onSwitchBranch={switchBranch}
-        onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
-        headerExtra={
-          <>
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              disabled={isLoading}
-            />
-            <ProjectSelector
-              selectedProjectId={selectedProjectId}
-              onProjectChange={setSelectedProjectId}
-              disabled={!canChangeProject}
-            />
-          </>
-        }
-        conversationId={currentConversationId || undefined}
-      />
-      <TokenLimitDialog />
-    </>
+    <ChatContainer
+      mode="explanation"
+      messages={messages}
+      isLoading={isLoading}
+      onSendMessage={sendMessage}
+      welcomeMessage="コードや技術的な概念について質問してください。わかりやすく解説します。"
+      inputPlaceholder="コードを貼り付けるか、質問を入力してください..."
+      onStopGeneration={stopGeneration}
+      onForkFromMessage={forkFromMessage}
+      branches={branches}
+      currentBranchId={currentBranchId}
+      onSwitchBranch={switchBranch}
+      onRegenerate={regenerateLastMessage}
+      canRegenerate={canRegenerate}
+      headerExtra={
+        <>
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            disabled={isLoading}
+          />
+          <ProjectSelector
+            selectedProjectId={selectedProjectId}
+            onProjectChange={setSelectedProjectId}
+            disabled={!canChangeProject}
+          />
+        </>
+      }
+      conversationId={currentConversationId || undefined}
+    />
   );
 }

@@ -59,9 +59,6 @@ export default function SettingsPage() {
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
-  // Token usage state
-  const [todayTokenUsage, setTodayTokenUsage] = useState(0);
-  const [isLoadingTokenUsage, setIsLoadingTokenUsage] = useState(false);
 
   // Password change state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -113,27 +110,6 @@ export default function SettingsPage() {
     fetchOrgInfo();
   }, [fetchOrgInfo]);
 
-  // Fetch token usage
-  const fetchTokenUsage = useCallback(async () => {
-    if (!session?.user?.id) return;
-
-    setIsLoadingTokenUsage(true);
-    try {
-      const response = await fetch("/api/user/settings");
-      const data = await response.json();
-      if (data.success && data.data.tokenUsage !== undefined) {
-        setTodayTokenUsage(data.data.tokenUsage);
-      }
-    } catch (error) {
-      console.error("Failed to fetch token usage:", error);
-    } finally {
-      setIsLoadingTokenUsage(false);
-    }
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    fetchTokenUsage();
-  }, [fetchTokenUsage]);
 
   if (status === "loading") {
     return (
@@ -506,7 +482,7 @@ export default function SettingsPage() {
                     <p className="font-medium">組織に参加する</p>
                     <p className="text-sm text-muted-foreground mb-3">
                       アクセスキーをお持ちの場合、組織に参加できます。
-                      組織のトークン上限や設定が適用されます。
+                      組織のプラン特典や設定が適用されます。
                     </p>
                     <Button onClick={() => setShowJoinDialog(true)} variant="outline">
                       <span className="material-symbols-outlined mr-2 text-lg">add</span>
@@ -538,14 +514,10 @@ export default function SettingsPage() {
               </div>
 
               {orgInfo?.accessKey && (
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="text-sm">
                   <div>
                     <p className="text-muted-foreground">アクセスキー</p>
                     <p className="font-mono">{orgInfo.accessKey.keyCode}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">1日のトークン上限</p>
-                    <p className="font-medium">{orgInfo.accessKey.dailyTokenLimit.toLocaleString()}</p>
                   </div>
                 </div>
               )}
@@ -559,7 +531,7 @@ export default function SettingsPage() {
                     <p className="font-medium">組織から退出する</p>
                     <p className="text-sm text-muted-foreground mb-3">
                       {session?.user.email
-                        ? "個人利用に切り替えます。組織のトークン上限は適用されなくなります。"
+                        ? "個人利用に切り替えます。組織のプラン特典は適用されなくなります。"
                         : "メールアドレスが登録されていないため、退出できません。"}
                     </p>
                     <Button
@@ -656,41 +628,22 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Token Usage */}
+      {/* Billing Link */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <span className="material-symbols-outlined">toll</span>
-            トークン使用量
+            クレジット・プラン
           </CardTitle>
-          <CardDescription>今日のトークン使用状況</CardDescription>
+          <CardDescription>月間ポイントとプランを管理</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingTokenUsage ? (
-            <div className="flex items-center justify-center py-4">
-              <LoadingSpinner size="sm" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">使用量</span>
-                <span className="font-bold">
-                  {todayTokenUsage.toLocaleString()} / {session?.user.dailyTokenLimit?.toLocaleString() || "1,000"}
-                </span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{
-                    width: `${Math.min((todayTokenUsage / (session?.user.dailyTokenLimit || 1000)) * 100, 100)}%`,
-                  }}
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                毎日0時にリセットされます
-              </p>
-            </div>
-          )}
+          <Button asChild variant="outline" className="w-full">
+            <a href="/settings/billing">
+              <span className="material-symbols-outlined mr-2 text-lg">credit_card</span>
+              プラン・請求設定を開く
+            </a>
+          </Button>
         </CardContent>
       </Card>
 
@@ -809,7 +762,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-start gap-2">
               <span className="material-symbols-outlined text-muted-foreground text-lg mt-0.5">check</span>
-              <p className="text-sm">組織のトークン上限が適用されなくなります</p>
+              <p className="text-sm">組織のプラン特典が適用されなくなります</p>
             </div>
             <div className="flex items-start gap-2">
               <span className="material-symbols-outlined text-muted-foreground text-lg mt-0.5">check</span>

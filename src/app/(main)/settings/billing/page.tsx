@@ -82,7 +82,7 @@ export default function BillingPage() {
   return (
     <Suspense
       fallback={
-        <div className="container max-w-4xl py-8">
+        <div className="max-w-4xl mx-auto py-8 px-4">
           <div className="flex items-center justify-center min-h-[400px]">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
@@ -167,7 +167,7 @@ function BillingPageContent() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-4xl py-8">
+      <div className="max-w-4xl mx-auto py-8 px-4">
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -176,7 +176,7 @@ function BillingPageContent() {
   }
 
   return (
-    <div className="container max-w-4xl py-8 space-y-8">
+    <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
       <div>
         <h1 className="text-3xl font-bold">プランと請求</h1>
         <p className="text-muted-foreground mt-2">
@@ -245,9 +245,14 @@ function BillingPageContent() {
           {/* Current Plan Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>現在のプラン</span>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <CardTitle>現在のプラン</CardTitle>
+                  <CardDescription>
+                    {subscription?.planType === "organization" ? "組織プラン" : "個人プラン"}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {subscription?.trial?.isTrialing && (
                     <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">
                       トライアル中
@@ -266,10 +271,7 @@ function BillingPageContent() {
                     <Badge variant="secondary">キャンセル済み</Badge>
                   )}
                 </div>
-              </CardTitle>
-              <CardDescription>
-                {subscription?.planType === "organization" ? "組織プラン" : "個人プラン"}
-              </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">

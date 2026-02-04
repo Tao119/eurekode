@@ -2,9 +2,7 @@
 
 import { useState, useEffect, use, useCallback } from "react";
 import { BrainstormChatContainer } from "@/components/chat/BrainstormChatContainer";
-import { useChat, ChatApiError } from "@/hooks/useChat";
-import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
-import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
+import { useChat } from "@/hooks/useChat";
 import { toast } from "sonner";
 import type { ConversationMetadata, BrainstormSubMode } from "@/types/chat";
 
@@ -14,33 +12,13 @@ interface PageProps {
 
 export default function BrainstormRoomPage({ params }: PageProps) {
   const { id: conversationId } = use(params);
-  const tokenUsage = useTokenUsageOptional();
-  const { showTokenLimitError, TokenLimitDialog } = useTokenLimitDialog();
   // SubMode state for API calls (synced from BrainstormChatContainer)
   const [subMode, setSubMode] = useState<BrainstormSubMode>("casual");
 
-  // Update token usage when response completes
-  const handleTokensUsed = useCallback((tokens: number) => {
-    tokenUsage?.addUsage(tokens);
-  }, [tokenUsage]);
-
-  // Handle errors including token limit exceeded
+  // Handle errors
   const handleError = useCallback((error: Error) => {
-    if (error instanceof ChatApiError && error.code === "TOKEN_LIMIT_EXCEEDED") {
-      const handled = showTokenLimitError({
-        code: error.code,
-        message: error.message,
-        details: error.details as {
-          currentUsage: number;
-          dailyLimit: number;
-          remaining: number;
-          required: number;
-        },
-      });
-      if (handled) return;
-    }
     toast.error(error.message);
-  }, [showTokenLimitError]);
+  }, []);
 
   const {
     messages,
@@ -63,7 +41,6 @@ export default function BrainstormRoomPage({ params }: PageProps) {
     conversationId,
     brainstormSubMode: subMode,
     onError: handleError,
-    onTokensUsed: handleTokensUsed,
   });
 
   // Handle metadata changes from BrainstormChatContainer
@@ -104,26 +81,23 @@ export default function BrainstormRoomPage({ params }: PageProps) {
   }, [generationRecovery, clearGenerationRecovery]);
 
   return (
-    <>
-      <BrainstormChatContainer
-        messages={messages}
-        isLoading={isLoading}
-        onSendMessage={sendMessage}
-        welcomeMessage="アイデアや企画を一緒に整理して、実現可能な形にしていきましょう。"
-        inputPlaceholder="アイデアを一言で教えてください..."
-        onStopGeneration={stopGeneration}
-        onForkFromMessage={forkFromMessage}
-        branches={branches}
-        currentBranchId={currentBranchId}
-        onSwitchBranch={switchBranch}
-        onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
-        conversationId={conversationId}
-        restoredMetadata={restoredMetadata}
-        onMetadataChange={handleMetadataChange}
-        onSubModeChange={setSubMode}
-      />
-      <TokenLimitDialog />
-    </>
+    <BrainstormChatContainer
+      messages={messages}
+      isLoading={isLoading}
+      onSendMessage={sendMessage}
+      welcomeMessage="アイデアや企画を一緒に整理して、実現可能な形にしていきましょう。"
+      inputPlaceholder="アイデアを一言で教えてください..."
+      onStopGeneration={stopGeneration}
+      onForkFromMessage={forkFromMessage}
+      branches={branches}
+      currentBranchId={currentBranchId}
+      onSwitchBranch={switchBranch}
+      onRegenerate={regenerateLastMessage}
+      canRegenerate={canRegenerate}
+      conversationId={conversationId}
+      restoredMetadata={restoredMetadata}
+      onMetadataChange={handleMetadataChange}
+      onSubModeChange={setSubMode}
+    />
   );
 }

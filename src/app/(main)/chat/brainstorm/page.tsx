@@ -7,8 +7,6 @@ import { ProjectSelector } from "@/components/chat/ProjectSelector";
 import type { ClaudeModel } from "@/types/chat";
 import { DEFAULT_MODEL } from "@/types/chat";
 import { useChat, ChatApiError } from "@/hooks/useChat";
-import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
-import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
 import { toast } from "sonner";
 import type { ConversationMetadata, BrainstormSubMode } from "@/types/chat";
 
@@ -16,8 +14,6 @@ export default function BrainstormModePage() {
   const searchParams = useSearchParams();
   const initialConversationId = searchParams.get("id");
   const initialProjectId = searchParams.get("projectId");
-  const tokenUsage = useTokenUsageOptional();
-  const { showTokenLimitError, TokenLimitDialog } = useTokenLimitDialog();
 
   // Track conversation ID in state to avoid page navigation
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(initialConversationId);
@@ -40,28 +36,10 @@ export default function BrainstormModePage() {
     }
   }, []);
 
-  // Update token usage when response completes
-  const handleTokensUsed = useCallback((tokens: number) => {
-    tokenUsage?.addUsage(tokens);
-  }, [tokenUsage]);
-
-  // Handle errors including token limit exceeded
+  // Handle errors
   const handleError = useCallback((error: Error) => {
-    if (error instanceof ChatApiError && error.code === "TOKEN_LIMIT_EXCEEDED") {
-      const handled = showTokenLimitError({
-        code: error.code,
-        message: error.message,
-        details: error.details as {
-          currentUsage: number;
-          dailyLimit: number;
-          remaining: number;
-          required: number;
-        },
-      });
-      if (handled) return;
-    }
     toast.error(error.message);
-  }, [showTokenLimitError]);
+  }, []);
 
   const {
     messages,
@@ -86,7 +64,6 @@ export default function BrainstormModePage() {
     brainstormSubMode: subMode,
     onError: handleError,
     onConversationCreated: handleConversationCreated,
-    onTokensUsed: handleTokensUsed,
     model: selectedModel,
   });
 
@@ -132,40 +109,37 @@ export default function BrainstormModePage() {
   }, [generationRecovery, clearGenerationRecovery]);
 
   return (
-    <>
-      <BrainstormChatContainer
-        messages={messages}
-        isLoading={isLoading}
-        onSendMessage={sendMessage}
-        welcomeMessage="アイデアや企画を一緒に整理して、実現可能な形にしていきましょう。"
-        inputPlaceholder="アイデアを一言で教えてください..."
-        onStopGeneration={stopGeneration}
-        onForkFromMessage={forkFromMessage}
-        branches={branches}
-        currentBranchId={currentBranchId}
-        onSwitchBranch={switchBranch}
-        onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
-        conversationId={currentConversationId || undefined}
-        restoredMetadata={restoredMetadata}
-        onMetadataChange={handleMetadataChange}
-        onSubModeChange={setSubMode}
-        headerExtra={
-          <>
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              disabled={isLoading}
-            />
-            <ProjectSelector
-              selectedProjectId={selectedProjectId}
-              onProjectChange={setSelectedProjectId}
-              disabled={!canChangeProject}
-            />
-          </>
-        }
-      />
-      <TokenLimitDialog />
-    </>
+    <BrainstormChatContainer
+      messages={messages}
+      isLoading={isLoading}
+      onSendMessage={sendMessage}
+      welcomeMessage="アイデアや企画を一緒に整理して、実現可能な形にしていきましょう。"
+      inputPlaceholder="アイデアを一言で教えてください..."
+      onStopGeneration={stopGeneration}
+      onForkFromMessage={forkFromMessage}
+      branches={branches}
+      currentBranchId={currentBranchId}
+      onSwitchBranch={switchBranch}
+      onRegenerate={regenerateLastMessage}
+      canRegenerate={canRegenerate}
+      conversationId={currentConversationId || undefined}
+      restoredMetadata={restoredMetadata}
+      onMetadataChange={handleMetadataChange}
+      onSubModeChange={setSubMode}
+      headerExtra={
+        <>
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            disabled={isLoading}
+          />
+          <ProjectSelector
+            selectedProjectId={selectedProjectId}
+            onProjectChange={setSelectedProjectId}
+            disabled={!canChangeProject}
+          />
+        </>
+      }
+    />
   );
 }

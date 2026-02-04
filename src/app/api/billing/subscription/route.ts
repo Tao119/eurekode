@@ -51,6 +51,14 @@ export async function GET() {
     const effectivePlan = isOrganization ? orgPlan : individualPlan;
     const effectiveSubscription = isOrganization ? orgSubscription : individualSubscription;
 
+    // トライアル情報を計算
+    const trialEnd = effectiveSubscription?.trialEnd;
+    const isTrialing = trialEnd ? new Date() < new Date(trialEnd) : false;
+    const trialDaysRemaining = trialEnd
+      ? Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : 0;
+    const hasStripeSubscription = !!effectiveSubscription?.stripeSubscriptionId;
+
     // Stripe APIでcancel_at_period_endを確認する必要があるが、
     // ここではDBの状態のみを返す（cancel_at_period_endはStripe Portalで確認）
     return NextResponse.json({
@@ -60,12 +68,20 @@ export async function GET() {
       status: effectiveSubscription?.status || "active",
       currentPeriodEnd: effectiveSubscription?.currentPeriodEnd?.toISOString() || null,
       cancelAtPeriodEnd: false, // TODO: Stripe APIから取得
+      // トライアル情報
+      trial: {
+        isTrialing,
+        trialEnd: trialEnd?.toISOString() || null,
+        daysRemaining: trialDaysRemaining,
+        isPaid: hasStripeSubscription,
+      },
       // 詳細情報
       individual: {
         plan: individualPlan,
         planConfig: individualPlanConfig,
         status: individualSubscription?.status || "active",
         currentPeriodEnd: individualSubscription?.currentPeriodEnd,
+        trialEnd: individualSubscription?.trialEnd,
         hasStripeSubscription: !!individualSubscription?.stripeSubscriptionId,
       },
       organization: orgPlanConfig
@@ -74,6 +90,7 @@ export async function GET() {
             planConfig: orgPlanConfig,
             status: orgSubscription?.status || "active",
             currentPeriodEnd: orgSubscription?.currentPeriodEnd,
+            trialEnd: orgSubscription?.trialEnd,
           }
         : null,
       // 実際に適用されるプラン（組織プランがあれば組織、なければ個人）

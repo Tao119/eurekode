@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendVerificationEmail } from "@/lib/email";
 import type { ApiResponse } from "@/types/api";
 
-const forgotPasswordSchema = z.object({
+const resendSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
 });
 
@@ -14,7 +14,7 @@ export async function POST(
 ): Promise<NextResponse<ApiResponse>> {
   try {
     const body = await request.json();
-    const parsed = forgotPasswordSchema.safeParse(body);
+    const parsed = resendSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -31,7 +31,7 @@ export async function POST(
 
     const { email } = parsed.data;
 
-    // Check if user exists
+    // Find the user
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -41,22 +41,31 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: {
-          message:
-            "メールアドレスが登録されている場合、リセット用のリンクを送信しました",
+          message: "メールアドレスが登録されている場合、確認メールを送信しました。",
         },
       });
     }
 
-    // Generate reset token
-    const token = crypto.randomBytes(32).toString("hex");
-    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    // Check if already verified
+    if (user.emailVerified) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          message: "メールアドレスは既に確認済みです。ログインしてください。",
+          alreadyVerified: true,
+        },
+      });
+    }
 
-    // Delete any existing tokens for this email
+    // Delete any existing verification tokens for this email
     await prisma.verificationToken.deleteMany({
       where: { identifier: email },
     });
 
-    // Create new token
+    // Generate new verification token
+    const token = crypto.randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
     await prisma.verificationToken.create({
       data: {
         identifier: email,
@@ -65,23 +74,31 @@ export async function POST(
       },
     });
 
-    // Send password reset email
+    // Send verification email
     try {
-      await sendPasswordResetEmail(email, token);
+      await sendVerificationEmail(email, token);
     } catch (emailError) {
-      console.error("Failed to send password reset email:", emailError);
-      // Continue anyway to prevent email enumeration
+      console.error("Failed to send verification email:", emailError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "EMAIL_SEND_ERROR",
+            message: "メールの送信に失敗しました。しばらく経ってからお試しください。",
+          },
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        message:
-          "メールアドレスが登録されている場合、リセット用のリンクを送信しました",
+        message: "確認メールを送信しました。メールをご確認ください。",
       },
     });
   } catch (error) {
-    console.error("Forgot password error:", error);
+    console.error("Resend verification error:", error);
     return NextResponse.json(
       {
         success: false,

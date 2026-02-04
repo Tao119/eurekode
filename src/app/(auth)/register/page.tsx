@@ -26,10 +26,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { INDIVIDUAL_PLANS, ORGANIZATION_PLANS, formatPrice } from "@/config/plans";
+import {
+  INDIVIDUAL_PLANS,
+  ORGANIZATION_PLANS,
+  formatPrice,
+  getAllIndividualPlans,
+  getAllOrganizationPlans,
+  type IndividualPlan,
+  type OrganizationPlan,
+} from "@/config/plans";
 
 const registerSchema = z
   .object({
@@ -97,19 +111,28 @@ function RegisterForm() {
   const searchParams = useSearchParams();
 
   // Get plan and type from URL parameters
-  const selectedPlan = searchParams.get("plan");
+  const initialPlan = searchParams.get("plan");
   const selectedType = searchParams.get("type"); // "admin" for organization
+  const cancelled = searchParams.get("cancelled");
 
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    cancelled === "true" ? "決済がキャンセルされました。再度お試しください。" : null
+  );
+  const [selectedPlan, setSelectedPlan] = useState<string>(initialPlan || "free");
 
-  // Get plan info for display
-  const planInfo = selectedPlan
-    ? selectedType === "admin"
-      ? ORGANIZATION_PLANS[selectedPlan as keyof typeof ORGANIZATION_PLANS]
-      : INDIVIDUAL_PLANS[selectedPlan as keyof typeof INDIVIDUAL_PLANS]
-    : null;
+  // Get available plans based on account type
+  const individualPlans = getAllIndividualPlans();
+  const organizationPlans = getAllOrganizationPlans().filter(p => p.id !== "enterprise"); // Exclude enterprise for self-service
+
+  // Get current plan info for display
+  const getPlanInfo = (plan: string, isOrg: boolean) => {
+    if (isOrg) {
+      return ORGANIZATION_PLANS[plan as OrganizationPlan];
+    }
+    return INDIVIDUAL_PLANS[plan as IndividualPlan];
+  };
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -131,13 +154,46 @@ function RegisterForm() {
     }
   }, [selectedType, form]);
 
+  // Reset plan to free when switching account type (since plans are different)
   const userType = form.watch("userType");
+  useEffect(() => {
+    setSelectedPlan("free");
+  }, [userType]);
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
+      // For paid plans, redirect to Stripe Checkout first
+      if (selectedPlan !== "free") {
+        const checkoutResponse = await fetch("/api/auth/register-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+            displayName: data.displayName,
+            userType: data.userType,
+            organizationName: data.organizationName,
+            plan: selectedPlan,
+            billingInterval: "monthly",
+          }),
+        });
+
+        const checkoutResult = await checkoutResponse.json();
+
+        if (!checkoutResult.success) {
+          setErrorMessage(checkoutResult.error.message);
+          return;
+        }
+
+        // Redirect to Stripe Checkout
+        window.location.href = checkoutResult.data.checkoutUrl;
+        return;
+      }
+
+      // For free plan, use existing registration flow
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -157,28 +213,8 @@ function RegisterForm() {
         return;
       }
 
-      // Auto sign in after registration
-      const signInResult = await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        // Registration succeeded but sign-in failed, redirect to login
-        router.push("/login?registered=true");
-        return;
-      }
-
-      // If a paid plan was selected, redirect to billing to complete upgrade
-      if (selectedPlan && selectedPlan !== "free") {
-        router.push(`/settings/billing?upgrade=${selectedPlan}`);
-      } else if (data.userType === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/");
-      }
-      router.refresh();
+      // Redirect to email verification pending page
+      router.push(`/register/verify-pending?email=${encodeURIComponent(data.email)}`);
     } catch {
       setErrorMessage("登録に失敗しました。もう一度お試しください。");
     } finally {
@@ -193,20 +229,6 @@ function RegisterForm() {
         <CardDescription>
           アカウントを作成して学習を始めましょう
         </CardDescription>
-        {planInfo && planInfo.id !== "free" && (
-          <div className="pt-2">
-            <Badge variant="outline" className="text-primary border-primary">
-              <span className="material-symbols-outlined text-xs mr-1">arrow_circle_up</span>
-              {planInfo.nameJa}プランを選択中
-              <span className="ml-2 text-muted-foreground">
-                {formatPrice(planInfo.priceMonthly)}/月
-              </span>
-            </Badge>
-            <p className="text-xs text-muted-foreground mt-1">
-              ※登録後にプランをアップグレードできます
-            </p>
-          </div>
-        )}
       </CardHeader>
 
       <Form {...form}>
@@ -281,6 +303,55 @@ function RegisterForm() {
                 </FormItem>
               )}
             />
+
+            {/* Plan Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none">プラン</label>
+              <Select
+                value={selectedPlan}
+                onValueChange={setSelectedPlan}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="プランを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userType === "admin" ? (
+                    organizationPlans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{plan.nameJa}</span>
+                          <span className="text-muted-foreground">
+                            {formatPrice(plan.priceMonthly)}/月
+                          </span>
+                          {plan.maxMembers && (
+                            <span className="text-xs text-muted-foreground">
+                              (最大{plan.maxMembers}名)
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    individualPlans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{plan.nameJa}</span>
+                          <span className="text-muted-foreground">
+                            {formatPrice(plan.priceMonthly)}/月
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {selectedPlan !== "free" && (
+                <p className="text-xs text-muted-foreground">
+                  ※登録後にプランの支払い画面に移動します
+                </p>
+              )}
+            </div>
 
             {userType === "admin" && (
               <FormField

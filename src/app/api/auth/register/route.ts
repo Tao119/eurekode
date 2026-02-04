@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { sendVerificationEmail } from "@/lib/email";
 import type { ApiResponse } from "@/types/api";
 
 const registerSchema = z.object({
@@ -80,7 +82,8 @@ export async function POST(
         );
       }
 
-      // Create organization and admin user
+      // Create organization and admin user with 14-day Starter trial
+      const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       const organization = await prisma.organization.create({
         data: {
           name: organizationName,
@@ -98,17 +101,16 @@ export async function POST(
               passwordHash,
               displayName,
               userType: "admin",
-              emailVerified: new Date(), // Auto-verify for now (in production, send verification email)
+              // emailVerified is NOT set - requires email verification
             },
           },
           subscription: {
             create: {
               organizationPlan: "starter",
               status: "active",
+              trialEnd: trialEndDate,
               currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(
-                Date.now() + 14 * 24 * 60 * 60 * 1000
-              ), // 14 day trial
+              currentPeriodEnd: trialEndDate,
             },
           },
         },
@@ -117,45 +119,88 @@ export async function POST(
         },
       });
 
+      // Generate verification token and send email
+      const token = crypto.randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await prisma.verificationToken.create({
+        data: {
+          identifier: email,
+          token,
+          expires,
+        },
+      });
+
+      // Send verification email
+      try {
+        await sendVerificationEmail(email, token);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        // Continue registration even if email fails - user can request resend
+      }
+
       return NextResponse.json(
         {
           success: true,
           data: {
             userId: organization.users[0].id,
             organizationId: organization.id,
-            message: "アカウントが作成されました",
+            message: "アカウントが作成されました。メールアドレスの確認をお願いします。",
+            requiresVerification: true,
           },
         },
         { status: 201 }
       );
     } else {
-      // Create individual user
+      // Create individual user with 14-day Starter trial
+      const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       const user = await prisma.user.create({
         data: {
           email,
           passwordHash,
           displayName,
           userType: "individual",
-          emailVerified: new Date(), // Auto-verify for now
+          // emailVerified is NOT set - requires email verification
           subscription: {
             create: {
-              individualPlan: "free",
+              individualPlan: "starter", // Start with Starter plan
               status: "active",
+              trialEnd: trialEndDate, // 14-day trial
               currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(
-                Date.now() + 365 * 24 * 60 * 60 * 1000
-              ), // 1 year for free plan
+              currentPeriodEnd: trialEndDate,
             },
           },
         },
       });
+
+      // Generate verification token and send email
+      const token = crypto.randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await prisma.verificationToken.create({
+        data: {
+          identifier: email,
+          token,
+          expires,
+        },
+      });
+
+      // Send verification email
+      try {
+        await sendVerificationEmail(email, token);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        // Continue registration even if email fails - user can request resend
+      }
 
       return NextResponse.json(
         {
           success: true,
           data: {
             userId: user.id,
-            message: "アカウントが作成されました",
+            message: "アカウントが作成されました。メールアドレスの確認をお願いします。",
+            requiresVerification: true,
+            trialEnd: trialEndDate.toISOString(),
           },
         },
         { status: 201 }

@@ -7,9 +7,7 @@ import { ProjectSelector } from "@/components/chat/ProjectSelector";
 import type { ClaudeModel } from "@/types/chat";
 import { DEFAULT_MODEL } from "@/types/chat";
 import { useChat, ChatApiError } from "@/hooks/useChat";
-import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
-import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
 import { toast } from "sonner";
 import type { PersistedGenerationState } from "@/hooks/useGenerationMode";
 
@@ -22,9 +20,7 @@ export default function GenerationModePage() {
   const searchParams = useSearchParams();
   const initialConversationId = searchParams.get("id");
   const initialProjectId = searchParams.get("projectId");
-  const tokenUsage = useTokenUsageOptional();
   const userSettings = useUserSettingsOptional();
-  const { showTokenLimitError, TokenLimitDialog } = useTokenLimitDialog();
 
   // Track conversation ID in state to avoid page navigation
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(initialConversationId);
@@ -49,28 +45,10 @@ export default function GenerationModePage() {
     }
   }, []);
 
-  // Update token usage when response completes
-  const handleTokensUsed = useCallback((tokens: number) => {
-    tokenUsage?.addUsage(tokens);
-  }, [tokenUsage]);
-
-  // Handle errors including token limit exceeded
+  // Handle errors
   const handleError = useCallback((error: Error) => {
-    if (error instanceof ChatApiError && error.code === "TOKEN_LIMIT_EXCEEDED") {
-      const handled = showTokenLimitError({
-        code: error.code,
-        message: error.message,
-        details: error.details as {
-          currentUsage: number;
-          dailyLimit: number;
-          remaining: number;
-          required: number;
-        },
-      });
-      if (handled) return;
-    }
     toast.error(error.message);
-  }, [showTokenLimitError]);
+  }, []);
 
   const {
     messages,
@@ -93,7 +71,6 @@ export default function GenerationModePage() {
     projectId: selectedProjectId || undefined,
     onError: handleError,
     onConversationCreated: handleConversationCreated,
-    onTokensUsed: handleTokensUsed,
     model: selectedModel,
   });
 
@@ -137,39 +114,36 @@ export default function GenerationModePage() {
   }, [generationRecovery, clearGenerationRecovery]);
 
   return (
-    <>
-      <GenerationChatContainer
-        messages={messages}
-        isLoading={isLoading}
-        onSendMessage={sendMessage}
-        welcomeMessage="実装したい機能を言葉で説明してください。計画を立て、コードを生成し、理解度を確認しながら進めます。"
-        inputPlaceholder="実装したい機能を説明してください..."
-        canSkip={canSkip}
-        onStopGeneration={stopGeneration}
-        onForkFromMessage={forkFromMessage}
-        branches={branches}
-        currentBranchId={currentBranchId}
-        onSwitchBranch={switchBranch}
-        onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
-        conversationId={currentConversationId || undefined}
-        initialGenerationState={initialGenerationState}
-        headerExtra={
-          <>
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              disabled={isLoading}
-            />
-            <ProjectSelector
-              selectedProjectId={selectedProjectId}
-              onProjectChange={setSelectedProjectId}
-              disabled={!canChangeProject}
-            />
-          </>
-        }
-      />
-      <TokenLimitDialog />
-    </>
+    <GenerationChatContainer
+      messages={messages}
+      isLoading={isLoading}
+      onSendMessage={sendMessage}
+      welcomeMessage="実装したい機能を言葉で説明してください。計画を立て、コードを生成し、理解度を確認しながら進めます。"
+      inputPlaceholder="実装したい機能を説明してください..."
+      canSkip={canSkip}
+      onStopGeneration={stopGeneration}
+      onForkFromMessage={forkFromMessage}
+      branches={branches}
+      currentBranchId={currentBranchId}
+      onSwitchBranch={switchBranch}
+      onRegenerate={regenerateLastMessage}
+      canRegenerate={canRegenerate}
+      conversationId={currentConversationId || undefined}
+      initialGenerationState={initialGenerationState}
+      headerExtra={
+        <>
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            disabled={isLoading}
+          />
+          <ProjectSelector
+            selectedProjectId={selectedProjectId}
+            onProjectChange={setSelectedProjectId}
+            disabled={!canChangeProject}
+          />
+        </>
+      }
+    />
   );
 }

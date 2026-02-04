@@ -71,10 +71,11 @@ export async function POST(request: NextRequest) {
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata || {};
-  const { userId, type } = metadata;
+  const { type } = metadata;
 
-  if (!userId) {
-    console.error("Missing userId in checkout session metadata");
+  // 新規登録（決済後にユーザー作成）の場合
+  if (type === "registration") {
+    await handleRegistrationCompleted(session);
     return;
   }
 
@@ -84,8 +85,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // サブスクリプション購入の場合
-  const { plan, isOrganization } = metadata;
+  // 既存ユーザーのサブスクリプション購入の場合
+  const { userId, plan, isOrganization } = metadata;
+
+  if (!userId) {
+    console.error("Missing userId in checkout session metadata");
+    return;
+  }
 
   if (!plan) {
     console.error("Missing plan in checkout session metadata");
@@ -134,6 +140,156 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   await initializeCreditBalance(userId, currentPeriodStart, currentPeriodEnd);
 
   console.log(`Subscription created/updated for user ${userId}: ${plan}`);
+}
+
+/**
+ * 新規登録＋決済完了処理
+ * 決済が成功した後にユーザーを作成する
+ */
+async function handleRegistrationCompleted(session: Stripe.Checkout.Session) {
+  const metadata = session.metadata || {};
+  const { email, passwordHash, displayName, userType, organizationName, plan } = metadata;
+
+  if (!email || !passwordHash || !displayName || !userType || !plan) {
+    console.error("Missing registration data in checkout session metadata");
+    return;
+  }
+
+  // メールアドレスの重複チェック（決済中に別の方法で登録された可能性）
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    console.error(`User already exists with email: ${email}`);
+    // ユーザーが既に存在する場合、サブスクリプションを更新する
+    const subscriptionId = session.subscription as string;
+    const customerId = session.customer as string;
+    const stripeSubscription = await getSubscription(subscriptionId);
+
+    if (stripeSubscription && existingUser.id) {
+      const priceId = stripeSubscription.items.data[0]?.price.id;
+      const subAny = stripeSubscription as unknown as { current_period_start: number; current_period_end: number };
+
+      await prisma.subscription.upsert({
+        where: { userId: existingUser.id },
+        create: {
+          userId: existingUser.id,
+          individualPlan: userType === "individual" ? (plan as IndividualPlan) : null,
+          organizationPlan: userType === "admin" ? (plan as OrganizationPlan) : null,
+          status: "active",
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId,
+          stripePriceId: priceId,
+          currentPeriodStart: new Date(subAny.current_period_start * 1000),
+          currentPeriodEnd: new Date(subAny.current_period_end * 1000),
+        },
+        update: {
+          individualPlan: userType === "individual" ? (plan as IndividualPlan) : null,
+          organizationPlan: userType === "admin" ? (plan as OrganizationPlan) : null,
+          status: "active",
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId,
+          stripePriceId: priceId,
+        },
+      });
+    }
+    return;
+  }
+
+  const subscriptionId = session.subscription as string;
+  const customerId = session.customer as string;
+  const stripeSubscription = await getSubscription(subscriptionId);
+
+  if (!stripeSubscription) {
+    console.error("Could not retrieve subscription from Stripe for registration");
+    return;
+  }
+
+  const priceId = stripeSubscription.items.data[0]?.price.id;
+  const subAny = stripeSubscription as unknown as { current_period_start: number; current_period_end: number };
+  const currentPeriodStart = new Date(subAny.current_period_start * 1000);
+  const currentPeriodEnd = new Date(subAny.current_period_end * 1000);
+
+  try {
+    if (userType === "admin") {
+      // 組織管理者の場合: Organization + User + Subscription を作成
+      const organization = await prisma.organization.create({
+        data: {
+          name: organizationName || "未設定",
+          plan: plan as OrganizationPlan,
+          settings: {
+            allowedModes: ["explanation", "generation", "brainstorm"],
+            allowedTechStacks: [],
+            unlockSkipAllowed: false,
+            reflectionRequired: false,
+            defaultDailyTokenLimit: 1000,
+          },
+          users: {
+            create: {
+              email,
+              passwordHash,
+              displayName,
+              userType: "admin",
+              emailVerified: new Date(),
+            },
+          },
+          subscription: {
+            create: {
+              organizationPlan: plan as OrganizationPlan,
+              status: "active",
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: subscriptionId,
+              stripePriceId: priceId,
+              currentPeriodStart,
+              currentPeriodEnd,
+            },
+          },
+        },
+        include: {
+          users: true,
+        },
+      });
+
+      // クレジット残高を初期化
+      if (organization.users[0]) {
+        await initializeCreditBalance(organization.users[0].id, currentPeriodStart, currentPeriodEnd);
+      }
+
+      console.log(`Registration completed for admin user: ${email}, organization: ${organizationName}`);
+    } else {
+      // 個人ユーザーの場合: User + Subscription を作成
+      const user = await prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          displayName,
+          userType: "individual",
+          emailVerified: new Date(),
+          subscription: {
+            create: {
+              individualPlan: plan as IndividualPlan,
+              status: "active",
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: subscriptionId,
+              stripePriceId: priceId,
+              currentPeriodStart,
+              currentPeriodEnd,
+            },
+          },
+        },
+      });
+
+      // クレジット残高を初期化
+      await initializeCreditBalance(user.id, currentPeriodStart, currentPeriodEnd);
+
+      console.log(`Registration completed for individual user: ${email}, plan: ${plan}`);
+    }
+  } catch (error) {
+    console.error("Error creating user from registration checkout:", error);
+    // Note: 決済は成功しているため、サポートに連絡するなどの対応が必要
+    // TODO: アラート通知を送信
+  }
 }
 
 /**
