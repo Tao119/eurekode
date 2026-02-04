@@ -255,7 +255,9 @@ export async function createCreditPurchaseSession({
 }
 
 /**
- * サブスクリプションのプランを変更
+ * サブスクリプションのプランを変更（即時適用、按分あり）
+ * - アップグレード: 差額を即時請求
+ * - ダウングレード: 残り期間分をクレジットとして計算
  */
 export async function changeSubscriptionPlan(
   subscriptionId: string,
@@ -272,6 +274,112 @@ export async function changeSubscriptionPlan(
     ],
     proration_behavior: "create_prorations",
   });
+}
+
+/**
+ * サブスクリプションのプランを次回更新時に変更（ダウングレード用）
+ * - 現在の請求期間が終了するまで現在のプランを維持
+ * - 期間終了時に新しいプランに自動移行
+ */
+export async function scheduleSubscriptionPlanChange(
+  subscriptionId: string,
+  newPriceId: string
+): Promise<Stripe.SubscriptionSchedule> {
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+  // SDK v20+では期間情報はitems.data[0]から取得
+  const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
+  if (typeof currentPeriodEnd !== "number") {
+    throw new Error("Could not determine subscription period end");
+  }
+
+  // 既存のスケジュールがあればそれを更新、なければ新規作成
+  const schedules = await stripe.subscriptionSchedules.list({
+    customer: subscription.customer as string,
+  });
+
+  const existingSchedule = schedules.data.find(
+    s => s.subscription === subscriptionId && s.status === "active"
+  );
+
+  if (existingSchedule) {
+    // 既存のスケジュールを更新
+    return stripe.subscriptionSchedules.update(existingSchedule.id, {
+      phases: [
+        {
+          items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+          start_date: existingSchedule.phases[0]?.start_date || Math.floor(Date.now() / 1000),
+          end_date: currentPeriodEnd,
+        },
+        {
+          items: [{ price: newPriceId, quantity: 1 }],
+          start_date: currentPeriodEnd,
+        },
+      ],
+    });
+  }
+
+  // 新しいスケジュールを作成
+  return stripe.subscriptionSchedules.create({
+    from_subscription: subscriptionId,
+    phases: [
+      {
+        items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+        end_date: currentPeriodEnd,
+      },
+      {
+        items: [{ price: newPriceId, quantity: 1 }],
+      },
+    ],
+  });
+}
+
+/**
+ * プラン変更のプレビュー（按分計算の見積もり）
+ */
+export async function previewSubscriptionChange(
+  subscriptionId: string,
+  newPriceId: string
+): Promise<{
+  immediateAmount: number;
+  proratedCredit: number;
+  nextInvoiceAmount: number;
+}> {
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+  // SDK v20+では invoices.createPreview を使用
+  const upcomingInvoice = await stripe.invoices.createPreview({
+    customer: subscription.customer as string,
+    subscription: subscriptionId,
+    subscription_details: {
+      items: [
+        {
+          id: subscription.items.data[0].id,
+          price: newPriceId,
+        },
+      ],
+      proration_behavior: "create_prorations",
+    },
+  });
+
+  // 按分計算された項目を抽出（SDK v20+ではprorationプロパティを直接確認）
+  const prorations = upcomingInvoice.lines.data.filter(
+    (line) => (line as unknown as { proration?: boolean }).proration === true
+  );
+
+  const proratedCredit = prorations
+    .filter((p) => p.amount < 0)
+    .reduce((sum, p) => sum + Math.abs(p.amount), 0);
+
+  const immediateCharge = prorations
+    .filter((p) => p.amount > 0)
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  return {
+    immediateAmount: immediateCharge - proratedCredit,
+    proratedCredit,
+    nextInvoiceAmount: upcomingInvoice.total,
+  };
 }
 
 /**

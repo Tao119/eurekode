@@ -315,12 +315,25 @@ function BillingPageContent() {
               )}
 
               {subscription?.currentPeriodEnd && !subscription?.trial?.isTrialing && (
-                <p className="text-sm text-muted-foreground">
-                  次回更新日: {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
-                  {subscription.cancelAtPeriodEnd && (
-                    <span className="text-orange-500 ml-2">（期間終了時にキャンセル）</span>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  {subscription.cancelAtPeriodEnd ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-orange-600 font-medium">
+                        {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}まで有効
+                      </span>
+                      <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+                        解約予定
+                      </Badge>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
+                      </span>
+                      に自動更新
+                    </p>
                   )}
-                </p>
+                </div>
               )}
 
               <div className="flex gap-2">

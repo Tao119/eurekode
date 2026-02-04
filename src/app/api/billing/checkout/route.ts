@@ -1,13 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createCheckoutSession, createCustomer, STRIPE_PRICE_IDS } from "@/lib/stripe";
+import {
+  createCheckoutSession,
+  createCustomer,
+  changeSubscriptionPlan,
+  scheduleSubscriptionPlanChange,
+  previewSubscriptionChange,
+  STRIPE_PRICE_IDS,
+} from "@/lib/stripe";
 import {
   IndividualPlan,
   OrganizationPlan,
   INDIVIDUAL_PLANS,
   ORGANIZATION_PLANS,
 } from "@/config/plans";
+
+/**
+ * プランの価格順位を取得（比較用）
+ */
+function getPlanPriority(plan: string, isOrganization: boolean): number {
+  if (isOrganization) {
+    const priorities: Record<string, number> = { free: 0, starter: 1, business: 2, enterprise: 3 };
+    return priorities[plan] ?? 0;
+  }
+  const priorities: Record<string, number> = { free: 0, starter: 1, pro: 2, max: 3 };
+  return priorities[plan] ?? 0;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,10 +40,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { plan, billingPeriod = "monthly", isOrganization = false } = body as {
+    const {
+      plan,
+      billingPeriod = "monthly",
+      isOrganization = false,
+      preview = false, // trueの場合、プレビューのみ返す
+      scheduleForNextPeriod = false, // trueの場合、次回更新時に適用
+    } = body as {
       plan: string;
       billingPeriod: "monthly" | "yearly";
       isOrganization: boolean;
+      preview?: boolean;
+      scheduleForNextPeriod?: boolean;
     };
 
     // プランの検証
@@ -92,7 +119,93 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Stripe顧客IDを取得または作成
+    // 既存のStripeサブスクリプションがあるかチェック
+    const hasActiveSubscription =
+      user.subscription?.stripeSubscriptionId &&
+      user.subscription?.status === "active";
+
+    // 既存サブスクリプションがある場合はプラン変更
+    if (hasActiveSubscription && user.subscription?.stripeSubscriptionId) {
+      const subscriptionId = user.subscription.stripeSubscriptionId;
+      const currentPlan = user.subscription.individualPlan || user.subscription.organizationPlan || "free";
+      const currentPriority = getPlanPriority(currentPlan, isOrganization);
+      const newPriority = getPlanPriority(plan, isOrganization);
+      const isUpgrade = newPriority > currentPriority;
+      const isDowngrade = newPriority < currentPriority;
+
+      // プレビューモードの場合は見積もりを返す
+      if (preview) {
+        try {
+          const previewData = await previewSubscriptionChange(subscriptionId, priceId);
+          return NextResponse.json({
+            type: "preview",
+            isUpgrade,
+            isDowngrade,
+            ...previewData,
+            message: isUpgrade
+              ? `アップグレードすると、今すぐ¥${previewData.immediateAmount.toLocaleString()}が請求されます（差額の按分）。`
+              : isDowngrade
+              ? `ダウングレードすると、¥${previewData.proratedCredit.toLocaleString()}分のクレジットが次回請求に適用されます。`
+              : "同じプランに変更しても料金は変わりません。",
+          });
+        } catch (error) {
+          console.error("Preview error:", error);
+          return NextResponse.json(
+            { error: "Failed to preview", errorJa: "見積もりの取得に失敗しました" },
+            { status: 500 }
+          );
+        }
+      }
+
+      // ダウングレードで次回更新時に適用する場合
+      if (isDowngrade && scheduleForNextPeriod) {
+        try {
+          await scheduleSubscriptionPlanChange(subscriptionId, priceId);
+
+          // DBの更新は行わない（Webhookで処理される）
+          return NextResponse.json({
+            success: true,
+            type: "scheduled",
+            message: "プランの変更が次回更新時に適用されるよう予約されました。",
+          });
+        } catch (error) {
+          console.error("Schedule error:", error);
+          return NextResponse.json(
+            { error: "Failed to schedule", errorJa: "プラン変更の予約に失敗しました" },
+            { status: 500 }
+          );
+        }
+      }
+
+      // 即時プラン変更（アップグレードまたは即時ダウングレード）
+      try {
+        await changeSubscriptionPlan(subscriptionId, priceId);
+
+        // DBを更新
+        await prisma.subscription.update({
+          where: { id: user.subscription.id },
+          data: isOrganization
+            ? { organizationPlan: plan as OrganizationPlan, individualPlan: null }
+            : { individualPlan: plan as IndividualPlan, organizationPlan: null },
+        });
+
+        return NextResponse.json({
+          success: true,
+          type: isUpgrade ? "upgraded" : "downgraded",
+          message: isUpgrade
+            ? "プランがアップグレードされました。差額が請求されます。"
+            : "プランがダウングレードされました。残り期間分のクレジットが適用されます。",
+        });
+      } catch (error) {
+        console.error("Plan change error:", error);
+        return NextResponse.json(
+          { error: "Failed to change plan", errorJa: "プランの変更に失敗しました" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // 新規サブスクリプションの場合はCheckoutセッションを作成
     let stripeCustomerId = user.subscription?.stripeCustomerId;
 
     if (!stripeCustomerId && user.email) {
@@ -104,7 +217,6 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = customer.id;
     }
 
-    // Checkoutセッションを作成
     const requestUrl = new URL(request.url);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${requestUrl.protocol}//${requestUrl.host}`;
     const checkoutSession = await createCheckoutSession({
