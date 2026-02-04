@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +96,8 @@ export default function BillingPage() {
 }
 
 function BillingPageContent() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [creditBalance, setCreditBalance] = useState<CreditBalanceData | null>(null);
@@ -107,9 +110,23 @@ function BillingPageContent() {
   const canceled = searchParams.get("canceled");
   const creditPurchase = searchParams.get("credit_purchase");
 
+  // メンバーはアクセス不可
+  const isMember = session?.user?.userType === "member";
+
   useEffect(() => {
-    fetchBillingData();
-  }, []);
+    if (status === "unauthenticated") {
+      router.push("/login?callbackUrl=/settings/billing");
+      return;
+    }
+    // メンバーの場合は設定ページにリダイレクト
+    if (status === "authenticated" && isMember) {
+      router.push("/settings");
+      return;
+    }
+    if (status === "authenticated" && !isMember) {
+      fetchBillingData();
+    }
+  }, [status, isMember, router]);
 
   const fetchBillingData = async () => {
     try {
@@ -165,7 +182,8 @@ function BillingPageContent() {
   const remainingConversations = creditBalance?.remainingConversations?.sonnet ?? 0;
   const showWarning = remainingConversations <= 5;
 
-  if (isLoading) {
+  // 認証チェック中、またはメンバーの場合はローディング表示
+  if (status === "loading" || isLoading || isMember) {
     return (
       <div className="max-w-4xl mx-auto py-8 px-4">
         <div className="flex items-center justify-center min-h-[400px]">

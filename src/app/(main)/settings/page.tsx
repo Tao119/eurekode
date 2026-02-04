@@ -76,6 +76,11 @@ export default function SettingsPage() {
   const [isDeletingHistory, setIsDeletingHistory] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
+  // Admin to individual conversion state
+  const [showConvertToIndividualDialog, setShowConvertToIndividualDialog] = useState(false);
+  const [convertConfirm, setConvertConfirm] = useState("");
+  const [isConverting, setIsConverting] = useState(false);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login?callbackUrl=/settings");
@@ -359,8 +364,42 @@ export default function SettingsPage() {
     }
   };
 
+  const handleConvertToIndividual = async () => {
+    if (convertConfirm !== "組織を解散する") {
+      toast.error("確認テキストが一致しません");
+      return;
+    }
+
+    setIsConverting(true);
+    try {
+      const response = await fetch("/api/user/organization/convert-to-individual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmText: convertConfirm }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("個人アカウントに変換しました");
+        setShowConvertToIndividualDialog(false);
+        setConvertConfirm("");
+        // Refresh session
+        await updateSession();
+        router.refresh();
+      } else {
+        toast.error(data.error?.message || "変換に失敗しました");
+      }
+    } catch {
+      toast.error("変換に失敗しました");
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
   const isIndividual = session?.user.userType === "individual";
   const isMember = session?.user.userType === "member";
+  const isAdmin = session?.user.userType === "admin";
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
@@ -547,20 +586,47 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-          ) : (
-            // Admin user - show info only
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-orange-500/5 border border-orange-500/20">
-              <div className="size-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-orange-500">admin_panel_settings</span>
+          ) : isAdmin ? (
+            // Admin user - show info and option to convert to individual
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                <div className="size-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-orange-500">admin_panel_settings</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{orgInfo?.organization?.name || "組織"} - 管理者</p>
+                  <p className="text-sm text-muted-foreground">
+                    組織の管理者として設定されています
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-medium">{orgInfo?.organization?.name || "組織"} - 管理者</p>
-                <p className="text-sm text-muted-foreground">
-                  組織の管理者として設定されています
-                </p>
+
+              <div className="border-t pt-4">
+                <div className="flex items-start gap-3">
+                  <div className="size-10 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive mt-0.5">
+                    <span className="material-symbols-outlined">person_remove</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">個人アカウントに変換する</p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      組織を解散して個人アカウントに戻します。
+                      <span className="text-destructive font-medium">
+                        すべてのメンバーのデータが即時削除されます。
+                      </span>
+                    </p>
+                    <Button
+                      onClick={() => setShowConvertToIndividualDialog(true)}
+                      variant="outline"
+                      className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                    >
+                      <span className="material-symbols-outlined mr-2 text-lg">warning</span>
+                      個人アカウントに変換
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -628,24 +694,26 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Billing Link */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span className="material-symbols-outlined">toll</span>
-            クレジット・プラン
-          </CardTitle>
-          <CardDescription>月間ポイントとプランを管理</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline" className="w-full">
-            <a href="/settings/billing">
-              <span className="material-symbols-outlined mr-2 text-lg">credit_card</span>
-              プラン・請求設定を開く
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Billing Link - メンバーは非表示 */}
+      {!isMember && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="material-symbols-outlined">toll</span>
+              クレジット・プラン
+            </CardTitle>
+            <CardDescription>月間ポイントとプランを管理</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="w-full">
+              <a href="/settings/billing">
+                <span className="material-symbols-outlined mr-2 text-lg">credit_card</span>
+                プラン・請求設定を開く
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Danger Zone */}
       <Card className="border-destructive/50">
@@ -1003,6 +1071,91 @@ export default function SettingsPage() {
                 </>
               ) : (
                 "完全に削除する"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert to Individual Dialog - Admin only */}
+      <Dialog open={showConvertToIndividualDialog} onOpenChange={(open) => {
+        setShowConvertToIndividualDialog(open);
+        if (!open) {
+          setConvertConfirm("");
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <span className="material-symbols-outlined">warning</span>
+              組織を解散して個人に変換
+            </DialogTitle>
+            <DialogDescription>
+              この操作は取り消すことができません。慎重に確認してください。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-destructive/20 rounded-lg border-2 border-destructive">
+              <p className="text-sm font-bold text-destructive mb-2">⚠️ 重大な警告</p>
+              <p className="text-sm text-destructive">
+                この操作を実行すると、以下のデータが<span className="font-bold">即時かつ完全に削除</span>されます：
+              </p>
+              <ul className="text-sm text-destructive mt-2 space-y-1">
+                <li>・ <span className="font-bold">すべてのメンバーのアカウント</span></li>
+                <li>・ すべてのメンバーの会話履歴</li>
+                <li>・ すべてのメンバーの学び（インサイト）</li>
+                <li>・ 発行されたすべてのアクセスキー</li>
+                <li>・ 組織の設定とデータ</li>
+              </ul>
+            </div>
+
+            <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/30">
+              <p className="text-sm text-orange-700 dark:text-orange-400">
+                <span className="font-bold">注意：</span>
+                メンバーには事前に通知されません。削除後、メンバーはログインできなくなります。
+              </p>
+            </div>
+
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-1">変換後のあなたのアカウント：</p>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>・ 個人アカウントとして継続利用可能</li>
+                <li>・ あなた自身の会話履歴と学びは保持</li>
+                <li>・ サブスクリプションは解約されます</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="convertConfirm">
+                確認のため「<span className="font-mono text-destructive font-bold">組織を解散する</span>」と入力してください
+              </Label>
+              <Input
+                id="convertConfirm"
+                value={convertConfirm}
+                onChange={(e) => setConvertConfirm(e.target.value)}
+                placeholder="組織を解散する"
+                className="border-destructive/50"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConvertToIndividualDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConvertToIndividual}
+              disabled={isConverting || convertConfirm !== "組織を解散する"}
+            >
+              {isConverting ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  変換中...
+                </>
+              ) : (
+                "組織を解散して個人に変換"
               )}
             </Button>
           </DialogFooter>
