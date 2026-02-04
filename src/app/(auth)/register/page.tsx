@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/form";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { INDIVIDUAL_PLANS, ORGANIZATION_PLANS, formatPrice } from "@/config/plans";
 
 const registerSchema = z
   .object({
@@ -65,15 +67,54 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<RegisterFormSkeleton />}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterFormSkeleton() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold">新規登録</CardTitle>
+        <CardDescription>
+          アカウントを作成して学習を始めましょう
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-center py-8">
+          <LoadingSpinner />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get plan and type from URL parameters
+  const selectedPlan = searchParams.get("plan");
+  const selectedType = searchParams.get("type"); // "admin" for organization
+
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Get plan info for display
+  const planInfo = selectedPlan
+    ? selectedType === "admin"
+      ? ORGANIZATION_PLANS[selectedPlan as keyof typeof ORGANIZATION_PLANS]
+      : INDIVIDUAL_PLANS[selectedPlan as keyof typeof INDIVIDUAL_PLANS]
+    : null;
+
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      userType: "individual",
+      userType: selectedType === "admin" ? "admin" : "individual",
       email: "",
       password: "",
       confirmPassword: "",
@@ -82,6 +123,13 @@ export default function RegisterPage() {
       agreeTerms: false,
     },
   });
+
+  // Update userType when URL param changes
+  useEffect(() => {
+    if (selectedType === "admin") {
+      form.setValue("userType", "admin");
+    }
+  }, [selectedType, form]);
 
   const userType = form.watch("userType");
 
@@ -122,8 +170,10 @@ export default function RegisterPage() {
         return;
       }
 
-      // Redirect based on user type
-      if (data.userType === "admin") {
+      // If a paid plan was selected, redirect to billing to complete upgrade
+      if (selectedPlan && selectedPlan !== "free") {
+        router.push(`/settings/billing?upgrade=${selectedPlan}`);
+      } else if (data.userType === "admin") {
         router.push("/admin");
       } else {
         router.push("/");
@@ -143,6 +193,20 @@ export default function RegisterPage() {
         <CardDescription>
           アカウントを作成して学習を始めましょう
         </CardDescription>
+        {planInfo && planInfo.id !== "free" && (
+          <div className="pt-2">
+            <Badge variant="outline" className="text-primary border-primary">
+              <span className="material-symbols-outlined text-xs mr-1">arrow_circle_up</span>
+              {planInfo.nameJa}プランを選択中
+              <span className="ml-2 text-muted-foreground">
+                {formatPrice(planInfo.priceMonthly)}/月
+              </span>
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-1">
+              ※登録後にプランをアップグレードできます
+            </p>
+          </div>
+        )}
       </CardHeader>
 
       <Form {...form}>
@@ -367,12 +431,17 @@ export default function RegisterPage() {
               )}
             </Button>
 
-            <p className="text-sm text-center text-muted-foreground">
-              既にアカウントをお持ちの方は{" "}
-              <Link href="/login" className="text-primary hover:underline">
-                ログイン
+            <div className="flex flex-col gap-2 text-sm text-center">
+              <p className="text-muted-foreground">
+                既にアカウントをお持ちの方は{" "}
+                <Link href="/login" className="text-primary hover:underline">
+                  ログイン
+                </Link>
+              </p>
+              <Link href="/pricing" className="text-muted-foreground hover:text-foreground">
+                料金プランを見る →
               </Link>
-            </p>
+            </div>
           </CardFooter>
         </form>
       </Form>

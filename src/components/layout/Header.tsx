@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { Logo } from "./Logo";
-import { TokenCounter } from "@/components/common/TokenCounter";
+import { CreditCounter } from "@/components/common/CreditCounter";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
+import { useCredits } from "@/hooks/useCredits";
 
 interface NavItem {
   href: string;
@@ -37,11 +37,7 @@ export function Header() {
   const pathname = usePathname();
   const isLoading = status === "loading";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const tokenUsage = useTokenUsageOptional();
-
-  // Get token values from context or fallback to session defaults
-  const tokenUsed = tokenUsage?.todayUsage ?? 0;
-  const tokenLimit = tokenUsage?.dailyLimit ?? session?.user?.dailyTokenLimit ?? 1000;
+  const credits = useCredits();
 
   const closeMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
@@ -109,13 +105,9 @@ export function Header() {
               <div className="h-8 w-8 bg-muted animate-pulse rounded-full" />
             ) : session ? (
               <>
-                {/* Token Counter (Desktop only) */}
+                {/* Credit Counter (Desktop only) */}
                 <div className="hidden lg:block">
-                  <TokenCounter
-                    used={tokenUsed}
-                    limit={tokenLimit}
-                    size="sm"
-                  />
+                  <CreditCounter size="sm" />
                 </div>
 
                 {/* User Menu */}
@@ -142,27 +134,35 @@ export function Header() {
                           {session.user.email}
                         </p>
                       )}
-                      {tokenUsage?.organizationName && (
+                      {credits.isOrganizationMember && (
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">corporate_fare</span>
-                          {tokenUsage.organizationName}
+                          組織メンバー
                         </p>
                       )}
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <Link
+                        href="/settings/billing"
+                        className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[12px]">arrow_circle_up</span>
                         {session.user.plan.toUpperCase()} プラン
-                      </p>
+                      </Link>
                     </div>
                     <DropdownMenuSeparator />
 
-                    {/* Mobile-only: Token Counter */}
+                    {/* Mobile-only: Credit Counter */}
                     <div className="lg:hidden px-2 py-2 border-b border-border mb-1">
-                      <TokenCounter
-                        used={tokenUsed}
-                        limit={tokenLimit}
-                        size="sm"
-                      />
+                      <CreditCounter size="sm" showLink={false} />
                     </div>
 
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings/billing" className="cursor-pointer">
+                        <span className="material-symbols-outlined mr-2 text-[18px]">
+                          credit_card
+                        </span>
+                        プラン・請求
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/settings" className="cursor-pointer">
                         <span className="material-symbols-outlined mr-2 text-[18px]">
@@ -186,6 +186,9 @@ export function Header() {
               </>
             ) : (
               <>
+                <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+                  <Link href="/pricing">料金</Link>
+                </Button>
                 <Button variant="ghost" size="sm" asChild>
                   <Link href="/login">ログイン</Link>
                 </Button>
