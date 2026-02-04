@@ -1,7 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import type { ApiResponse } from "@/types/api";
+
+/**
+ * 自動ログイン用のトークンを生成して保存
+ */
+async function createLoginToken(email: string): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 10 * 60 * 1000); // 10分間有効
+
+  // 既存のログイントークンを削除
+  await prisma.verificationToken.deleteMany({
+    where: {
+      identifier: `login:${email}`,
+    },
+  });
+
+  await prisma.verificationToken.create({
+    data: {
+      identifier: `login:${email}`,
+      token,
+      expires,
+    },
+  });
+
+  return token;
+}
 
 export async function GET(
   request: NextRequest
@@ -87,7 +113,10 @@ export async function GET(
       },
     });
 
-    if (user) {
+    if (user && user.email) {
+      // ログイントークンを生成
+      const loginToken = await createLoginToken(user.email);
+
       return NextResponse.json({
         success: true,
         data: {
@@ -95,6 +124,7 @@ export async function GET(
           displayName: user.displayName,
           status: "completed",
           plan: user.subscription?.individualPlan || user.subscription?.organizationPlan,
+          loginToken, // 自動ログイン用トークン
         },
       });
     }

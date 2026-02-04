@@ -1,9 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
+import crypto from "crypto";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { constructWebhookEvent, getSubscription } from "@/lib/stripe";
 import { IndividualPlan, OrganizationPlan } from "@/config/plans";
+
+/**
+ * 自動ログイン用のトークンを生成して保存
+ */
+async function createLoginToken(email: string): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 10 * 60 * 1000); // 10分間有効
+
+  await prisma.verificationToken.create({
+    data: {
+      identifier: `login:${email}`,
+      token,
+      expires,
+    },
+  });
+
+  return token;
+}
 
 export async function POST(request: NextRequest) {
   try {

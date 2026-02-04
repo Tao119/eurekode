@@ -59,6 +59,10 @@ const loginSchema = z.object({
   password: z.string().min(8),
 });
 
+const loginTokenSchema = z.object({
+  loginToken: z.string().min(1),
+});
+
 const accessKeySchema = z.object({
   keyCode: z.string().regex(/^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/),
   displayName: z.string().min(1).max(100),
@@ -79,6 +83,78 @@ export const authConfig: NextAuthConfig = {
     error: "/login",
   },
   providers: [
+    // Login Token authentication (for auto-login after payment)
+    Credentials({
+      id: "login-token",
+      name: "Login Token",
+      credentials: {
+        loginToken: { label: "Login Token", type: "text" },
+      },
+      async authorize(credentials) {
+        const parsed = loginTokenSchema.safeParse(credentials);
+        if (!parsed.success) {
+          return null;
+        }
+
+        const { loginToken } = parsed.data;
+
+        // Find the login token in VerificationToken table
+        const tokenRecord = await prisma.verificationToken.findFirst({
+          where: {
+            token: loginToken,
+            identifier: { startsWith: "login:" },
+          },
+        });
+
+        if (!tokenRecord) {
+          return null;
+        }
+
+        // Check expiration
+        if (tokenRecord.expires < new Date()) {
+          // Delete expired token
+          await prisma.verificationToken.delete({
+            where: {
+              identifier_token: {
+                identifier: tokenRecord.identifier,
+                token: loginToken,
+              },
+            },
+          });
+          return null;
+        }
+
+        // Extract email from identifier (format: "login:email@example.com")
+        const email = tokenRecord.identifier.replace("login:", "");
+
+        // Find the user
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (!user) {
+          return null;
+        }
+
+        // Delete the token (one-time use)
+        await prisma.verificationToken.delete({
+          where: {
+            identifier_token: {
+              identifier: tokenRecord.identifier,
+              token: loginToken,
+            },
+          },
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          userType: user.userType,
+          organizationId: user.organizationId,
+        };
+      },
+    }),
     // Email/Password authentication
     Credentials({
       id: "credentials",

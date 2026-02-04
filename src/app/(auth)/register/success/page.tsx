@@ -41,9 +41,10 @@ function RegisterSuccessContent() {
   const router = useRouter();
   const sessionId = searchParams.get("session_id");
 
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "logging_in" | "error">("loading");
   const [email, setEmail] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
 
   useEffect(() => {
     async function verifySession() {
@@ -59,8 +60,39 @@ function RegisterSuccessContent() {
         const result = await response.json();
 
         if (result.success) {
-          setStatus("success");
           setEmail(result.data.email);
+
+          // ログイントークンがあれば自動ログイン
+          if (result.data.loginToken && result.data.status === "completed") {
+            setStatus("logging_in");
+            setIsAutoLoggingIn(true);
+
+            try {
+              const signInResult = await signIn("login-token", {
+                loginToken: result.data.loginToken,
+                redirect: false,
+              });
+
+              if (signInResult?.ok) {
+                // ログイン成功、ホームページへリダイレクト
+                router.push("/");
+                return;
+              } else {
+                // 自動ログイン失敗、手動ログインを促す
+                setStatus("success");
+                setIsAutoLoggingIn(false);
+              }
+            } catch {
+              // 自動ログイン失敗、手動ログインを促す
+              setStatus("success");
+              setIsAutoLoggingIn(false);
+            }
+          } else if (result.data.status === "pending") {
+            // Webhookがまだ処理中、ポーリングで再試行
+            setTimeout(() => verifySession(), 2000);
+          } else {
+            setStatus("success");
+          }
         } else {
           setStatus("error");
           setErrorMessage(result.error?.message || "登録の確認に失敗しました");
@@ -78,13 +110,17 @@ function RegisterSuccessContent() {
     router.push("/login");
   };
 
-  if (status === "loading") {
+  if (status === "loading" || status === "logging_in") {
     return (
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">登録を確認中...</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            {status === "logging_in" ? "ログイン中..." : "登録を確認中..."}
+          </CardTitle>
           <CardDescription>
-            決済情報を確認しています。しばらくお待ちください。
+            {status === "logging_in"
+              ? "自動ログインしています。しばらくお待ちください。"
+              : "決済情報を確認しています。しばらくお待ちください。"}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center py-8">
