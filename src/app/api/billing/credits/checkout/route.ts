@@ -96,7 +96,8 @@ export async function POST(request: NextRequest) {
     });
     const stripeCustomerId = subscription?.stripeCustomerId ?? null;
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const requestUrl = new URL(request.url);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${requestUrl.protocol}//${requestUrl.host}`;
 
     // Stripe Checkout セッション作成
     const checkoutSession = await stripe.checkout.sessions.create({

@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Checkoutセッションを作成
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const requestUrl = new URL(request.url);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${requestUrl.protocol}//${requestUrl.host}`;
     const checkoutSession = await createCheckoutSession({
       priceId,
       customerId: stripeCustomerId || undefined,

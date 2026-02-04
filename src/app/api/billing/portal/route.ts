@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPortalSession } from "@/lib/stripe";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -24,7 +24,8 @@ export async function POST() {
     }
 
     // カスタマーポータルセッションを作成
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const requestUrl = new URL(request.url);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${requestUrl.protocol}//${requestUrl.host}`;
     const portalSession = await createPortalSession({
       customerId: subscription.stripeCustomerId,
       returnUrl: `${appUrl}/settings/billing`,

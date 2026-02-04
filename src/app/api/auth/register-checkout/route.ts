@@ -114,7 +114,9 @@ export async function POST(
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Create Stripe Checkout session with registration data in metadata
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // Use request origin for URLs to ensure correct domain in all environments
+    const requestUrl = new URL(request.url);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${requestUrl.protocol}//${requestUrl.host}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
