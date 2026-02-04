@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useCredits } from "@/hooks/useCredits";
 
 interface AccessKeySettings {
   allowedModes?: ("explanation" | "generation" | "brainstorm")[];
@@ -41,7 +42,15 @@ interface AccessKey {
   user: {
     id: string;
     displayName: string;
+    email: string | null;
   } | null;
+}
+
+interface OrganizationPlanInfo {
+  plan: string;
+  name: string;
+  maxCreditsPerMember: number;
+  maxMembers: number | null;
 }
 
 interface KeysResponse {
@@ -57,6 +66,7 @@ interface KeysResponse {
     expired: number;
     revoked: number;
   };
+  organizationPlan: OrganizationPlanInfo | null;
 }
 
 const statusLabels: Record<AccessKey["status"], { label: string; color: string }> = {
@@ -76,21 +86,27 @@ export default function AccessKeysPage() {
   const [createdKeys, setCreatedKeys] = useState<string[]>([]);
   const [showCreatedDialog, setShowCreatedDialog] = useState(false);
 
+  // Admin's own credit info
+  const adminCredits = useCredits();
+
   // Form state for creating keys
   const [keyCount, setKeyCount] = useState(1);
-  const [dailyTokenLimit, setDailyTokenLimit] = useState(1000);
+  const [creditLimit, setCreditLimit] = useState(100);
   const [expiresIn, setExpiresIn] = useState<"1week" | "1month" | "3months" | "never">("1month");
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<AccessKey | null>(null);
-  const [editDailyTokenLimit, setEditDailyTokenLimit] = useState(1000);
+  const [editCreditLimit, setEditCreditLimit] = useState(100);
   const [editExpiresAt, setEditExpiresAt] = useState<string>("");
   const [editUnlockSkipAllowed, setEditUnlockSkipAllowed] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   // Re-issue state
   const [reissuing, setReissuing] = useState<string | null>(null);
+
+  // Max credits from plan
+  const maxCredits = data?.organizationPlan?.maxCreditsPerMember || 10000;
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -122,6 +138,14 @@ export default function AccessKeysPage() {
     fetchKeys();
   }, [fetchKeys]);
 
+  // Update default credit limit when plan info is loaded
+  useEffect(() => {
+    if (data?.organizationPlan?.maxCreditsPerMember) {
+      const defaultCredit = Math.min(100, data.organizationPlan.maxCreditsPerMember);
+      setCreditLimit(defaultCredit);
+    }
+  }, [data?.organizationPlan?.maxCreditsPerMember]);
+
   const handleGenerateKeys = async () => {
     setCreating(true);
     try {
@@ -130,7 +154,7 @@ export default function AccessKeysPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           count: keyCount,
-          dailyTokenLimit,
+          dailyTokenLimit: creditLimit,
           expiresIn,
         }),
       });
@@ -212,7 +236,7 @@ export default function AccessKeysPage() {
 
   const openEditDialog = (key: AccessKey) => {
     setEditingKey(key);
-    setEditDailyTokenLimit(key.dailyTokenLimit);
+    setEditCreditLimit(key.dailyTokenLimit);
     setEditExpiresAt(key.expiresAt ? key.expiresAt.split("T")[0] : "");
     setEditUnlockSkipAllowed(key.settings?.unlockSkipAllowed ?? false);
     setEditDialogOpen(true);
@@ -224,7 +248,7 @@ export default function AccessKeysPage() {
     setUpdating(true);
     try {
       const requestBody = {
-        dailyTokenLimit: editDailyTokenLimit,
+        dailyTokenLimit: editCreditLimit,
         expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
         settings: {
           unlockSkipAllowed: editUnlockSkipAllowed,
@@ -277,9 +301,9 @@ export default function AccessKeysPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold">アクセスキー管理</h1>
+            <h1 className="text-2xl font-bold">クレジット管理</h1>
             <p className="text-muted-foreground">
-              メンバー用のアクセスキーを発行・管理します
+              メンバー用のアクセスキーとクレジットを管理します
             </p>
           </div>
           <Skeleton className="h-10 w-36" />
@@ -310,16 +334,51 @@ export default function AccessKeysPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">アクセスキー管理</h1>
+          <h1 className="text-2xl font-bold">クレジット管理</h1>
           <p className="text-muted-foreground">
-            メンバー用のアクセスキーを発行・管理します
+            メンバー用のアクセスキーとクレジットを管理します
           </p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2 cursor-pointer">
           <span className="material-symbols-outlined text-xl">add</span>
           新しいキーを発行
         </Button>
       </div>
+
+      {/* Admin's Own Credits */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">person</span>
+            管理者（自分）のクレジット
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              {adminCredits.isLoading ? (
+                <Skeleton className="h-8 w-32" />
+              ) : (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-primary">
+                    {adminCredits.totalRemaining.toLocaleString()}
+                  </span>
+                  <span className="text-muted-foreground">クレジット残</span>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground mt-1">
+                Sonnet: 約{adminCredits.remainingConversations.sonnet}回 / Opus: 約{adminCredits.remainingConversations.opus}回
+              </p>
+            </div>
+            {data?.organizationPlan && (
+              <div className="text-sm text-muted-foreground">
+                <p>プラン: {data.organizationPlan.name}</p>
+                <p>メンバー上限: {data.organizationPlan.maxMembers || "無制限"}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       {data?.summary && (
@@ -327,7 +386,7 @@ export default function AccessKeysPage() {
           <button
             onClick={() => setStatusFilter("")}
             className={cn(
-              "p-4 rounded-lg border text-left transition-colors",
+              "p-4 rounded-lg border text-left transition-colors cursor-pointer",
               statusFilter === "" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
             )}
           >
@@ -339,7 +398,7 @@ export default function AccessKeysPage() {
           <button
             onClick={() => setStatusFilter("active")}
             className={cn(
-              "p-4 rounded-lg border text-left transition-colors",
+              "p-4 rounded-lg border text-left transition-colors cursor-pointer",
               statusFilter === "active" ? "border-green-500 bg-green-500/10" : "border-border hover:border-green-500/50"
             )}
           >
@@ -349,7 +408,7 @@ export default function AccessKeysPage() {
           <button
             onClick={() => setStatusFilter("used")}
             className={cn(
-              "p-4 rounded-lg border text-left transition-colors",
+              "p-4 rounded-lg border text-left transition-colors cursor-pointer",
               statusFilter === "used" ? "border-blue-500 bg-blue-500/10" : "border-border hover:border-blue-500/50"
             )}
           >
@@ -359,7 +418,7 @@ export default function AccessKeysPage() {
           <button
             onClick={() => setStatusFilter("revoked")}
             className={cn(
-              "p-4 rounded-lg border text-left transition-colors",
+              "p-4 rounded-lg border text-left transition-colors cursor-pointer",
               statusFilter === "revoked" ? "border-red-500 bg-red-500/10" : "border-border hover:border-red-500/50"
             )}
           >
@@ -378,7 +437,7 @@ export default function AccessKeysPage() {
             </span>
             <Input
               type="text"
-              placeholder="キーコードまたはユーザー名で検索..."
+              placeholder="キーコード、ユーザー名、またはメールで検索..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -410,7 +469,7 @@ export default function AccessKeysPage() {
                     使用者
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    トークン上限
+                    クレジット上限
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     有効期限
@@ -432,7 +491,7 @@ export default function AccessKeysPage() {
                           </code>
                           <button
                             onClick={() => copyToClipboard(key.keyCode)}
-                            className="p-1 hover:bg-muted rounded transition-colors"
+                            className="p-1 hover:bg-muted rounded transition-colors cursor-pointer"
                             title="コピー"
                           >
                             <span className="material-symbols-outlined text-sm text-muted-foreground">
@@ -452,12 +511,19 @@ export default function AccessKeysPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        {key.user?.displayName || (
+                        {key.user ? (
+                          <div>
+                            <p className="font-medium">{key.user.displayName}</p>
+                            {key.user.email && (
+                              <p className="text-xs text-muted-foreground">{key.user.email}</p>
+                            )}
+                          </div>
+                        ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4">
-                        {key.dailyTokenLimit.toLocaleString()}/日
+                        {key.dailyTokenLimit.toLocaleString()}pt
                       </td>
                       <td className="py-3 px-4">
                         {key.expiresAt ? (
@@ -475,6 +541,7 @@ export default function AccessKeysPage() {
                                 size="sm"
                                 onClick={() => openEditDialog(key)}
                                 title="編集"
+                                className="cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-lg">
                                   edit
@@ -483,7 +550,7 @@ export default function AccessKeysPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-destructive hover:text-destructive"
+                                className="text-destructive hover:text-destructive cursor-pointer"
                                 onClick={() => handleRevokeKey(key.id)}
                                 title="無効化"
                               >
@@ -497,7 +564,7 @@ export default function AccessKeysPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-amber-500 hover:text-amber-400"
+                              className="text-amber-500 hover:text-amber-400 cursor-pointer"
                               onClick={() => handleReissueKey(key.id)}
                               disabled={reissuing === key.id}
                               title="再発行"
@@ -547,15 +614,18 @@ export default function AccessKeysPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dailyTokenLimit">1日あたりのトークン上限</Label>
+              <Label htmlFor="creditLimit">クレジット上限</Label>
               <Input
-                id="dailyTokenLimit"
+                id="creditLimit"
                 type="number"
-                min={100}
-                max={100000}
-                value={dailyTokenLimit}
-                onChange={(e) => setDailyTokenLimit(parseInt(e.target.value) || 1000)}
+                min={1}
+                max={maxCredits}
+                value={creditLimit}
+                onChange={(e) => setCreditLimit(Math.min(parseInt(e.target.value) || 1, maxCredits))}
               />
+              <p className="text-xs text-muted-foreground">
+                プラン上限: {maxCredits.toLocaleString()}pt
+              </p>
             </div>
             <div className="space-y-2">
               <Label>有効期限</Label>
@@ -570,7 +640,7 @@ export default function AccessKeysPage() {
                     key={option.value}
                     onClick={() => setExpiresIn(option.value as typeof expiresIn)}
                     className={cn(
-                      "px-3 py-2 rounded-lg border text-sm transition-colors",
+                      "px-3 py-2 rounded-lg border text-sm transition-colors cursor-pointer",
                       expiresIn === option.value
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border hover:border-primary/50"
@@ -587,10 +657,11 @@ export default function AccessKeysPage() {
               variant="outline"
               onClick={() => setCreateDialogOpen(false)}
               disabled={creating}
+              className="cursor-pointer"
             >
               キャンセル
             </Button>
-            <Button onClick={handleGenerateKeys} disabled={creating}>
+            <Button onClick={handleGenerateKeys} disabled={creating} className="cursor-pointer">
               {creating ? "発行中..." : `${keyCount}件のキーを発行`}
             </Button>
           </DialogFooter>
@@ -615,7 +686,7 @@ export default function AccessKeysPage() {
                 <code className="font-mono text-sm">{keyCode}</code>
                 <button
                   onClick={() => copyToClipboard(keyCode)}
-                  className="p-1 hover:bg-background rounded transition-colors"
+                  className="p-1 hover:bg-background rounded transition-colors cursor-pointer"
                   title="コピー"
                 >
                   <span className="material-symbols-outlined text-sm">
@@ -626,10 +697,10 @@ export default function AccessKeysPage() {
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={copyAllKeys}>
+            <Button variant="outline" onClick={copyAllKeys} className="cursor-pointer">
               すべてコピー
             </Button>
-            <Button onClick={() => setShowCreatedDialog(false)}>閉じる</Button>
+            <Button onClick={() => setShowCreatedDialog(false)} className="cursor-pointer">閉じる</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -652,18 +723,24 @@ export default function AccessKeysPage() {
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">使用者</p>
                 <p className="font-medium">{editingKey.user.displayName}</p>
+                {editingKey.user.email && (
+                  <p className="text-sm text-muted-foreground">{editingKey.user.email}</p>
+                )}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="editDailyTokenLimit">1日あたりのトークン上限</Label>
+              <Label htmlFor="editCreditLimit">クレジット上限</Label>
               <Input
-                id="editDailyTokenLimit"
+                id="editCreditLimit"
                 type="number"
-                min={100}
-                max={100000}
-                value={editDailyTokenLimit}
-                onChange={(e) => setEditDailyTokenLimit(parseInt(e.target.value) || 1000)}
+                min={1}
+                max={maxCredits}
+                value={editCreditLimit}
+                onChange={(e) => setEditCreditLimit(Math.min(parseInt(e.target.value) || 1, maxCredits))}
               />
+              <p className="text-xs text-muted-foreground">
+                プラン上限: {maxCredits.toLocaleString()}pt
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="editExpiresAt">有効期限</Label>
@@ -690,7 +767,7 @@ export default function AccessKeysPage() {
                 aria-checked={editUnlockSkipAllowed}
                 onClick={() => setEditUnlockSkipAllowed(!editUnlockSkipAllowed)}
                 className={cn(
-                  "relative h-6 w-11 rounded-full transition-colors shrink-0 ml-3",
+                  "relative h-6 w-11 rounded-full transition-colors shrink-0 ml-3 cursor-pointer",
                   editUnlockSkipAllowed ? "bg-primary" : "bg-muted"
                 )}
               >
@@ -708,10 +785,11 @@ export default function AccessKeysPage() {
               variant="outline"
               onClick={() => setEditDialogOpen(false)}
               disabled={updating}
+              className="cursor-pointer"
             >
               キャンセル
             </Button>
-            <Button onClick={handleUpdateKey} disabled={updating}>
+            <Button onClick={handleUpdateKey} disabled={updating} className="cursor-pointer">
               {updating ? "更新中..." : "保存"}
             </Button>
           </DialogFooter>

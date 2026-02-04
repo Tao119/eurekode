@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import crypto from "crypto";
+import { getOrganizationPlan } from "@/config/plans";
 
 // Generate access key in format: XXXXX-XXXXX-XXXXX-XXXXX
 function generateKeyCode(): string {
@@ -53,6 +54,16 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
+    // Get organization info for plan limits
+    const organization = await prisma.organization.findUnique({
+      where: { id: session.user.organizationId },
+      select: { plan: true },
+    });
+
+    const orgPlanConfig = organization
+      ? getOrganizationPlan(organization.plan)
+      : null;
+
     // Build where clause
     const whereClause: Prisma.AccessKeyWhereInput = {
       organizationId: session.user.organizationId,
@@ -61,11 +72,12 @@ export async function GET(request: NextRequest) {
         OR: [
           { keyCode: { contains: search, mode: "insensitive" as const } },
           { user: { displayName: { contains: search, mode: "insensitive" as const } } },
+          { user: { email: { contains: search, mode: "insensitive" as const } } },
         ],
       }),
     };
 
-    // Get access keys with user info
+    // Get access keys with user info (including email)
     const keys = await prisma.accessKey.findMany({
       where: whereClause,
       select: {
@@ -81,6 +93,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             displayName: true,
+            email: true,
           },
         },
       },
@@ -103,6 +116,7 @@ export async function GET(request: NextRequest) {
         ? {
             id: key.user.id,
             displayName: key.user.displayName,
+            email: key.user.email,
           }
         : null,
     }));
@@ -137,6 +151,14 @@ export async function GET(request: NextRequest) {
           offset,
         },
         summary: statusSummary,
+        organizationPlan: orgPlanConfig
+          ? {
+              plan: orgPlanConfig.id,
+              name: orgPlanConfig.nameJa,
+              maxCreditsPerMember: orgPlanConfig.features.monthlyConversationPoints,
+              maxMembers: orgPlanConfig.maxMembers,
+            }
+          : null,
       },
     });
   } catch (error) {
