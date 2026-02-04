@@ -630,69 +630,66 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Learning Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span className="material-symbols-outlined">school</span>
-            学習設定
-          </CardTitle>
-          <CardDescription>
-            学習モードの動作をカスタマイズできます
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {isLoadingSettings ? (
-            <div className="flex items-center justify-center py-8">
-              <LoadingSpinner size="sm" />
-            </div>
-          ) : (
-            <>
-              <SettingToggle
-                icon="quiz"
-                title="確認クイズ"
-                description="解説モードで理解度を確認するクイズを表示"
-                enabled={settings.quizEnabled}
-                onChange={(value) => handleSettingToggle("quizEnabled", value)}
-              />
-              <SettingSelect
-                icon="psychology"
-                title="段階的ヒント"
-                description="生成モードでヒントを表示するタイミング"
-                value={settings.hintSpeed}
-                options={[
-                  { value: "immediate", label: "即座に表示" },
-                  { value: "30sec", label: "30秒後に表示" },
-                  { value: "none", label: "表示しない" },
-                ]}
-                onChange={(value) => handleHintSpeedChange(value as HintSpeedValue)}
-              />
-              <SettingToggle
-                icon="timer"
-                title="時間見積もりトレーニング"
-                description="実装時間の見積もり練習を有効化"
-                enabled={settings.estimationTraining}
-                onChange={(value) => handleSettingToggle("estimationTraining", value)}
-              />
-              {/* Show unlock skip setting for individual users and members with permission */}
-              {(isIndividual || (isMember && settings.unlockSkipAllowed)) && (
+      {/* Learning Settings - メンバーには非表示 */}
+      {!isMember && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="material-symbols-outlined">school</span>
+              学習設定
+            </CardTitle>
+            <CardDescription>
+              学習モードの動作をカスタマイズできます
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {isLoadingSettings ? (
+              <div className="flex items-center justify-center py-8">
+                <LoadingSpinner size="sm" />
+              </div>
+            ) : (
+              <>
                 <SettingToggle
-                  icon="fast_forward"
-                  title="制限解除モード"
-                  description={
-                    isMember
-                      ? "管理者によってスキップが許可されています"
-                      : "生成モードでヒントをスキップしてコードを直接表示できるようにします"
-                  }
-                  enabled={settings.unlockSkipAllowed}
-                  onChange={(value) => handleSettingToggle("unlockSkipAllowed", value)}
-                  disabled={isMember}
+                  icon="quiz"
+                  title="確認クイズ"
+                  description="解説モードで理解度を確認するクイズを表示"
+                  enabled={settings.quizEnabled}
+                  onChange={(value) => handleSettingToggle("quizEnabled", value)}
                 />
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                <SettingSelect
+                  icon="psychology"
+                  title="段階的ヒント"
+                  description="生成モードでヒントを表示するタイミング"
+                  value={settings.hintSpeed}
+                  options={[
+                    { value: "immediate", label: "即座に表示" },
+                    { value: "30sec", label: "30秒後に表示" },
+                    { value: "none", label: "表示しない" },
+                  ]}
+                  onChange={(value) => handleHintSpeedChange(value as HintSpeedValue)}
+                />
+                <SettingToggle
+                  icon="timer"
+                  title="時間見積もりトレーニング"
+                  description="実装時間の見積もり練習を有効化"
+                  enabled={settings.estimationTraining}
+                  onChange={(value) => handleSettingToggle("estimationTraining", value)}
+                />
+                {/* Show unlock skip setting for individual users only */}
+                {isIndividual && (
+                  <SettingToggle
+                    icon="fast_forward"
+                    title="制限解除モード"
+                    description="生成モードでヒントをスキップしてコードを直接表示できるようにします"
+                    enabled={settings.unlockSkipAllowed}
+                    onChange={(value) => handleSettingToggle("unlockSkipAllowed", value)}
+                  />
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Billing Link - メンバーは非表示 */}
       {!isMember && (

@@ -140,13 +140,16 @@ export function Header() {
                           組織メンバー
                         </p>
                       )}
-                      <Link
-                        href="/settings/billing"
-                        className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-[12px]">arrow_circle_up</span>
-                        {session.user.plan.toUpperCase()} プラン
-                      </Link>
+                      {/* プラン表示 - メンバーには非表示 */}
+                      {!credits.isOrganizationMember && (
+                        <Link
+                          href="/settings/billing"
+                          className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">arrow_circle_up</span>
+                          {session.user.plan.toUpperCase()} プラン
+                        </Link>
+                      )}
                     </div>
                     <DropdownMenuSeparator />
 
@@ -155,14 +158,17 @@ export function Header() {
                       <CreditCounter size="sm" showLink={false} />
                     </div>
 
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings/billing" className="cursor-pointer">
-                        <span className="material-symbols-outlined mr-2 text-[18px]">
-                          credit_card
-                        </span>
-                        プラン・請求
-                      </Link>
-                    </DropdownMenuItem>
+                    {/* プラン・請求 - メンバーには非表示 */}
+                    {!credits.isOrganizationMember && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/settings/billing" className="cursor-pointer">
+                          <span className="material-symbols-outlined mr-2 text-[18px]">
+                            credit_card
+                          </span>
+                          プラン・請求
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem asChild>
                       <Link href="/settings" className="cursor-pointer">
                         <span className="material-symbols-outlined mr-2 text-[18px]">
@@ -307,14 +313,17 @@ export function Header() {
                 <span className="material-symbols-outlined text-xl">settings</span>
                 設定
               </Link>
-              <Link
-                href="/settings/billing"
-                onClick={closeMobileMenu}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-[0.98] transition-all"
-              >
-                <span className="material-symbols-outlined text-xl">credit_card</span>
-                プラン・請求
-              </Link>
+              {/* プラン・請求 - メンバーには非表示 */}
+              {!credits.isOrganizationMember && (
+                <Link
+                  href="/settings/billing"
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-[0.98] transition-all"
+                >
+                  <span className="material-symbols-outlined text-xl">credit_card</span>
+                  プラン・請求
+                </Link>
+              )}
               <button
                 onClick={() => {
                   closeMobileMenu();

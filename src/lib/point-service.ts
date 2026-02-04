@@ -129,6 +129,7 @@ export async function getPointBalance(
   const purchasedUsed = creditBalance?.purchasedUsed ?? 0;
 
   // 組織メンバーの場合は割り当てを確認
+  // 割り当てがない場合は0ポイント（組織のプールではなく個別割り当て制）
   let allocated: number | undefined;
   let allocatedUsed: number | undefined;
   let allocatedRemaining: number | undefined;
@@ -147,6 +148,33 @@ export async function getPointBalance(
       allocated = allocation.allocatedPoints;
       allocatedUsed = allocation.usedPoints;
       allocatedRemaining = Math.max(0, allocated - allocatedUsed);
+    } else {
+      // 割り当てがない場合は0ポイント
+      allocated = 0;
+      allocatedUsed = 0;
+      allocatedRemaining = 0;
+    }
+  } else if (isOrgMember && !organizationId) {
+    // organizationIdが渡されていない場合も確認
+    // userのorganizationIdを使用
+    const allocation = await prisma.creditAllocation.findFirst({
+      where: {
+        organizationId: user.organizationId!,
+        userId,
+        periodStart: { lte: now },
+        periodEnd: { gte: now },
+      },
+    });
+
+    if (allocation) {
+      allocated = allocation.allocatedPoints;
+      allocatedUsed = allocation.usedPoints;
+      allocatedRemaining = Math.max(0, allocated - allocatedUsed);
+    } else {
+      // 割り当てがない場合は0ポイント
+      allocated = 0;
+      allocatedUsed = 0;
+      allocatedRemaining = 0;
     }
   }
 

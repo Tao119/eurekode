@@ -36,10 +36,14 @@ export function CreditCounter({
   }
 
   const remaining = credits.totalRemaining;
-  const total = credits.monthly.total + credits.purchased.balance;
+  // メンバーの場合は割り当て、そうでなければプラン+購入
+  const total = credits.allocated
+    ? credits.allocated.total
+    : credits.monthly.total + credits.purchased.balance;
   const percentage = total > 0 ? ((total - remaining) / total) * 100 : 0;
   const isLow = credits.lowBalanceWarning;
   const isExhausted = credits.isBlocked;
+  const isMember = credits.isOrganizationMember;
 
   const content = (
     <div
@@ -107,7 +111,8 @@ export function CreditCounter({
     </div>
   );
 
-  if (showLink) {
+  // メンバーはbillingページにアクセスできないのでリンクしない
+  if (showLink && !isMember) {
     return <Link href="/settings/billing">{content}</Link>;
   }
 

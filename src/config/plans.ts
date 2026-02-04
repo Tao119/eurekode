@@ -167,7 +167,7 @@ export const ORGANIZATION_PLANS: Record<
     maxMembers: 3,
     features: {
       monthlyConversationPoints: 100, // 組織全体
-      availableModels: ["sonnet"],
+      availableModels: ["sonnet"], // Freeはsonnetのみ
       historyRetentionDays: 3,
       allModesEnabled: true,
       prioritySupport: false,
@@ -184,7 +184,7 @@ export const ORGANIZATION_PLANS: Record<
     maxMembers: 10,
     features: {
       monthlyConversationPoints: 5000, // 組織全体
-      availableModels: ["sonnet"],
+      availableModels: ["sonnet", "opus"], // StarterからOpus利用可能
       historyRetentionDays: 30,
       allModesEnabled: true,
       prioritySupport: false,

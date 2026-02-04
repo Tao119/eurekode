@@ -87,6 +87,7 @@ export async function GET() {
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
     // 組織メンバーの場合は割り当てを取得
+    // 割り当てがない場合はデフォルト0（組織のプールではなく個別割り当て制）
     let allocatedPoints: number | undefined;
     let allocatedUsed = 0;
 
@@ -103,6 +104,9 @@ export async function GET() {
       if (allocation) {
         allocatedPoints = allocation.allocatedPoints;
         allocatedUsed = allocation.usedPoints;
+      } else {
+        // 割り当てがない場合は0ポイント
+        allocatedPoints = 0;
       }
     }
 
