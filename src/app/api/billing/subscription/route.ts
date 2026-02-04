@@ -1,0 +1,99 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  getIndividualPlan,
+  getOrganizationPlan,
+  IndividualPlan,
+  OrganizationPlan,
+} from "@/config/plans";
+
+export async function GET() {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // ユーザー情報とサブスクリプションを取得
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        subscription: true,
+        organization: {
+          include: {
+            subscription: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // 個人サブスクリプション
+    const individualSubscription = user.subscription;
+    const individualPlan: IndividualPlan =
+      (individualSubscription?.individualPlan as IndividualPlan) || "free";
+    const individualPlanConfig = getIndividualPlan(individualPlan);
+
+    // 組織サブスクリプション（メンバーの場合）
+    const orgSubscription = user.organization?.subscription;
+    const orgPlan: OrganizationPlan | null = orgSubscription?.organizationPlan
+      ? (orgSubscription.organizationPlan as OrganizationPlan)
+      : null;
+    const orgPlanConfig = orgPlan ? getOrganizationPlan(orgPlan) : null;
+
+    // 実際に適用されるプランを決定
+    const isOrganization = !!orgPlanConfig;
+    const effectivePlan = isOrganization ? orgPlan : individualPlan;
+    const effectiveSubscription = isOrganization ? orgSubscription : individualSubscription;
+
+    // Stripe APIでcancel_at_period_endを確認する必要があるが、
+    // ここではDBの状態のみを返す（cancel_at_period_endはStripe Portalで確認）
+    return NextResponse.json({
+      // シンプルな形式（billing pageで使用）
+      plan: effectivePlan,
+      planType: isOrganization ? "organization" : "individual",
+      status: effectiveSubscription?.status || "active",
+      currentPeriodEnd: effectiveSubscription?.currentPeriodEnd?.toISOString() || null,
+      cancelAtPeriodEnd: false, // TODO: Stripe APIから取得
+      // 詳細情報
+      individual: {
+        plan: individualPlan,
+        planConfig: individualPlanConfig,
+        status: individualSubscription?.status || "active",
+        currentPeriodEnd: individualSubscription?.currentPeriodEnd,
+        hasStripeSubscription: !!individualSubscription?.stripeSubscriptionId,
+      },
+      organization: orgPlanConfig
+        ? {
+            plan: orgPlan,
+            planConfig: orgPlanConfig,
+            status: orgSubscription?.status || "active",
+            currentPeriodEnd: orgSubscription?.currentPeriodEnd,
+          }
+        : null,
+      // 実際に適用されるプラン（組織プランがあれば組織、なければ個人）
+      effectivePlan: orgPlanConfig
+        ? {
+            type: "organization" as const,
+            plan: orgPlan,
+            features: orgPlanConfig.features,
+          }
+        : {
+            type: "individual" as const,
+            plan: individualPlan,
+            features: individualPlanConfig.features,
+          },
+    });
+  } catch (error) {
+    console.error("Get subscription error:", error);
+    return NextResponse.json(
+      { error: "Failed to get subscription" },
+      { status: 500 }
+    );
+  }
+}

@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChatContainer } from "@/components/chat";
+import { ChatContainer, ModelSelector } from "@/components/chat";
 import { ProjectSelector } from "@/components/chat/ProjectSelector";
+import type { ClaudeModel } from "@/types/chat";
+import { DEFAULT_MODEL } from "@/types/chat";
 import { useChat, ChatApiError } from "@/hooks/useChat";
 import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
@@ -22,6 +24,9 @@ export default function ExplanationModePage() {
 
   // Project selection state (can be changed before first message)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId);
+
+  // Model selection state
+  const [selectedModel, setSelectedModel] = useState<ClaudeModel>(DEFAULT_MODEL);
 
   // Update URL without navigation when a new conversation is created
   const handleConversationCreated = useCallback((id: string) => {
@@ -77,6 +82,7 @@ export default function ExplanationModePage() {
     onError: handleError,
     onConversationCreated: handleConversationCreated,
     onTokensUsed: handleTokensUsed,
+    model: selectedModel,
   });
 
   // Disable project change once conversation has started
@@ -129,11 +135,18 @@ export default function ExplanationModePage() {
         onRegenerate={regenerateLastMessage}
         canRegenerate={canRegenerate}
         headerExtra={
-          <ProjectSelector
-            selectedProjectId={selectedProjectId}
-            onProjectChange={setSelectedProjectId}
-            disabled={!canChangeProject}
-          />
+          <>
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              disabled={isLoading}
+            />
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onProjectChange={setSelectedProjectId}
+              disabled={!canChangeProject}
+            />
+          </>
         }
         conversationId={currentConversationId || undefined}
       />

@@ -66,6 +66,14 @@ interface MemberDetail {
     expiresAt: string | null;
     usedAt: string | null;
   } | null;
+  tokenAllocation: {
+    monthlyLimit: number;
+    usedPoints: number;
+    remaining: number;
+    organizationMonthlyLimit: number;
+    organizationTotalAllocated: number;
+    availableForAllocation: number;
+  };
   statistics: {
     tokensUsedToday: number;
     tokensUsedWeek: number;
@@ -130,6 +138,17 @@ export default function MembersPage() {
   // Delete member state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Key regeneration state
+  const [showRegenerateKeyDialog, setShowRegenerateKeyDialog] = useState(false);
+  const [isRegeneratingKey, setIsRegeneratingKey] = useState(false);
+  const [newKeyCode, setNewKeyCode] = useState<string | null>(null);
+  const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
+
+  // Token limit adjustment state
+  const [showTokenLimitDialog, setShowTokenLimitDialog] = useState(false);
+  const [newTokenLimit, setNewTokenLimit] = useState<string>("");
+  const [isUpdatingTokenLimit, setIsUpdatingTokenLimit] = useState(false);
 
   const handleToggleSkipAllowed = async (memberId: string, newValue: boolean) => {
     try {
@@ -230,6 +249,84 @@ export default function MembersPage() {
       toast.error("削除に失敗しました");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRegenerateKey = async () => {
+    if (!selectedMember) return;
+
+    setIsRegeneratingKey(true);
+    try {
+      const response = await fetch(`/api/admin/members/${selectedMember.member.id}/regenerate-key`, {
+        method: "POST",
+      });
+      const result = await response.json();
+      if (result.success) {
+        setNewKeyCode(result.data.keyCode);
+        setShowRegenerateKeyDialog(false);
+        setShowNewKeyDialog(true);
+        // Refresh member data
+        const detailResponse = await fetch(`/api/admin/members/${selectedMember.member.id}`);
+        const detailResult = await detailResponse.json();
+        if (detailResult.success) {
+          setSelectedMember(detailResult.data);
+        }
+      } else {
+        toast.error(result.error?.message || "キーの再発行に失敗しました");
+      }
+    } catch (error) {
+      console.error("Failed to regenerate key:", error);
+      toast.error("キーの再発行に失敗しました");
+    } finally {
+      setIsRegeneratingKey(false);
+    }
+  };
+
+  const handleCopyKey = async () => {
+    if (!newKeyCode) return;
+    try {
+      await navigator.clipboard.writeText(newKeyCode);
+      toast.success("キーをコピーしました");
+    } catch {
+      toast.error("コピーに失敗しました");
+    }
+  };
+
+  const handleUpdateTokenLimit = async () => {
+    if (!selectedMember) return;
+
+    const limit = parseInt(newTokenLimit, 10);
+    if (isNaN(limit) || limit < 0) {
+      toast.error("有効な数値を入力してください");
+      return;
+    }
+
+    setIsUpdatingTokenLimit(true);
+    try {
+      const response = await fetch(`/api/admin/members/${selectedMember.member.id}/token-limit`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthlyTokenLimit: limit }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("トークン上限を更新しました");
+        setShowTokenLimitDialog(false);
+        setNewTokenLimit("");
+        // Refresh member data
+        const detailResponse = await fetch(`/api/admin/members/${selectedMember.member.id}`);
+        const detailResult = await detailResponse.json();
+        if (detailResult.success) {
+          setSelectedMember(detailResult.data);
+        }
+      } else {
+        toast.error(result.error?.message || "トークン上限の更新に失敗しました");
+      }
+    } catch (error) {
+      console.error("Failed to update token limit:", error);
+      toast.error("トークン上限の更新に失敗しました");
+    } finally {
+      setIsUpdatingTokenLimit(false);
     }
   };
 
@@ -494,6 +591,9 @@ export default function MembersPage() {
                     メンバー
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    メール
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     参加日
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
@@ -531,6 +631,9 @@ export default function MembersPage() {
                             </p>
                           </div>
                         </div>
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground text-sm">
+                        {member.email || "-"}
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
                         {new Date(member.joinedAt).toLocaleDateString("ja-JP")}
@@ -588,7 +691,7 @@ export default function MembersPage() {
                 })}
                 {members.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
                       メンバーが見つかりません
                     </td>
                   </tr>
@@ -623,7 +726,10 @@ export default function MembersPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold">{selectedMember.member.displayName || "名前未設定"}</h3>
-                  <p className="text-muted-foreground">
+                  {selectedMember.member.email && (
+                    <p className="text-sm text-muted-foreground">{selectedMember.member.email}</p>
+                  )}
+                  <p className="text-muted-foreground text-sm">
                     参加日: {new Date(selectedMember.member.joinedAt).toLocaleDateString("ja-JP")}
                   </p>
                 </div>
@@ -775,27 +881,102 @@ export default function MembersPage() {
                 </div>
               </div>
 
-              {/* Access Key */}
-              {selectedMember.accessKey && (
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-2">アクセスキー</h4>
-                  <div className="flex items-center gap-4">
-                    <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                      {selectedMember.accessKey.keyCode}
-                    </code>
-                    <span
-                      className={cn(
-                        "px-2 py-1 rounded-full text-xs font-medium",
-                        selectedMember.accessKey.status === "used"
-                          ? "bg-blue-500/20 text-blue-400"
-                          : "bg-gray-500/20 text-gray-400"
-                      )}
-                    >
-                      {selectedMember.accessKey.status}
+              {/* Token Allocation */}
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium">月間トークン上限</h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setNewTokenLimit(String(selectedMember.tokenAllocation.monthlyLimit));
+                      setShowTokenLimitDialog(true);
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-lg mr-1">edit</span>
+                    調整
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">割り当て上限</span>
+                    <span className="font-medium">{selectedMember.tokenAllocation.monthlyLimit.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">使用済み</span>
+                    <span className="font-medium">{selectedMember.tokenAllocation.usedPoints.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">残り</span>
+                    <span className={cn(
+                      "font-medium",
+                      selectedMember.tokenAllocation.remaining <= 0 ? "text-destructive" : ""
+                    )}>
+                      {selectedMember.tokenAllocation.remaining.toLocaleString()}
                     </span>
                   </div>
+                  {selectedMember.tokenAllocation.monthlyLimit > 0 && (
+                    <div className="pt-2">
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            selectedMember.tokenAllocation.usedPoints / selectedMember.tokenAllocation.monthlyLimit > 0.9
+                              ? "bg-destructive"
+                              : selectedMember.tokenAllocation.usedPoints / selectedMember.tokenAllocation.monthlyLimit > 0.7
+                              ? "bg-yellow-500"
+                              : "bg-primary"
+                          )}
+                          style={{
+                            width: `${Math.min(100, (selectedMember.tokenAllocation.usedPoints / selectedMember.tokenAllocation.monthlyLimit) * 100)}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t text-xs text-muted-foreground">
+                    組織全体: {selectedMember.tokenAllocation.organizationTotalAllocated.toLocaleString()} / {selectedMember.tokenAllocation.organizationMonthlyLimit.toLocaleString()} 割り当て済み
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Access Key */}
+              <div className="p-4 border rounded-lg">
+                <h4 className="font-medium mb-2">アクセスキー</h4>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {selectedMember.accessKey ? (
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded-full text-xs font-medium",
+                          selectedMember.accessKey.status === "used"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : selectedMember.accessKey.status === "active"
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-gray-500/20 text-gray-400"
+                        )}
+                      >
+                        {selectedMember.accessKey.status === "used" ? "使用中" :
+                         selectedMember.accessKey.status === "active" ? "未使用" :
+                         selectedMember.accessKey.status}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">キーなし</span>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowRegenerateKeyDialog(true)}
+                  >
+                    <span className="material-symbols-outlined text-lg mr-1">vpn_key</span>
+                    キー再発行
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  再発行すると新しいキーが生成され、一度だけ表示されます
+                </p>
+              </div>
 
               {/* Token History */}
               {selectedMember.tokenHistory.length > 0 && (
@@ -971,6 +1152,167 @@ export default function MembersPage() {
                 </>
               ) : (
                 "削除する"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Regenerate Key Confirmation Dialog */}
+      <Dialog open={showRegenerateKeyDialog} onOpenChange={setShowRegenerateKeyDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>キーを再発行</DialogTitle>
+            <DialogDescription>
+              {selectedMember?.member.displayName}さんのアクセスキーを再発行しますか？
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+              <p className="text-sm font-medium text-yellow-400">注意事項:</p>
+              <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                <li>・ 現在のキーは無効になります</li>
+                <li>・ 新しいキーは一度だけ表示されます</li>
+                <li>・ メンバーに新しいキーを共有してください</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRegenerateKeyDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleRegenerateKey}
+              disabled={isRegeneratingKey}
+            >
+              {isRegeneratingKey ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  再発行中...
+                </>
+              ) : (
+                "再発行する"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Key Display Dialog */}
+      <Dialog open={showNewKeyDialog} onOpenChange={(open) => {
+        if (!open) {
+          setNewKeyCode(null);
+        }
+        setShowNewKeyDialog(open);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新しいアクセスキー</DialogTitle>
+            <DialogDescription>
+              このキーは一度だけ表示されます。必ずコピーして安全に保管してください。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <Label className="text-sm text-muted-foreground mb-2 block">アクセスキー</Label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 font-mono text-lg bg-background px-3 py-2 rounded border select-all">
+                  {newKeyCode}
+                </code>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyKey}
+                  title="コピー"
+                >
+                  <span className="material-symbols-outlined">content_copy</span>
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-destructive mt-3">
+              ※ ダイアログを閉じるとこのキーは二度と表示されません
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => {
+              setShowNewKeyDialog(false);
+              setNewKeyCode(null);
+            }}>
+              閉じる
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Token Limit Adjustment Dialog */}
+      <Dialog open={showTokenLimitDialog} onOpenChange={(open) => {
+        if (!open) {
+          setNewTokenLimit("");
+        }
+        setShowTokenLimitDialog(open);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>月間トークン上限を調整</DialogTitle>
+            <DialogDescription>
+              {selectedMember?.member.displayName}さんの月間トークン上限を設定します
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            {selectedMember && (
+              <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">組織の月間上限</span>
+                  <span>{selectedMember.tokenAllocation.organizationMonthlyLimit.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">他メンバーへの割り当て済み</span>
+                  <span>{(selectedMember.tokenAllocation.organizationTotalAllocated - selectedMember.tokenAllocation.monthlyLimit).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <span className="text-muted-foreground">割り当て可能な上限</span>
+                  <span className="text-primary">{selectedMember.tokenAllocation.availableForAllocation.toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="tokenLimit">新しい月間トークン上限</Label>
+              <Input
+                id="tokenLimit"
+                type="number"
+                min="0"
+                max={selectedMember?.tokenAllocation.availableForAllocation}
+                value={newTokenLimit}
+                onChange={(e) => setNewTokenLimit(e.target.value)}
+                placeholder="例: 5000"
+              />
+              <p className="text-xs text-muted-foreground">
+                0を設定すると、このメンバーは今月トークンを使用できなくなります
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTokenLimitDialog(false)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleUpdateTokenLimit}
+              disabled={isUpdatingTokenLimit || !newTokenLimit}
+            >
+              {isUpdatingTokenLimit ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  更新中...
+                </>
+              ) : (
+                "更新する"
               )}
             </Button>
           </DialogFooter>

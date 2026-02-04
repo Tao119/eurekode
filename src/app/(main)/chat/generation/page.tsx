@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { GenerationChatContainer } from "@/components/chat";
+import { GenerationChatContainer, ModelSelector } from "@/components/chat";
 import { ProjectSelector } from "@/components/chat/ProjectSelector";
+import type { ClaudeModel } from "@/types/chat";
+import { DEFAULT_MODEL } from "@/types/chat";
 import { useChat, ChatApiError } from "@/hooks/useChat";
 import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
@@ -33,6 +35,9 @@ export default function GenerationModePage() {
 
   // Project selection state (can be changed before first message)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId);
+
+  // Model selection state
+  const [selectedModel, setSelectedModel] = useState<ClaudeModel>(DEFAULT_MODEL);
 
   // Update URL without navigation when a new conversation is created
   const handleConversationCreated = useCallback((id: string) => {
@@ -89,6 +94,7 @@ export default function GenerationModePage() {
     onError: handleError,
     onConversationCreated: handleConversationCreated,
     onTokensUsed: handleTokensUsed,
+    model: selectedModel,
   });
 
   // Disable project change once conversation has started
@@ -149,11 +155,18 @@ export default function GenerationModePage() {
         conversationId={currentConversationId || undefined}
         initialGenerationState={initialGenerationState}
         headerExtra={
-          <ProjectSelector
-            selectedProjectId={selectedProjectId}
-            onProjectChange={setSelectedProjectId}
-            disabled={!canChangeProject}
-          />
+          <>
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              disabled={isLoading}
+            />
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onProjectChange={setSelectedProjectId}
+              disabled={!canChangeProject}
+            />
+          </>
         }
       />
       <TokenLimitDialog />

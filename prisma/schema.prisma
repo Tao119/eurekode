@@ -20,19 +20,19 @@ enum UserType {
   member
 }
 
-enum OrganizationPlan {
-  team
-  school
-  enterprise
+// 個人プラン
+enum IndividualPlan {
+  free
+  starter
+  pro
+  max
 }
 
-enum SubscriptionPlan {
+// 組織プラン
+enum OrganizationPlan {
   free
-  basic
-  pro
-  unlimited
-  team
-  school
+  starter
+  business
   enterprise
 }
 
@@ -88,6 +88,21 @@ enum TaskPriority {
   urgent
 }
 
+// クレジット購入ステータス
+enum CreditPurchaseStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+// クレジット割り振りリクエストステータス
+enum CreditAllocationRequestStatus {
+  pending
+  approved
+  rejected
+}
+
 // プロジェクトタイプ
 enum ProjectType {
   product // プロダクト開発
@@ -115,15 +130,16 @@ enum ArtifactType {
 model Organization {
   id        String           @id @default(uuid())
   name      String
-  plan      OrganizationPlan
+  plan      OrganizationPlan @default(starter)
   settings  Json? // OrganizationSettings
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
 
   // Relations
-  users        User[]
-  accessKeys   AccessKey[]
-  subscription Subscription?
+  users         User[]
+  accessKeys    AccessKey[]
+  subscription  Subscription?
+  creditBalance CreditBalance?
 
   @@map("organizations")
 }
@@ -133,7 +149,7 @@ model User {
   email          String?   @unique
   passwordHash   String?   @map("password_hash")
   displayName    String    @map("display_name")
-  userType       UserType  @map("user_type")
+  userType       UserType  @default(individual) @map("user_type")
   organizationId String?   @map("organization_id")
   emailVerified  DateTime? @map("email_verified")
   settings       Json? // UserSettings
@@ -151,6 +167,7 @@ model User {
   sessions      Session[]
   projects      Project[]
   artifacts     Artifact[]
+  creditBalance CreditBalance?
 
   @@index([organizationId])
   @@map("users")
@@ -288,12 +305,16 @@ model Subscription {
   id                   String             @id @default(uuid())
   userId               String?            @unique @map("user_id")
   organizationId       String?            @unique @map("organization_id")
-  plan                 SubscriptionPlan
+  // 個人プラン（userIdがある場合）
+  individualPlan       IndividualPlan?    @map("individual_plan")
+  // 組織プラン（organizationIdがある場合）
+  organizationPlan     OrganizationPlan?  @map("organization_plan")
   status               SubscriptionStatus @default(active)
   currentPeriodStart   DateTime           @map("current_period_start")
   currentPeriodEnd     DateTime           @map("current_period_end")
   stripeCustomerId     String?            @map("stripe_customer_id")
   stripeSubscriptionId String?            @map("stripe_subscription_id")
+  stripePriceId        String?            @map("stripe_price_id")
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
 
@@ -467,3 +488,116 @@ model Artifact {
 //   correctLabel: string
 //   hint?: string
 // }
+
+// ============================================
+// Credit System Models
+// ============================================
+
+// クレジット残高（個人/組織）
+model CreditBalance {
+  id             String        @id @default(uuid())
+  userId         String?       @unique @map("user_id")
+  organizationId String?       @unique @map("organization_id")
+  // 現在の残高（ポイント）
+  balance        Float         @default(0)
+  // 今月使用したポイント（プラン分）
+  monthlyUsed    Float         @default(0) @map("monthly_used")
+  // 今月購入したポイント使用量
+  purchasedUsed  Float         @default(0) @map("purchased_used")
+  // 期間管理
+  periodStart    DateTime      @map("period_start")
+  periodEnd      DateTime      @map("period_end")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("credit_balances")
+}
+
+// クレジット購入履歴
+model CreditPurchase {
+  id                   String               @id @default(uuid())
+  userId               String?              @map("user_id")
+  organizationId       String?              @map("organization_id")
+  // 購入詳細
+  packId               String?              @map("pack_id") // プリセットパックID（nullならカスタム金額）
+  pointsPurchased      Float                @map("points_purchased")
+  amountPaid           Int                  @map("amount_paid") // 円
+  unitPrice            Float                @map("unit_price") // 円/pt
+  // Stripe
+  stripePaymentId      String?              @map("stripe_payment_id")
+  stripeSessionId      String?              @map("stripe_session_id")
+  // ステータス
+  status               CreditPurchaseStatus @default(pending)
+  completedAt          DateTime?            @map("completed_at")
+  createdAt            DateTime             @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([stripeSessionId])
+  @@map("credit_purchases")
+}
+
+// 組織メンバーのクレジット割り当て
+model CreditAllocation {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  // 割り当てポイント
+  allocatedPoints Float   @map("allocated_points")
+  usedPoints      Float   @default(0) @map("used_points")
+  // 期間（月単位）
+  periodStart    DateTime @map("period_start")
+  periodEnd      DateTime @map("period_end")
+  // メモ
+  note           String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, userId, periodStart])
+  @@index([userId, periodStart])
+  @@map("credit_allocations")
+}
+
+// メンバーからのクレジット割り振りリクエスト
+model CreditAllocationRequest {
+  id               String                         @id @default(uuid())
+  organizationId   String                         @map("organization_id")
+  requesterId      String                         @map("requester_id")
+  // リクエスト詳細
+  requestedPoints  Float                          @map("requested_points")
+  reason           String?
+  // ステータス
+  status           CreditAllocationRequestStatus  @default(pending)
+  reviewedBy       String?                        @map("reviewed_by")
+  reviewedAt       DateTime?                      @map("reviewed_at")
+  rejectionReason  String?                        @map("rejection_reason")
+  // 承認時に作成された割り当てID
+  allocationId     String?                        @map("allocation_id")
+  createdAt        DateTime                       @default(now()) @map("created_at")
+
+  @@index([organizationId, status])
+  @@index([requesterId, createdAt])
+  @@map("credit_allocation_requests")
+}
+
+// ポイント使用履歴
+model PointUsage {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  organizationId String?  @map("organization_id")
+  conversationId String?  @map("conversation_id")
+  // 使用詳細
+  model          String   // sonnet or opus
+  pointsUsed     Float    @map("points_used")
+  // ソース（プラン分か購入分か）
+  fromPlan       Boolean  @default(true) @map("from_plan")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("point_usage")
+}

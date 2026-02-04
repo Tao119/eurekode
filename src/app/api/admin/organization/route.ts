@@ -168,7 +168,7 @@ export async function GET() {
         },
         subscription: organization.subscription
           ? {
-              plan: organization.subscription.plan,
+              plan: organization.subscription.organizationPlan,
               status: organization.subscription.status,
               currentPeriodEnd: organization.subscription.currentPeriodEnd?.toISOString(),
             }

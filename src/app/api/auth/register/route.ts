@@ -84,7 +84,7 @@ export async function POST(
       const organization = await prisma.organization.create({
         data: {
           name: organizationName,
-          plan: "team",
+          plan: "starter",
           settings: {
             allowedModes: ["explanation", "generation", "brainstorm"],
             allowedTechStacks: [],
@@ -103,7 +103,7 @@ export async function POST(
           },
           subscription: {
             create: {
-              plan: "team",
+              organizationPlan: "starter",
               status: "active",
               currentPeriodStart: new Date(),
               currentPeriodEnd: new Date(
@@ -139,7 +139,7 @@ export async function POST(
           emailVerified: new Date(), // Auto-verify for now
           subscription: {
             create: {
-              plan: "free",
+              individualPlan: "free",
               status: "active",
               currentPeriodStart: new Date(),
               currentPeriodEnd: new Date(

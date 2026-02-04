@@ -5,12 +5,26 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { systemPrompts, brainstormSubModePrompts } from "@/lib/prompts";
-import type { BrainstormSubMode } from "@/types/chat";
+import type { BrainstormSubMode, ClaudeModel } from "@/types/chat";
+import { getModelId, DEFAULT_MODEL } from "@/types/chat";
 import {
   checkTokenLimit,
   estimateTokens,
   TOKEN_LIMIT_EXCEEDED_CODE,
 } from "@/lib/token-limit";
+import {
+  canStartConversation,
+  consumePoints,
+  isModelAccessible,
+  getAvailableModels,
+} from "@/lib/point-service";
+import type { AIModel } from "@/config/plans";
+
+// Map ClaudeModel to AIModel for point consumption
+// haiku is treated as sonnet for billing purposes
+function mapToAIModel(claudeModel: ClaudeModel): AIModel {
+  return claudeModel === "opus" ? "opus" : "sonnet";
+}
 
 // Supported media types for Claude API
 const IMAGE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
@@ -144,6 +158,8 @@ const chatRequestSchema = z.object({
     title: z.string(),
     language: z.string().optional(),
   }).optional(),
+  // Claude モデル選択
+  model: z.enum(["opus", "sonnet", "haiku"]).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -174,15 +190,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { mode, messages, conversationId, brainstormSubMode, activeArtifact } = parsed.data;
+    const { mode, messages, conversationId, brainstormSubMode, activeArtifact, model } = parsed.data;
+    const selectedModel: ClaudeModel = model || DEFAULT_MODEL;
     const userId = session.user.id;
 
-    // ユーザー設定を取得（スキップモードの判定用）
+    // ユーザー設定を取得（スキップモードの判定用 + 組織ID）
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         settings: true,
         userType: true,
+        organizationId: true,
         accessKey: {
           select: {
             settings: true,
@@ -292,6 +310,41 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
       );
     }
 
+    // === Point-based billing check ===
+    const aiModel = mapToAIModel(selectedModel);
+    const organizationId = user?.organizationId ?? null;
+
+    // Check model access permission
+    const modelAccess = await isModelAccessible(userId, aiModel);
+    if (!modelAccess.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "MODEL_NOT_AVAILABLE",
+            message: modelAccess.reasonJa || "このモデルはご利用いただけません",
+            availableModels: await getAvailableModels(userId),
+          },
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check point balance
+    const pointCheck = await canStartConversation(userId, aiModel, organizationId);
+    if (!pointCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "INSUFFICIENT_POINTS",
+            message: pointCheck.reasonJa || "ポイントが不足しています",
+          },
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Create or get conversation
     let currentConversationId = conversationId;
     if (conversationId) {
@@ -319,7 +372,7 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
       async start(controller) {
         try {
           const response = await anthropic.messages.stream({
-            model: "claude-sonnet-4-20250514",
+            model: getModelId(selectedModel),
             max_tokens: 4096,
             system: getSystemPrompt(),
             messages: messagesToAnthropicFormat(messages),
@@ -410,8 +463,23 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
             });
           }
 
-          // Send conversation ID and tokens used in the done message
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversationId: currentConversationId, tokensUsed: estimatedTokens })}\n\n`));
+          // === Consume points for this conversation ===
+          const pointConsumption = await consumePoints(
+            userId,
+            aiModel,
+            currentConversationId || undefined,
+            organizationId
+          );
+
+          // Send conversation ID, tokens used, and point info in the done message
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            done: true,
+            conversationId: currentConversationId,
+            tokensUsed: estimatedTokens,
+            pointsUsed: pointConsumption.consumed,
+            remainingPoints: pointConsumption.remainingBalance,
+            lowBalanceWarning: pointConsumption.lowBalanceWarning,
+          })}\n\n`));
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (error) {

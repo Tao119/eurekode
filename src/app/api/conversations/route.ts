@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getRetentionCutoffDate } from "@/lib/retention";
 import { z } from "zod";
 
 // メッセージスキーマ（メタデータを含む）
@@ -78,8 +79,13 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = parseInt(searchParams.get("offset") || "0");
 
+    // Calculate retention cutoff date (future: pass user's plan)
+    const retentionCutoff = getRetentionCutoffDate();
+
     const where = {
       userId: session.user.id,
+      // Only show conversations within retention period
+      createdAt: { gte: retentionCutoff },
       ...(mode && { mode: mode as "explanation" | "generation" | "brainstorm" }),
       ...(projectId && { projectId }),
       ...(isOrganized !== null && isOrganized !== undefined && { isOrganized: isOrganized === "true" }),

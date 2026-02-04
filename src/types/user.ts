@@ -1,4 +1,10 @@
-import type { UserType, SubscriptionPlan } from "@/generated/prisma/client";
+import type { UserType, IndividualPlan, OrganizationPlan } from "@/generated/prisma/client";
+
+/**
+ * Subscription plan type (union of individual and organization plans)
+ * Note: This is for session/runtime use. Database uses separate enums.
+ */
+export type SubscriptionPlan = IndividualPlan | OrganizationPlan;
 
 export interface UserSettings {
   quizEnabled: boolean;

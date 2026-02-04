@@ -10,6 +10,7 @@ import type {
   BrainstormModeState,
   BrainstormSubMode,
   FileAttachment,
+  ClaudeModel,
 } from "@/types/chat";
 import type { ApiError } from "@/types/api";
 import { isAuthError, handleAuthError } from "@/lib/auth-error-handler";
@@ -38,6 +39,8 @@ interface UseChatOptions {
   onTokensUsed?: (tokens: number) => void;
   // 壁打ちモードのサブモード（casual/planning）
   brainstormSubMode?: BrainstormSubMode;
+  // Claude モデル選択
+  model?: ClaudeModel;
 }
 
 // Generation status from backend
@@ -93,7 +96,7 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
-export function useChat({ mode, conversationId: initialConversationId, projectId, onError, onConversationCreated, onTokensUsed, brainstormSubMode }: UseChatOptions): UseChatReturn {
+export function useChat({ mode, conversationId: initialConversationId, projectId, onError, onConversationCreated, onTokensUsed, brainstormSubMode, model }: UseChatOptions): UseChatReturn {
   const [branchState, setBranchState] = useState<ChatBranchState>(() => {
     const mainBranchId = generateId();
     return {
@@ -507,6 +510,7 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
             messages: [...currentMessages, userMessage],
             brainstormSubMode: mode === "brainstorm" ? brainstormSubMode : undefined,
             activeArtifact: mode === "generation" ? activeArtifact : undefined,
+            model,
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -750,6 +754,7 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
           mode,
           messages: messagesForApi,
           brainstormSubMode: mode === "brainstorm" ? brainstormSubMode : undefined,
+          model,
         }),
         signal: abortControllerRef.current.signal,
       });

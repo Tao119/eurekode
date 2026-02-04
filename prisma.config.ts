@@ -9,7 +9,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // Use DIRECT_URL for migrations (bypasses pgbouncer)
-    url: process.env["DIRECT_URL"] || process.env["DATABASE_URL"],
+    // Use SESSION_POOLER_URL for migrations (session mode, port 5432)
+    url: process.env["SESSION_POOLER_URL"],
   },
 });

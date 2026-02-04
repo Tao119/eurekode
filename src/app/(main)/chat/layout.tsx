@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { ChatWithCredits } from "@/components/chat/ChatWithCredits";
 
 export default function ChatLayout({
   children,
@@ -32,5 +33,9 @@ export default function ChatLayout({
     return null;
   }
 
-  return <>{children}</>;
+  return (
+    <ChatWithCredits>
+      {children}
+    </ChatWithCredits>
+  );
 }

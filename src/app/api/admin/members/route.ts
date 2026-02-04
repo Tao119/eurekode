@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Build where clause
+    // Build where clause (include both admin and member)
     const whereClause: Prisma.UserWhereInput = {
       organizationId: session.user.organizationId,
-      userType: "member",
+      userType: { in: ["member", "admin"] },
       ...(search && {
         displayName: { contains: search, mode: "insensitive" as const },
       }),

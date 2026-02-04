@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
+import { PLAN_CREDITS } from "@/lib/stripe";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -43,12 +44,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    // Get member with full details
+    // Get member with full details (include admin as well)
     const member = await prisma.user.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
-        userType: "member",
+        userType: { in: ["member", "admin"] },
       },
       select: {
         id: true,
@@ -150,6 +151,46 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const memberSettings = (member.settings as UserSettings) || {};
 
+    // Get organization plan for monthly limit
+    const organization = await prisma.organization.findUnique({
+      where: { id: session.user.organizationId },
+      select: { plan: true },
+    });
+
+    const orgMonthlyLimit = organization
+      ? PLAN_CREDITS.organization[organization.plan as keyof typeof PLAN_CREDITS.organization] || 5000
+      : 5000;
+
+    // Get monthly token allocation
+    const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const memberAllocation = await prisma.creditAllocation.findUnique({
+      where: {
+        organizationId_userId_periodStart: {
+          organizationId: session.user.organizationId,
+          userId: id,
+          periodStart: periodStart,
+        },
+      },
+    });
+
+    // Get total allocated to all members
+    const allAllocations = await prisma.creditAllocation.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        periodStart: periodStart,
+      },
+      select: { allocatedPoints: true, userId: true },
+    });
+
+    const totalAllocated = allAllocations.reduce(
+      (sum, alloc) => sum + alloc.allocatedPoints,
+      0
+    );
+
+    const totalAllocatedToOthers = allAllocations
+      .filter((a) => a.userId !== id)
+      .reduce((sum, alloc) => sum + alloc.allocatedPoints, 0);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -174,6 +215,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
               usedAt: member.accessKey.usedAt?.toISOString() || null,
             }
           : null,
+        tokenAllocation: {
+          monthlyLimit: memberAllocation?.allocatedPoints || 0,
+          usedPoints: memberAllocation?.usedPoints || 0,
+          remaining: (memberAllocation?.allocatedPoints || 0) - (memberAllocation?.usedPoints || 0),
+          organizationMonthlyLimit: orgMonthlyLimit,
+          organizationTotalAllocated: totalAllocated,
+          availableForAllocation: orgMonthlyLimit - totalAllocatedToOthers,
+        },
         statistics: {
           tokensUsedToday: todayUsage?.tokensUsed || 0,
           tokensUsedWeek: weeklyUsage,
@@ -255,12 +304,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Verify member belongs to organization
+    // Verify member belongs to organization (include admin)
     const member = await prisma.user.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
-        userType: "member",
+        userType: { in: ["member", "admin"] },
       },
       select: { id: true, settings: true },
     });
@@ -335,7 +384,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    // Verify member belongs to organization
+    // Cannot delete yourself
+    if (id === session.user.id) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "自分自身を削除することはできません" } },
+        { status: 403 }
+      );
+    }
+
+    // Verify member belongs to organization (only members can be deleted, not admins)
     const member = await prisma.user.findFirst({
       where: {
         id,
@@ -349,7 +406,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     if (!member) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "メンバーが見つかりません" } },
+        { success: false, error: { code: "NOT_FOUND", message: "メンバーが見つかりません（管理者は削除できません）" } },
         { status: 404 }
       );
     }

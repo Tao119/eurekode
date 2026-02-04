@@ -4,16 +4,18 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import type { UserType, SubscriptionPlan } from "@/generated/prisma/client";
+import type { UserType } from "@/generated/prisma/client";
+import type { SubscriptionPlan } from "@/types/user";
 
-// Token limits by plan
+// Token limits by plan (using monthly conversation points as proxy)
 const TOKEN_LIMITS: Record<SubscriptionPlan, number> = {
-  free: 100,
-  basic: 500,
-  pro: 2000,
-  unlimited: 999999,
-  team: 2000,
-  school: 1000,
+  // Individual plans
+  free: 30,
+  starter: 300,
+  pro: 900,
+  max: 3000,
+  // Organization plans (overlap with 'free' and 'starter' handled by individual)
+  business: 15000,
   enterprise: 999999,
 };
 
@@ -274,7 +276,10 @@ export const authConfig: NextAuthConfig = {
           },
         });
 
-        extendedToken.plan = subscription?.plan || "free";
+        // Use organization plan if available, otherwise individual plan
+        extendedToken.plan = subscription?.organizationPlan
+          ?? subscription?.individualPlan
+          ?? "free";
 
         // Get daily token limit from access key if exists, otherwise use plan default
         const accessKey = await prisma.accessKey.findFirst({

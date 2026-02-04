@@ -2,6 +2,59 @@ import type { ChatMode } from "@/generated/prisma/client";
 
 export type { ChatMode };
 
+// ===========================================
+// Claude Model Selection
+// ===========================================
+
+export type ClaudeModel = "opus" | "sonnet" | "haiku";
+
+export interface ClaudeModelConfig {
+  id: ClaudeModel;
+  name: string;
+  description: string;
+  modelId: string; // Anthropic API model ID
+  icon: string;
+  tier: "premium" | "standard" | "economy";
+  tokensPerMinute?: number;
+}
+
+export const CLAUDE_MODELS: ClaudeModelConfig[] = [
+  {
+    id: "opus",
+    name: "Claude Opus",
+    description: "最高性能・複雑な推論に最適",
+    modelId: "claude-opus-4-20250514",
+    icon: "auto_awesome",
+    tier: "premium",
+  },
+  {
+    id: "sonnet",
+    name: "Claude Sonnet",
+    description: "バランス型・コーディングに最適",
+    modelId: "claude-sonnet-4-20250514",
+    icon: "balance",
+    tier: "standard",
+  },
+  {
+    id: "haiku",
+    name: "Claude Haiku",
+    description: "高速・軽量タスクに最適",
+    modelId: "claude-haiku-4-20250514",
+    icon: "bolt",
+    tier: "economy",
+  },
+];
+
+export const DEFAULT_MODEL: ClaudeModel = "sonnet";
+
+export function getModelConfig(model: ClaudeModel): ClaudeModelConfig {
+  return CLAUDE_MODELS.find((m) => m.id === model) || CLAUDE_MODELS[1];
+}
+
+export function getModelId(model: ClaudeModel): string {
+  return getModelConfig(model).modelId;
+}
+
 export interface Message {
   id?: string;
   role: "user" | "assistant";

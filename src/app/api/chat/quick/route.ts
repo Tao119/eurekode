@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { systemPrompts } from "@/lib/prompts";
 import { detectChatMode, detectChatModeWithDetails } from "@/lib/mode-detector";
-import type { ChatMode } from "@/types/chat";
+import type { ChatMode, ClaudeModel } from "@/types/chat";
+import { getModelId, DEFAULT_MODEL } from "@/types/chat";
 
 const quickChatRequestSchema = z.object({
   content: z.string().min(1).max(10000),
@@ -15,6 +16,8 @@ const quickChatRequestSchema = z.object({
   conversationId: z.string().optional(),
   // プロジェクトに紐づける場合
   projectId: z.string().optional(),
+  // Claude モデル選択
+  model: z.enum(["opus", "sonnet", "haiku"]).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -45,8 +48,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { content, mode: explicitMode, conversationId, projectId } = parsed.data;
+    const { content, mode: explicitMode, conversationId, projectId, model } = parsed.data;
     const userId = session.user.id;
+    const selectedModel: ClaudeModel = model || DEFAULT_MODEL;
 
     // Check if API key is configured
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -144,7 +148,7 @@ export async function POST(request: NextRequest) {
           );
 
           const response = await anthropic.messages.stream({
-            model: "claude-sonnet-4-20250514",
+            model: getModelId(selectedModel),
             max_tokens: 4096,
             system: systemPrompts[mode],
             messages: messages.map((msg) => ({

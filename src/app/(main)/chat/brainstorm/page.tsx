@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { BrainstormChatContainer } from "@/components/chat/BrainstormChatContainer";
+import { BrainstormChatContainer, ModelSelector } from "@/components/chat";
 import { ProjectSelector } from "@/components/chat/ProjectSelector";
+import type { ClaudeModel } from "@/types/chat";
+import { DEFAULT_MODEL } from "@/types/chat";
 import { useChat, ChatApiError } from "@/hooks/useChat";
 import { useTokenUsageOptional } from "@/contexts/TokenUsageContext";
 import { useTokenLimitDialog } from "@/components/common/TokenLimitDialog";
@@ -25,6 +27,8 @@ export default function BrainstormModePage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId);
   // SubMode state for API calls (synced from BrainstormChatContainer)
   const [subMode, setSubMode] = useState<BrainstormSubMode>("casual");
+  // Model selection state
+  const [selectedModel, setSelectedModel] = useState<ClaudeModel>(DEFAULT_MODEL);
 
   // Update URL without navigation when a new conversation is created
   const handleConversationCreated = useCallback((id: string) => {
@@ -83,6 +87,7 @@ export default function BrainstormModePage() {
     onError: handleError,
     onConversationCreated: handleConversationCreated,
     onTokensUsed: handleTokensUsed,
+    model: selectedModel,
   });
 
   // Disable project change once conversation has started
@@ -146,11 +151,18 @@ export default function BrainstormModePage() {
         onMetadataChange={handleMetadataChange}
         onSubModeChange={setSubMode}
         headerExtra={
-          <ProjectSelector
-            selectedProjectId={selectedProjectId}
-            onProjectChange={setSelectedProjectId}
-            disabled={!canChangeProject}
-          />
+          <>
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              disabled={isLoading}
+            />
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onProjectChange={setSelectedProjectId}
+              disabled={!canChangeProject}
+            />
+          </>
         }
       />
       <TokenLimitDialog />
