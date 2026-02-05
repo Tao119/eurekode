@@ -102,6 +102,30 @@ export function GenerationChatContainer({
   const hasBranches = branches.length > 1;
   const currentBranch = branches.find((b) => b.id === currentBranchId);
 
+  // Scroll to target message from learning detail page
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const target = sessionStorage.getItem("learning-scroll-target");
+    if (!target) return;
+    sessionStorage.removeItem("learning-scroll-target");
+
+    const msgIndex = messages.findIndex(
+      (m) => m.role === "assistant" && m.content === target
+    );
+    if (msgIndex === -1) return;
+
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`msg-${msgIndex}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-primary/50", "rounded-lg");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-primary/50", "rounded-lg");
+        }, 3000);
+      }
+    });
+  }, [messages]);
+
   // Get user settings from context (may be null if not in provider)
   const userSettingsContext = useUserSettingsOptional();
 
@@ -512,7 +536,7 @@ export function GenerationChatContainer({
                     : message;
 
                   return (
-                    <div key={message.id || index}>
+                    <div key={message.id || index} id={`msg-${index}`}>
                       <ChatMessage
                         message={processedMessage}
                         isStreaming={isLoading && index === messages.length - 1 && message.role === "assistant"}

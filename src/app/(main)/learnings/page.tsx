@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLearnings } from "@/hooks/useLearnings";
@@ -94,6 +94,32 @@ function LearningsContent() {
       }
     }
   }, [learningToDelete, deleteLearning, selectedLearning, handleCloseDetail]);
+
+  // Fetch learning by ID when navigating from dashboard (selectedId set but selectedLearning is null)
+  useEffect(() => {
+    if (!selectedId || selectedLearning) return;
+
+    // First try to find in already-loaded learnings
+    const found = learnings.find((l) => l.id === selectedId);
+    if (found) {
+      setSelectedLearning(found);
+      return;
+    }
+
+    // If not found in loaded list, fetch from API
+    async function fetchLearningById() {
+      try {
+        const response = await fetch(`/api/learnings/${selectedId}`);
+        const data = await response.json();
+        if (data.success && data.data) {
+          setSelectedLearning(data.data);
+        }
+      } catch {
+        // Silently ignore - dialog will show empty
+      }
+    }
+    fetchLearningById();
+  }, [selectedId, selectedLearning, learnings]);
 
   const filterButtons: { type: FilterType; label: string; icon: string }[] = [
     { type: "all", label: "すべて", icon: "list" },
@@ -272,8 +298,7 @@ function LearningsContent() {
                   </div>
                 )}
 
-                {selectedLearning.sourceMessage &&
-                 selectedLearning.sourceMessage !== selectedLearning.content && (
+                {selectedLearning.sourceMessage && (
                   <SourceMessageSection sourceMessage={selectedLearning.sourceMessage} />
                 )}
 
@@ -297,6 +322,14 @@ function LearningsContent() {
                     </p>
                     <Link
                       href={`/chat/${selectedLearning.conversation.mode}/${selectedLearning.conversation.id}`}
+                      onClick={() => {
+                        if (selectedLearning.sourceMessage) {
+                          sessionStorage.setItem(
+                            "learning-scroll-target",
+                            selectedLearning.sourceMessage
+                          );
+                        }
+                      }}
                       className="text-primary hover:underline flex items-center gap-1"
                     >
                       <span className="material-symbols-outlined text-sm">

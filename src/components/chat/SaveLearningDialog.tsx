@@ -59,7 +59,7 @@ export function SaveLearningDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: editedContent.trim(),
-          sourceMessage: isPartialSelection ? sourceMessage : undefined,
+          sourceMessage,
           memo: memo.trim() || undefined,
           tags: [],
           type: "insight",

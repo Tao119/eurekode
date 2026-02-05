@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ChatModeSelector } from "./ChatModeSelector";
@@ -50,6 +50,32 @@ export function ChatContainer({
 }: ChatContainerProps) {
   const { containerRef, endRef } = useAutoScroll(messages);
   const [showBranchSelector, setShowBranchSelector] = useState(false);
+
+  // Scroll to target message from learning detail page
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const target = sessionStorage.getItem("learning-scroll-target");
+    if (!target) return;
+    sessionStorage.removeItem("learning-scroll-target");
+
+    // Find the message matching the sourceMessage content
+    const msgIndex = messages.findIndex(
+      (m) => m.role === "assistant" && m.content === target
+    );
+    if (msgIndex === -1) return;
+
+    // Wait for DOM to render, then scroll
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`msg-${msgIndex}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-primary/50", "rounded-lg");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-primary/50", "rounded-lg");
+        }, 3000);
+      }
+    });
+  }, [messages]);
 
   const hasBranches = branches.length > 1;
   const currentBranch = branches.find((b) => b.id === currentBranchId);
@@ -121,18 +147,19 @@ export function ChatContainer({
                 isLoading && index === messages.length - 1 && message.role === "assistant";
 
               return (
-                <ChatMessage
-                  key={message.id || index}
-                  message={message}
-                  isStreaming={isStreamingMessage}
-                  onOptionSelect={!isLoading && isLastAssistantMessage ? onSendMessage : undefined}
-                  onFork={onForkFromMessage ? () => onForkFromMessage(index) : undefined}
-                  showForkButton={!isLoading && index < messages.length - 1}
-                  onRegenerate={onRegenerate}
-                  showRegenerateButton={!isLoading && isLastAssistantMessage && canRegenerate}
-                  mode={mode}
-                  conversationId={conversationId}
-                />
+                <div key={message.id || index} id={`msg-${index}`}>
+                  <ChatMessage
+                    message={message}
+                    isStreaming={isStreamingMessage}
+                    onOptionSelect={!isLoading && isLastAssistantMessage ? onSendMessage : undefined}
+                    onFork={onForkFromMessage ? () => onForkFromMessage(index) : undefined}
+                    showForkButton={!isLoading && index < messages.length - 1}
+                    onRegenerate={onRegenerate}
+                    showRegenerateButton={!isLoading && isLastAssistantMessage && canRegenerate}
+                    mode={mode}
+                    conversationId={conversationId}
+                  />
+                </div>
               );
             })}
             <div ref={endRef} />
