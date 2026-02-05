@@ -706,7 +706,7 @@ export default function MembersPage() {
 
       {/* Member Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>メンバー詳細</DialogTitle>
             <DialogDescription>
@@ -720,7 +720,7 @@ export default function MembersPage() {
               <Skeleton className="h-32 w-full" />
             </div>
           ) : selectedMember ? (
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-4 overflow-y-auto flex-1">
               {/* Basic Info */}
               <div className="flex items-center gap-4">
                 <div className="size-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl">
