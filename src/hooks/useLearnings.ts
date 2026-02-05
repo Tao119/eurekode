@@ -59,7 +59,7 @@ export function useLearnings(options: UseLearningsOptions = {}): UseLearningsRet
   const { initialLimit = 20, autoFetch = true, initialFilter = {}, onError } = options;
 
   const [learnings, setLearnings] = useState<Learning[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(autoFetch);
   const [error, setError] = useState<Error | null>(null);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FullPageLoading } from "@/components/common/LoadingSpinner";
 import { RecentLearningsSection } from "@/components/learnings/RecentLearnings";
+import { RecentConversationsSection } from "@/components/conversations/RecentConversations";
 import { useUserSettings } from "@/contexts/UserSettingsContext";
 
 export default function HomePage() {
@@ -195,6 +196,9 @@ function LoggedInDashboard({ displayName }: { displayName: string }) {
           <ModeCard mode="brainstorm" disabled={!allowedModes.includes("brainstorm")} />
         </div>
       </section>
+
+      {/* Recent Conversations */}
+      <RecentConversationsSection />
 
       {/* Recent Learnings */}
       <RecentLearningsSection />

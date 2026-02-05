@@ -450,10 +450,12 @@ export function BrainstormChatContainer({
           {/* Single row layout */}
           <div className="flex items-center justify-between gap-2">
             {/* Left: Mode Selector */}
-            <ChatModeSelector currentMode="brainstorm" conversationId={conversationId} />
+            <div className="min-w-0">
+              <ChatModeSelector currentMode="brainstorm" conversationId={conversationId} />
+            </div>
 
             {/* Right: Controls */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* Header Extra (Project Selector etc.) - Hidden on mobile */}
               <div className="hidden sm:flex items-center gap-2">
                 {headerExtra}

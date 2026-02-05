@@ -39,7 +39,7 @@ export function ChatModeSelector({ currentMode, conversationId }: ChatModeSelect
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 sm:gap-3 hover:bg-muted/50 active:scale-[0.98] rounded-lg p-1.5 -m-1.5 transition-all group">
+        <button className="flex items-center gap-2 sm:gap-3 hover:bg-muted/50 active:scale-[0.98] rounded-lg p-1.5 -m-1.5 transition-all group whitespace-nowrap">
           <div
             className={cn(
               "rounded-lg flex items-center justify-center",
