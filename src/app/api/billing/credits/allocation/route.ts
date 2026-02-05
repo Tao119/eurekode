@@ -151,18 +151,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // メンバーが組織に所属しているか確認
-    const member = await prisma.user.findFirst({
+    // 対象ユーザーが組織に所属しているか確認（メンバーまたは管理者自身）
+    const targetUser = await prisma.user.findFirst({
       where: {
         id: memberId,
         organizationId: admin.organizationId,
-        userType: "member",
+        userType: { in: ["member", "admin"] },
       },
     });
 
-    if (!member) {
+    if (!targetUser) {
       return NextResponse.json(
-        { error: "Member not found in organization" },
+        { error: "User not found in organization" },
         { status: 404 }
       );
     }

@@ -32,6 +32,8 @@ export async function GET() {
     const userId = session.user.id;
     const userType = session.user.userType;
     const isOrganizationMember = userType === "member";
+    // 管理者またはメンバーで組織に所属 → 組織の割り当て制を使用
+    const hasOrganizationAllocation = (userType === "member" || userType === "admin");
 
     // ユーザー情報とサブスクリプション取得
     const user = await prisma.user.findUnique({
@@ -57,8 +59,8 @@ export async function GET() {
     let isOrganization = false;
     let monthlyPoints = 0;
 
-    if (isOrganizationMember && user.organization) {
-      // 組織メンバー
+    if (hasOrganizationAllocation && user.organizationId && user.organization) {
+      // 組織メンバーまたは管理者
       isOrganization = true;
       plan = user.organization.plan;
       monthlyPoints =
@@ -77,8 +79,9 @@ export async function GET() {
     }
 
     // クレジット残高取得
-    const creditBalance = isOrganizationMember
-      ? null // メンバーは組織の残高ではなく割り当てを見る
+    // 組織所属ユーザー（管理者・メンバー）は割り当て制のため個別残高は使わない
+    const creditBalance = (hasOrganizationAllocation && user.organizationId)
+      ? null
       : user.creditBalance || (user.organization?.creditBalance ?? null);
 
     // 今月の使用量を計算
@@ -91,7 +94,7 @@ export async function GET() {
     let allocatedPoints: number | undefined;
     let allocatedUsed = 0;
 
-    if (isOrganizationMember && user.organizationId) {
+    if (hasOrganizationAllocation && user.organizationId) {
       const allocation = await prisma.creditAllocation.findFirst({
         where: {
           organizationId: user.organizationId,
@@ -104,8 +107,8 @@ export async function GET() {
       if (allocation) {
         allocatedPoints = allocation.allocatedPoints;
         allocatedUsed = allocation.usedPoints;
-      } else {
-        // 割り当てがない場合、アクセスキーのdailyTokenLimitから自動作成
+      } else if (userType === "member") {
+        // メンバーの場合：割り当てがなければアクセスキーのdailyTokenLimitから自動作成
         const accessKey = await prisma.accessKey.findFirst({
           where: { userId: userId },
         });
@@ -131,6 +134,9 @@ export async function GET() {
         } else {
           allocatedPoints = 0;
         }
+      } else {
+        // 管理者の場合：割り当てがなければ0（管理画面から自分で設定する）
+        allocatedPoints = 0;
       }
     }
 
@@ -155,7 +161,7 @@ export async function GET() {
       planPointsRemaining,
       purchasedPointsRemaining,
       allocatedPointsRemaining,
-      canPurchaseCredits: !isOrganizationMember,
+      canPurchaseCredits: !(hasOrganizationAllocation && user.organizationId),
     };
 
     // 会話可能性チェック

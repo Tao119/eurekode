@@ -247,18 +247,38 @@ function LearningsContent() {
                     )}
                   </span>
                 </div>
-                <DialogTitle className="text-left">
+                <DialogTitle className="text-left line-clamp-2">
                   {selectedLearning.content.split("\n")[0]}
                 </DialogTitle>
+                <DialogDescription className="sr-only">
+                  学びの詳細表示
+                </DialogDescription>
               </DialogHeader>
 
-              <div className="py-4">
+              <div className="py-4 space-y-4">
                 <p className="text-foreground whitespace-pre-wrap leading-relaxed">
                   {selectedLearning.content.split("\n\n").slice(1).join("\n\n")}
                 </p>
 
+                {selectedLearning.memo && (
+                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="material-symbols-outlined text-amber-500 text-sm">edit_note</span>
+                      <span className="text-xs font-medium text-amber-600">メモ</span>
+                    </div>
+                    <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                      {selectedLearning.memo}
+                    </p>
+                  </div>
+                )}
+
+                {selectedLearning.sourceMessage &&
+                 selectedLearning.sourceMessage !== selectedLearning.content && (
+                  <SourceMessageSection sourceMessage={selectedLearning.sourceMessage} />
+                )}
+
                 {selectedLearning.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-4">
+                  <div className="flex flex-wrap gap-2">
                     {selectedLearning.tags.map((tag) => (
                       <span
                         key={tag}
@@ -271,7 +291,7 @@ function LearningsContent() {
                 )}
 
                 {selectedLearning.conversation && (
-                  <div className="mt-4 p-3 rounded-lg bg-muted/50">
+                  <div className="p-3 rounded-lg bg-muted/50">
                     <p className="text-sm text-muted-foreground mb-1">
                       関連する会話
                     </p>
@@ -334,6 +354,35 @@ function LearningsLoading() {
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
+    </div>
+  );
+}
+
+function SourceMessageSection({ sourceMessage }: { sourceMessage: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="w-full flex items-center justify-between p-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-sm">smart_toy</span>
+          <span>元のAIメッセージ</span>
+        </div>
+        <span className="material-symbols-outlined text-sm">
+          {expanded ? "expand_less" : "expand_more"}
+        </span>
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 max-h-60 overflow-y-auto">
+          <p className="whitespace-pre-wrap text-foreground/70 text-xs leading-relaxed">
+            {sourceMessage}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

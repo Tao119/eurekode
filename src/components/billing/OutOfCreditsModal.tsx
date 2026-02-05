@@ -325,7 +325,7 @@ export function OutOfCreditsModal({
 }
 
 /**
- * トークン不足時のインラインメッセージ（チャット内表示用）
+ * ポイント不足時のインラインメッセージ（チャット内表示用）
  */
 export function OutOfCreditsMessage({
   remainingConversations,

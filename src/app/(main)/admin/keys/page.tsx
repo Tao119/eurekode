@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { isAuthError, handleAuthError } from "@/lib/auth-error-handler";
 import {
@@ -86,6 +87,7 @@ const statusLabels: Record<AccessKey["status"], { label: string; color: string }
 };
 
 export default function AccessKeysPage() {
+  const { data: session } = useSession();
   const [data, setData] = useState<KeysResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,6 +116,11 @@ export default function AccessKeysPage() {
 
   // Re-issue state
   const [reissuing, setReissuing] = useState<string | null>(null);
+
+  // Admin self-allocation state
+  const [editingAdminAllocation, setEditingAdminAllocation] = useState(false);
+  const [adminAllocationInput, setAdminAllocationInput] = useState(0);
+  const [savingAdminAllocation, setSavingAdminAllocation] = useState(false);
 
   // Credit allocation info
   const creditAllocation = data?.creditAllocation;
@@ -263,6 +270,54 @@ export default function AccessKeysPage() {
       alert("再発行に失敗しました");
     } finally {
       setReissuing(null);
+    }
+  };
+
+  const handleSaveAdminAllocation = async () => {
+    if (adminAllocationInput < 0) {
+      alert("割り当てポイントは0以上を設定してください");
+      return;
+    }
+
+    // 管理者の割り当て変更分を含めた上限チェック
+    const currentAdminAllocation = adminCredits.allocated?.total ?? 0;
+    const delta = adminAllocationInput - currentAdminAllocation;
+    if (delta > 0 && delta > remainingAllocatable) {
+      alert(`クレジット上限を超えています。\n追加割り当て可能: ${remainingAllocatable.toLocaleString()}pt`);
+      return;
+    }
+
+    setSavingAdminAllocation(true);
+    try {
+      const response = await fetch("/api/billing/credits/allocation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId: session?.user?.id,
+          points: adminAllocationInput,
+          note: "管理者自己割り当て",
+        }),
+      });
+
+      if (isAuthError(response)) {
+        await handleAuthError();
+        return;
+      }
+
+      const result = await response.json();
+      if (result.allocation) {
+        setEditingAdminAllocation(false);
+        // Refresh both admin credits and keys data
+        adminCredits.refresh();
+        fetchKeys();
+      } else {
+        alert(result.error || "割り当ての保存に失敗しました");
+      }
+    } catch (error) {
+      console.error("Failed to save admin allocation:", error);
+      alert("割り当ての保存に失敗しました");
+    } finally {
+      setSavingAdminAllocation(false);
     }
   };
 
@@ -450,6 +505,49 @@ export default function AccessKeysPage() {
         <CardContent>
           {adminCredits.isLoading ? (
             <Skeleton className="h-12 w-full" />
+          ) : editingAdminAllocation ? (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="adminAllocation">割り当てポイント</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="adminAllocation"
+                    type="number"
+                    min={0}
+                    max={(adminCredits.allocated?.total ?? 0) + remainingAllocatable}
+                    value={adminAllocationInput}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? 0 : parseInt(e.target.value);
+                      setAdminAllocationInput(isNaN(value) ? 0 : value);
+                    }}
+                    className="max-w-[200px]"
+                  />
+                  <span className="text-sm text-muted-foreground">pt</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  割り当て可能な残り: <span className="font-medium text-primary">{((adminCredits.allocated?.total ?? 0) + remainingAllocatable).toLocaleString()}pt</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSaveAdminAllocation}
+                  disabled={savingAdminAllocation}
+                  className="cursor-pointer"
+                >
+                  {savingAdminAllocation ? "保存中..." : "保存"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditingAdminAllocation(false)}
+                  disabled={savingAdminAllocation}
+                  className="cursor-pointer"
+                >
+                  キャンセル
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-4">
@@ -467,11 +565,21 @@ export default function AccessKeysPage() {
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
                   管理者
                 </span>
-                {adminCredits.allocated && (
-                  <span className="text-xs text-muted-foreground">
-                    上限: {adminCredits.allocated.total.toLocaleString()}pt
-                  </span>
-                )}
+                <span className="text-xs text-muted-foreground">
+                  上限: {(adminCredits.allocated?.total ?? 0).toLocaleString()}pt
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setAdminAllocationInput(adminCredits.allocated?.total ?? 0);
+                    setEditingAdminAllocation(true);
+                  }}
+                  title="割り当てを編集"
+                  className="cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-lg">edit</span>
+                </Button>
               </div>
             </div>
           )}
@@ -567,7 +675,7 @@ export default function AccessKeysPage() {
                     使用者
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    クレジット上限
+                    ポイント上限
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     有効期限
@@ -712,7 +820,7 @@ export default function AccessKeysPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="creditLimit">クレジット上限</Label>
+              <Label htmlFor="creditLimit">月間ポイント上限</Label>
               <Input
                 id="creditLimit"
                 type="number"
@@ -836,7 +944,7 @@ export default function AccessKeysPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="editCreditLimit">クレジット上限</Label>
+              <Label htmlFor="editCreditLimit">月間ポイント上限</Label>
               <Input
                 id="editCreditLimit"
                 type="number"

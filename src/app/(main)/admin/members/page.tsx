@@ -30,8 +30,9 @@ interface Member {
   email: string | null;
   joinedAt: string;
   lastActiveAt: string | null;
-  tokensUsedToday: number;
-  dailyTokenLimit: number;
+  allocatedPoints: number;
+  usedPoints: number;
+  remainingPoints: number;
   status: "active" | "inactive";
   accessKey: {
     id: string;
@@ -114,7 +115,7 @@ interface MembersResponse {
   summary: {
     totalMembers: number;
     activeMembers: number;
-    todayTotalTokens: number;
+    monthlyPointsUsed: number;
   };
 }
 
@@ -310,7 +311,7 @@ export default function MembersPage() {
       });
       const result = await response.json();
       if (result.success) {
-        toast.success("トークン上限を更新しました");
+        toast.success("ポイント上限を更新しました");
         setShowTokenLimitDialog(false);
         setNewTokenLimit("");
         // Refresh member data
@@ -320,11 +321,11 @@ export default function MembersPage() {
           setSelectedMember(detailResult.data);
         }
       } else {
-        toast.error(result.error?.message || "トークン上限の更新に失敗しました");
+        toast.error(result.error?.message || "ポイント上限の更新に失敗しました");
       }
     } catch (error) {
       console.error("Failed to update token limit:", error);
-      toast.error("トークン上限の更新に失敗しました");
+      toast.error("ポイント上限の更新に失敗しました");
     } finally {
       setIsUpdatingTokenLimit(false);
     }
@@ -516,9 +517,9 @@ export default function MembersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {(data?.summary.todayTotalTokens || 0).toLocaleString()}
+                  {(data?.summary.monthlyPointsUsed || 0).toLocaleString()}
                 </p>
-                <p className="text-sm text-muted-foreground">今日の総トークン</p>
+                <p className="text-sm text-muted-foreground">今月の総ポイント消費</p>
               </div>
             </div>
           </CardContent>
@@ -600,7 +601,7 @@ export default function MembersPage() {
                     最終アクティブ
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    トークン使用量
+                    ポイント使用量
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     ステータス
@@ -612,8 +613,9 @@ export default function MembersPage() {
               </thead>
               <tbody>
                 {members.map((member) => {
-                  const usagePercent =
-                    (member.tokensUsedToday / member.dailyTokenLimit) * 100;
+                  const usagePercent = member.allocatedPoints > 0
+                    ? (member.usedPoints / member.allocatedPoints) * 100
+                    : 0;
                   return (
                     <tr
                       key={member.id}
@@ -659,7 +661,7 @@ export default function MembersPage() {
                             />
                           </div>
                           <span className="text-sm text-muted-foreground">
-                            {member.tokensUsedToday}/{member.dailyTokenLimit}
+                            {member.usedPoints.toLocaleString()}/{member.allocatedPoints.toLocaleString()}pt
                           </span>
                         </div>
                       </td>
@@ -877,14 +879,14 @@ export default function MembersPage() {
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-2xl font-bold">{selectedMember.statistics.tokensUsedMonth.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">月間トークン</p>
+                  <p className="text-sm text-muted-foreground">月間ポイント</p>
                 </div>
               </div>
 
               {/* Token Allocation */}
               <div className="p-4 border rounded-lg">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium">月間トークン上限</h4>
+                  <h4 className="font-medium">月間ポイント上限</h4>
                   <Button
                     variant="outline"
                     size="sm"
@@ -981,7 +983,7 @@ export default function MembersPage() {
               {/* Token History */}
               {selectedMember.tokenHistory.length > 0 && (
                 <div>
-                  <h4 className="font-medium mb-2">直近7日間のトークン使用量</h4>
+                  <h4 className="font-medium mb-2">直近7日間のポイント使用量</h4>
                   <div className="flex items-end gap-1 h-16">
                     {selectedMember.tokenHistory.slice(0, 7).map((day, index) => {
                       const maxTokens = Math.max(...selectedMember.tokenHistory.slice(0, 7).map(d => d.tokensUsed), 1);
@@ -991,7 +993,7 @@ export default function MembersPage() {
                           <div
                             className="w-full bg-primary/60 rounded-t"
                             style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                            title={`${day.date}: ${day.tokensUsed}トークン`}
+                            title={`${day.date}: ${day.tokensUsed}pt`}
                           />
                           <span className="text-[10px] text-muted-foreground">
                             {new Date(day.date).getDate()}日
@@ -1016,7 +1018,7 @@ export default function MembersPage() {
                         <div>
                           <p className="font-medium text-sm">{conv.title || "無題の会話"}</p>
                           <p className="text-xs text-muted-foreground">
-                            {conv.mode} | {conv.tokensConsumed.toLocaleString()}トークン
+                            {conv.mode} | {conv.tokensConsumed.toLocaleString()}pt
                           </p>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -1128,7 +1130,7 @@ export default function MembersPage() {
                 <li>・ アカウント情報</li>
                 <li>・ すべての会話履歴</li>
                 <li>・ すべての学び（インサイト）</li>
-                <li>・ トークン使用履歴</li>
+                <li>・ ポイント使用履歴</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-3">
                 ※ アクセスキーは無効化され、再利用できなくなります
@@ -1257,9 +1259,9 @@ export default function MembersPage() {
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>月間トークン上限を調整</DialogTitle>
+            <DialogTitle>月間ポイント上限を調整</DialogTitle>
             <DialogDescription>
-              {selectedMember?.member.displayName}さんの月間トークン上限を設定します
+              {selectedMember?.member.displayName}さんの月間ポイント上限を設定します
             </DialogDescription>
           </DialogHeader>
 
@@ -1282,7 +1284,7 @@ export default function MembersPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="tokenLimit">新しい月間トークン上限</Label>
+              <Label htmlFor="tokenLimit">新しい月間ポイント上限</Label>
               <Input
                 id="tokenLimit"
                 type="number"
@@ -1293,7 +1295,7 @@ export default function MembersPage() {
                 placeholder="例: 5000"
               />
               <p className="text-xs text-muted-foreground">
-                0を設定すると、このメンバーは今月トークンを使用できなくなります
+                0を設定すると、このメンバーは今月ポイントを使用できなくなります
               </p>
             </div>
           </div>

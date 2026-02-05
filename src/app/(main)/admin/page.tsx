@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
           bgColor: "bg-green-500/20",
         },
         {
-          title: "今月のトークン使用量",
+          title: "今月のポイント使用量",
           value: data.statistics.monthlyTokenUsage.toLocaleString(),
           icon: "toll",
           color: "text-yellow-400",
@@ -248,7 +248,7 @@ export default function AdminDashboardPage() {
             )}
             {data.alerts.lowTokenMembers.length > 0 && (
               <div>
-                <p className="text-sm font-medium mb-2">トークン残量が少ないメンバー（80%以上消費）</p>
+                <p className="text-sm font-medium mb-2">ポイント残量が少ないメンバー（80%以上消費）</p>
                 <div className="flex flex-wrap gap-2">
                   {data.alerts.lowTokenMembers.map((member) => (
                     <span

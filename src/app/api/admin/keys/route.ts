@@ -149,7 +149,21 @@ export async function GET(request: NextRequest) {
       },
       _sum: { dailyTokenLimit: true },
     });
-    const totalAllocatedCredits = allocatedCredits._sum.dailyTokenLimit || 0;
+    const memberAllocatedCredits = allocatedCredits._sum.dailyTokenLimit || 0;
+
+    // 管理者自身の割り当ても含める
+    const now = new Date();
+    const adminAllocation = await prisma.creditAllocation.findFirst({
+      where: {
+        organizationId: session.user.organizationId,
+        userId: session.user.id,
+        periodStart: { lte: now },
+        periodEnd: { gte: now },
+      },
+    });
+    const adminAllocatedPoints = adminAllocation?.allocatedPoints || 0;
+
+    const totalAllocatedCredits = memberAllocatedCredits + adminAllocatedPoints;
     const maxOrgCredits = orgPlanConfig?.features.monthlyConversationPoints || 0;
     const remainingAllocatable = Math.max(0, maxOrgCredits - totalAllocatedCredits);
 
@@ -255,7 +269,19 @@ export async function POST(request: NextRequest) {
       },
       _sum: { dailyTokenLimit: true },
     });
-    const totalAllocatedCredits = allocatedCredits._sum.dailyTokenLimit || 0;
+    const memberAllocated = allocatedCredits._sum.dailyTokenLimit || 0;
+
+    // 管理者自身の割り当ても含める
+    const now = new Date();
+    const adminAlloc = await prisma.creditAllocation.findFirst({
+      where: {
+        organizationId: session.user.organizationId,
+        userId: session.user.id,
+        periodStart: { lte: now },
+        periodEnd: { gte: now },
+      },
+    });
+    const totalAllocatedCredits = memberAllocated + (adminAlloc?.allocatedPoints || 0);
 
     // Check if new keys would exceed the limit
     const newTotalCredits = dailyTokenLimit * count;
@@ -283,7 +309,6 @@ export async function POST(request: NextRequest) {
 
     // Calculate expiration date
     let expiresAt: Date | null = null;
-    const now = new Date();
     switch (expiresIn) {
       case "1week":
         expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);

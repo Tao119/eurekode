@@ -140,6 +140,12 @@ export function LearningCard({
               )}
             </div>
           )}
+          {learning.memo && (
+            <div className="flex items-center gap-1 mt-1.5 text-amber-500">
+              <span className="material-symbols-outlined text-xs">edit_note</span>
+              <span className="text-[10px]">メモあり</span>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -198,6 +204,13 @@ export function LearningCard({
                     {tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {learning.memo && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <span className="material-symbols-outlined text-xs text-amber-500">edit_note</span>
+                <span className="text-xs text-amber-600">メモあり</span>
               </div>
             )}
 

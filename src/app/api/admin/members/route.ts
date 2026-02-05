@@ -34,9 +34,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Get today's date for token usage
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get current period for allocation lookup
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
     // Get 7 days ago for active status
     const sevenDaysAgo = new Date();
@@ -68,10 +69,6 @@ export async function GET(request: NextRequest) {
             usedAt: true,
           },
         },
-        tokenUsage: {
-          where: { date: today },
-          select: { tokensUsed: true },
-        },
         conversations: {
           orderBy: { updatedAt: "desc" },
           take: 1,
@@ -89,10 +86,32 @@ export async function GET(request: NextRequest) {
       skip: offset,
     });
 
+    // Fetch credit allocations for all members in the current period
+    const memberIds = members.map((m) => m.id);
+    const allocations = await prisma.creditAllocation.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        userId: { in: memberIds },
+        periodStart: { lte: now },
+        periodEnd: { gte: now },
+      },
+      select: {
+        userId: true,
+        allocatedPoints: true,
+        usedPoints: true,
+      },
+    });
+    const allocationMap = new Map(
+      allocations.map((a) => [a.userId, a])
+    );
+
     // Transform data
     const transformedMembers = members.map((member) => {
       const lastActiveAt = member.conversations[0]?.updatedAt;
       const isActive = lastActiveAt && lastActiveAt >= sevenDaysAgo;
+      const allocation = allocationMap.get(member.id);
+      const allocatedPoints = allocation?.allocatedPoints ?? member.accessKey?.dailyTokenLimit ?? 0;
+      const usedPoints = allocation?.usedPoints ?? 0;
 
       return {
         id: member.id,
@@ -100,8 +119,9 @@ export async function GET(request: NextRequest) {
         email: member.email,
         joinedAt: member.createdAt.toISOString(),
         lastActiveAt: lastActiveAt?.toISOString() || null,
-        tokensUsedToday: member.tokenUsage[0]?.tokensUsed || 0,
-        dailyTokenLimit: member.accessKey?.dailyTokenLimit || 1000,
+        allocatedPoints,
+        usedPoints,
+        remainingPoints: Math.max(0, allocatedPoints - usedPoints),
         status: isActive ? "active" : "inactive",
         accessKey: member.accessKey
           ? {
@@ -128,8 +148,8 @@ export async function GET(request: NextRequest) {
     // Get active count
     const activeCount = transformedMembers.filter((m) => m.status === "active").length;
 
-    // Get today's total tokens
-    const todayTotalTokens = transformedMembers.reduce((sum, m) => sum + m.tokensUsedToday, 0);
+    // Get total monthly points used
+    const monthlyPointsUsed = transformedMembers.reduce((sum, m) => sum + m.usedPoints, 0);
 
     return NextResponse.json({
       success: true,
@@ -143,7 +163,7 @@ export async function GET(request: NextRequest) {
         summary: {
           totalMembers: totalCount,
           activeMembers: activeCount,
-          todayTotalTokens,
+          monthlyPointsUsed,
         },
       },
     });

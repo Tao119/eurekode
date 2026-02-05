@@ -177,7 +177,19 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         },
         _sum: { dailyTokenLimit: true },
       });
-      const totalAllocatedCredits = allocatedCredits._sum.dailyTokenLimit || 0;
+      const memberAllocated = allocatedCredits._sum.dailyTokenLimit || 0;
+
+      // 管理者自身の割り当ても含める
+      const now = new Date();
+      const adminAlloc = await prisma.creditAllocation.findFirst({
+        where: {
+          organizationId: session.user.organizationId,
+          userId: session.user.id,
+          periodStart: { lte: now },
+          periodEnd: { gte: now },
+        },
+      });
+      const totalAllocatedCredits = memberAllocated + (adminAlloc?.allocatedPoints || 0);
 
       // Check if the update would exceed the limit
       const projectedTotal = totalAllocatedCredits + dailyTokenLimit;

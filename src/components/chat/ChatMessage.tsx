@@ -426,6 +426,7 @@ export function ChatMessage({
         open={saveLearningOpen}
         onOpenChange={setSaveLearningOpen}
         content={selectedContent}
+        sourceMessage={message.content}
         conversationId={conversationId}
       />
     </div>
@@ -687,35 +688,6 @@ const markdownComponents: Components = {
   ),
 };
 
-// Detect if a block of text looks like code
-function looksLikeCode(text: string): boolean {
-  const codePatterns = [
-    /^(import|export|from|const|let|var|function|class|interface|type|async|await|return|if|else|for|while|switch|case|try|catch|throw)\s/m,
-    /^(def|class|import|from|return|if|elif|else|for|while|try|except|raise|with|async|await)\s/m,
-    /^(package|import|public|private|protected|class|interface|void|int|string|boolean|return|if|else|for|while|switch|case|try|catch|throw)\s/m,
-    /[{}\[\]();].*[{}\[\]();]/,
-    /^\s*(\/\/|#|\/\*|\*|<!--)/m,
-    /=>\s*[{(]/,
-    /\(\s*\)\s*=>/,
-    /\.\w+\(/,
-    /<\w+(\s+\w+="[^"]*")*\s*\/?>/,
-  ];
-
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return false;
-
-  let codeScore = 0;
-  for (const pattern of codePatterns) {
-    if (pattern.test(text)) codeScore++;
-  }
-
-  const hasMultipleLines = lines.length >= 2;
-  const hasIndentation = lines.some((line) => /^\s{2,}/.test(line));
-  const hasCodeChars = (text.match(/[{}\[\]();=><]/g) || []).length > 3;
-
-  return codeScore >= 2 || (hasMultipleLines && hasIndentation && hasCodeChars);
-}
-
 // Detect inline code patterns (single expressions, short statements)
 function detectInlineCode(text: string): string {
   // Patterns for inline code that should be wrapped in backticks
@@ -788,16 +760,19 @@ function findCodeBlocksInText(content: string): string {
     const line = lines[i];
     const trimmedLine = line.trim();
 
-    // Check if this line looks like code
-    const isCodeLine =
-      /^(import|export|from|const|let|var|function|class|interface|type|async|await|return|if|else|for|while|switch|case|try|catch|throw|def|elif|except|raise|with|package|public|private|protected|void|int|boolean)\s/.test(trimmedLine) ||
-      /^(\/\/|#|\/\*|\*\s)/.test(trimmedLine) ||
-      /^\s*[{}[\]();]/.test(line) ||
-      /[{}\[\]();]\s*$/.test(trimmedLine) ||
-      /^\s{2,}\S/.test(line) && codeBuffer.length > 0 || // Indented line following code
+    // Check if this line looks like code (conservative detection)
+    // Exclude lines containing Japanese/CJK characters - those are explanatory text
+    const containsCJK = /[\u3000-\u9fff\uf900-\ufaff]/.test(trimmedLine);
+    const isCodeLine = !containsCJK && (
+      /^(import|export|from|const|let|var|function|class|interface|type|async|await|return)\s/.test(trimmedLine) ||
+      /^(def|class|import|from|return)\s/.test(trimmedLine) ||
+      /^(package|import|public|private|protected|class|void)\s/.test(trimmedLine) ||
+      /^(\/\/|\/\*|\*\s)/.test(trimmedLine) ||
+      /^\s*[{}[\]()]$/.test(trimmedLine) ||
+      (/^\s{2,}\S/.test(line) && codeBuffer.length > 0) || // Indented line following code
       /=>\s*[{(]/.test(trimmedLine) ||
-      /\)\s*{/.test(trimmedLine) ||
-      /<\w+[^>]*>/.test(trimmedLine) && /<\/\w+>/.test(trimmedLine);
+      /\)\s*\{$/.test(trimmedLine)
+    );
 
     if (isCodeLine) {
       if (!inCodeBlock) {
@@ -806,8 +781,8 @@ function findCodeBlocksInText(content: string): string {
       }
       codeBuffer.push(line);
     } else {
-      if (inCodeBlock && codeBuffer.length >= 2) {
-        // We have a code block, flush it
+      if (inCodeBlock && codeBuffer.length >= 3) {
+        // We have a code block (3+ consecutive code lines), flush it
         flushCodeBuffer();
       } else if (codeBuffer.length > 0) {
         // Not enough lines to be a code block, treat as regular text
@@ -821,7 +796,7 @@ function findCodeBlocksInText(content: string): string {
   }
 
   // Flush remaining code buffer
-  if (codeBuffer.length >= 2) {
+  if (codeBuffer.length >= 3) {
     flushCodeBuffer();
   } else {
     result.push(...codeBuffer);
@@ -837,13 +812,10 @@ function preprocessContent(content: string): string {
     return content;
   }
 
-  // Check if the entire content looks like code
-  if (looksLikeCode(content)) {
-    const language = detectLanguage(content);
-    return "```" + language + "\n" + content + "\n```";
-  }
-
-  // Try to find code blocks within mixed content
+  // Find code blocks within mixed content (line-by-line detection only).
+  // We do NOT wrap the entire content as a code block - the AI formats
+  // code with ``` markers. Full-content wrapping caused false positives
+  // when explanatory text contained code-related keywords.
   return findCodeBlocksInText(content);
 }
 

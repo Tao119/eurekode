@@ -1034,7 +1034,7 @@ export default function SettingsPage() {
                 <li>・ アカウント情報</li>
                 <li>・ すべての会話履歴</li>
                 <li>・ すべての学び（インサイト）</li>
-                <li>・ トークン使用履歴</li>
+                <li>・ ポイント使用履歴</li>
                 <li>・ 設定情報</li>
               </ul>
             </div>

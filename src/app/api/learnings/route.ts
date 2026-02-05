@@ -19,6 +19,8 @@ function parseIntSafe(value: string | null, defaultValue: number): number {
 
 const createLearningSchema = z.object({
   content: z.string().min(1, "内容を入力してください").max(10000, "内容が長すぎます"),
+  sourceMessage: z.string().max(50000).optional(),
+  memo: z.string().max(5000).optional(),
   tags: z.array(z.string().min(1).max(50)).max(10, "タグは10個までです"),
   type: z.enum(["insight", "reflection"]),
   conversationId: z.string().optional(),
@@ -138,7 +140,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { content, tags, type, conversationId, projectId } = parsed.data;
+    const { content, sourceMessage, memo, tags, type, conversationId, projectId } = parsed.data;
 
     // Verify conversation ownership if provided
     if (conversationId) {
@@ -198,6 +200,8 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         content,
+        sourceMessage: sourceMessage ?? null,
+        memo: memo ?? null,
         tags,
         type,
         ...(conversationId && { conversationId }),

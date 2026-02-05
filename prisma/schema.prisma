@@ -271,6 +271,8 @@ model Learning {
   conversationId String?      @map("conversation_id")
   projectId      String?      @map("project_id")
   content        String       @db.Text
+  sourceMessage  String?      @map("source_message") @db.Text
+  memo           String?      @db.Text
   tags           String[]
   type           LearningType @default(insight)
   createdAt      DateTime     @default(now()) @map("created_at")

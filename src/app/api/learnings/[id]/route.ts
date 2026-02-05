@@ -6,6 +6,7 @@ import { z } from "zod";
 const updateLearningSchema = z.object({
   content: z.string().min(1, "内容を入力してください").max(10000, "内容が長すぎます").optional(),
   tags: z.array(z.string().min(1).max(50)).max(10, "タグは10個までです").optional(),
+  memo: z.string().max(5000).optional().transform((val) => val?.trim() || null),
 });
 
 export async function GET(
@@ -112,13 +113,14 @@ export async function PATCH(
       );
     }
 
-    const { content, tags } = parsed.data;
+    const { content, tags, memo } = parsed.data;
 
     const learning = await prisma.learning.update({
       where: { id },
       data: {
         ...(content !== undefined && { content }),
         ...(tags !== undefined && { tags }),
+        ...(memo !== undefined && { memo }),
       },
       include: {
         conversation: {

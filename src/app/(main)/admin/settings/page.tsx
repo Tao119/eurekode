@@ -284,20 +284,20 @@ export default function OrganizationSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Token Settings */}
+      {/* Point Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <span className="material-symbols-outlined">toll</span>
-            トークン設定
+            ポイント設定
           </CardTitle>
           <CardDescription>
-            新規発行キーのデフォルトトークン上限を設定します
+            新規発行キーのデフォルトポイント上限を設定します
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="tokenLimit">デフォルトの1日あたりトークン上限</Label>
+            <Label htmlFor="tokenLimit">デフォルトの月間ポイント上限</Label>
             <div className="flex items-center gap-4">
               <Input
                 id="tokenLimit"
@@ -308,7 +308,7 @@ export default function OrganizationSettingsPage() {
                 onChange={(e) => setDefaultDailyTokenLimit(parseInt(e.target.value) || 1000)}
                 className="w-32"
               />
-              <span className="text-muted-foreground">トークン/日</span>
+              <span className="text-muted-foreground">pt/月</span>
             </div>
             <p className="text-sm text-muted-foreground">
               新しいアクセスキーを発行する際のデフォルト値です。個別のキーで上書きできます。

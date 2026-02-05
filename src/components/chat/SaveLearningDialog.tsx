@@ -10,66 +10,39 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface SaveLearningDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   content: string;
+  sourceMessage: string;
   conversationId?: string;
 }
-
-// Common tags for quick selection
-const SUGGESTED_TAGS = [
-  "JavaScript",
-  "TypeScript",
-  "React",
-  "Next.js",
-  "Node.js",
-  "Python",
-  "セキュリティ",
-  "パフォーマンス",
-  "設計パターン",
-  "データベース",
-  "API",
-  "テスト",
-];
 
 export function SaveLearningDialog({
   open,
   onOpenChange,
   content,
+  sourceMessage,
   conversationId,
 }: SaveLearningDialogProps) {
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [customTag, setCustomTag] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
+  const [memo, setMemo] = useState("");
+  const [showSource, setShowSource] = useState(false);
+
+  const isPartialSelection = content !== sourceMessage;
 
   // Reset state when dialog opens with new content
   const handleOpenChange = useCallback((newOpen: boolean) => {
     if (newOpen) {
       setEditedContent(content);
-      setSelectedTags([]);
-      setCustomTag("");
+      setMemo("");
+      setShowSource(false);
     }
     onOpenChange(newOpen);
   }, [content, onOpenChange]);
-
-  const toggleTag = useCallback((tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
-  }, []);
-
-  const addCustomTag = useCallback(() => {
-    const trimmed = customTag.trim();
-    if (trimmed && !selectedTags.includes(trimmed)) {
-      setSelectedTags((prev) => [...prev, trimmed]);
-      setCustomTag("");
-    }
-  }, [customTag, selectedTags]);
 
   const handleSave = async () => {
     if (!editedContent.trim()) {
@@ -84,7 +57,9 @@ export function SaveLearningDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: editedContent.trim(),
-          tags: selectedTags,
+          sourceMessage: isPartialSelection ? sourceMessage : undefined,
+          memo: memo.trim() || undefined,
+          tags: [],
           type: "insight",
           conversationId,
         }),
@@ -96,9 +71,7 @@ export function SaveLearningDialog({
         throw new Error(data.error?.message || "保存に失敗しました");
       }
 
-      toast.success("学びを保存しました", {
-        description: `${selectedTags.length > 0 ? `タグ: ${selectedTags.join(", ")}` : "タグなし"}`,
-      });
+      toast.success("学びを保存しました");
       onOpenChange(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "保存に失敗しました");
@@ -123,7 +96,7 @@ export function SaveLearningDialog({
         <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4">
           {/* Content Preview/Edit */}
           <div className="space-y-1.5 sm:space-y-2">
-            <label className="text-xs sm:text-sm font-medium">内容</label>
+            <label className="text-xs sm:text-sm font-medium">保存する内容</label>
             <textarea
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
@@ -132,73 +105,45 @@ export function SaveLearningDialog({
             />
           </div>
 
-          {/* Tag Selection */}
+          {/* Memo */}
           <div className="space-y-1.5 sm:space-y-2">
-            <label className="text-xs sm:text-sm font-medium">タグ（任意）</label>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {SUGGESTED_TAGS.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={cn(
-                    "px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-colors active:scale-95",
-                    selectedTags.includes(tag)
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                  )}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom Tag Input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customTag}
-                onChange={(e) => setCustomTag(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addCustomTag();
-                  }
-                }}
-                placeholder="カスタムタグを追加..."
-                className="flex-1 px-2.5 sm:px-3 py-2 rounded-lg border border-border bg-background text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={addCustomTag}
-                disabled={!customTag.trim()}
-                className="text-xs sm:text-sm px-3"
-              >
-                追加
-              </Button>
-            </div>
-
-            {/* Selected Tags */}
-            {selectedTags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2">
-                <span className="text-[10px] sm:text-xs text-muted-foreground">選択中:</span>
-                {selectedTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs bg-primary/20 text-primary"
-                  >
-                    {tag}
-                    <button
-                      onClick={() => toggleTag(tag)}
-                      className="hover:text-primary-foreground"
-                    >
-                      <span className="material-symbols-outlined text-[10px] sm:text-xs">close</span>
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+            <label className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-amber-500 text-sm">edit_note</span>
+              メモ（任意）
+            </label>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className="w-full h-20 sm:h-24 p-2.5 sm:p-3 rounded-lg border border-border bg-muted/30 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="この学びについてメモを追加..."
+            />
           </div>
+
+          {/* Source Message (collapsible, only for partial selections) */}
+          {isPartialSelection && (
+            <div className="rounded-lg border border-border bg-muted/30">
+              <button
+                type="button"
+                onClick={() => setShowSource((prev) => !prev)}
+                className="w-full flex items-center justify-between p-2.5 sm:p-3 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm">smart_toy</span>
+                  <span>元のAIメッセージを見る</span>
+                </div>
+                <span className="material-symbols-outlined text-sm">
+                  {showSource ? "expand_less" : "expand_more"}
+                </span>
+              </button>
+              {showSource && (
+                <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 max-h-48 overflow-y-auto">
+                  <p className="whitespace-pre-wrap text-foreground/70 text-[10px] sm:text-xs leading-relaxed">
+                    {sourceMessage}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="mt-3 sm:mt-4 flex-col-reverse sm:flex-row gap-2 sm:gap-0">

@@ -76,6 +76,8 @@ export async function GET(
     const formattedLearnings = learnings.map((learning) => ({
       id: learning.id,
       content: learning.content,
+      sourceMessage: learning.sourceMessage,
+      memo: learning.memo,
       tags: learning.tags,
       type: learning.type,
       conversationId: learning.conversationId,

@@ -11,6 +11,8 @@ export interface Learning {
   conversationId: string | null;
   projectId: string | null;
   content: string;
+  sourceMessage: string | null;
+  memo: string | null;
   tags: string[];
   type: LearningType;
   createdAt: string;
@@ -31,6 +33,8 @@ export interface Learning {
  */
 export interface CreateLearningRequest {
   content: string;
+  sourceMessage?: string;
+  memo?: string;
   tags: string[];
   type: LearningType;
   conversationId?: string;
@@ -43,6 +47,7 @@ export interface CreateLearningRequest {
 export interface UpdateLearningRequest {
   content?: string;
   tags?: string[];
+  memo?: string;
 }
 
 /**
