@@ -253,10 +253,11 @@ model Conversation {
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
   // Relations
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  learnings Learning[]
-  artifacts Artifact[]
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project    Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  learnings  Learning[]
+  artifacts  Artifact[]
+  embeddings MessageEmbedding[]
 
   @@index([userId, createdAt])
   @@index([userId, generationStatus])
@@ -604,4 +605,21 @@ model PointUsage {
   @@index([userId, createdAt])
   @@index([organizationId, createdAt])
   @@map("point_usage")
+}
+
+model MessageEmbedding {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  messageIndex   Int      @map("message_index")
+  content        String   @db.Text
+  contentSummary String?  @map("content_summary") @db.VarChar(500)
+  // embedding column is managed via raw SQL (vector(1536) with pgvector)
+  // Prisma does not natively support the vector type
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, messageIndex])
+  @@index([conversationId])
+  @@map("message_embeddings")
 }

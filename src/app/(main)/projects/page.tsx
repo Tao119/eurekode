@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FullPageLoading } from "@/components/common/LoadingSpinner";
 import { EstimationDashboard } from "@/components/projects/EstimationDashboard";
+import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog";
 import { useProjects } from "@/hooks/useProjects";
 import { cn } from "@/lib/utils";
 import type { ProjectWithStats, ProjectStatus } from "@/types/project";
@@ -25,6 +26,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const {
     projects,
@@ -95,12 +97,10 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        <Link href="/chat/brainstorm">
-          <Button>
-            <span className="material-symbols-outlined text-base">add</span>
-            新規プロジェクト
-          </Button>
-        </Link>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <span className="material-symbols-outlined text-base">add</span>
+          新規プロジェクト
+        </Button>
       </div>
 
       {/* Search and Filters */}
@@ -220,6 +220,12 @@ export default function ProjectsPage() {
           <EstimationDashboard projects={projects} />
         </div>
       </div>
+
+      <CreateProjectDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onCreated={() => fetchProjects()}
+      />
     </div>
   );
 }
