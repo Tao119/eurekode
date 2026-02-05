@@ -382,9 +382,9 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
     let existingConvMetadata: ConversationMetadata | null = null;
 
     if (conversationId) {
-      // Update generation status and load metadata
-      const conv = await prisma.conversation.findUnique({
-        where: { id: conversationId },
+      // Load metadata and update generation status
+      const conv = await prisma.conversation.findFirst({
+        where: { id: conversationId, userId },
         select: { metadata: true },
       });
       existingConvMetadata = (conv?.metadata as ConversationMetadata | null) ?? null;
@@ -419,7 +419,7 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
         anthropic,
       );
       messagesForApi = compactResult.messagesForApi;
-    } catch (compactError) {
+    } catch {
       // Compacting failed — fall back to full message history
       messagesForApi = messagesToAnthropicFormat(messages);
     }
