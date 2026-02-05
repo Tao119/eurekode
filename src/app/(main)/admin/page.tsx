@@ -241,9 +241,9 @@ export default function AdminDashboardPage() {
       {pendingRequestCount > 0 && (
         <Card className="border-yellow-500/30 bg-yellow-500/5">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                <div className="size-10 rounded-lg bg-yellow-500/20 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-xl text-yellow-500">
                     inbox
                   </span>
@@ -259,7 +259,7 @@ export default function AdminDashboardPage() {
               </div>
               <a
                 href="/admin/requests"
-                className="px-4 py-2 rounded-lg bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 text-sm font-medium transition-colors"
+                className="px-4 py-2 rounded-lg bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 text-sm font-medium transition-colors text-center sm:text-left shrink-0"
               >
                 確認する
               </a>

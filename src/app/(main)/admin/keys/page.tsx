@@ -661,7 +661,106 @@ export default function AccessKeysPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Mobile: Card Layout */}
+          <div className="sm:hidden space-y-3">
+            {filteredKeys.map((key) => {
+              const status = statusLabels[key.status];
+              return (
+                <div key={key.id} className="p-3 border rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded truncate">
+                        {key.keyCode}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(key.keyCode)}
+                        className="p-1 hover:bg-muted rounded transition-colors cursor-pointer shrink-0"
+                        title="コピー"
+                      >
+                        <span className="material-symbols-outlined text-sm text-muted-foreground">
+                          content_copy
+                        </span>
+                      </button>
+                    </div>
+                    <span
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-medium shrink-0",
+                        status.color
+                      )}
+                    >
+                      {status.label}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <div>
+                      <span className="text-xs text-muted-foreground">使用者</span>
+                      <p className="font-medium truncate">
+                        {key.user ? key.user.displayName : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">ポイント上限</span>
+                      <p className="font-medium">{key.dailyTokenLimit.toLocaleString()}pt</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">有効期限</span>
+                      <p className="font-medium">
+                        {key.expiresAt
+                          ? new Date(key.expiresAt).toLocaleDateString("ja-JP")
+                          : "無期限"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                    {key.status !== "revoked" && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(key)}
+                          title="編集"
+                          className="cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-lg">edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive cursor-pointer"
+                          onClick={() => handleRevokeKey(key.id)}
+                          title="無効化"
+                        >
+                          <span className="material-symbols-outlined text-lg">block</span>
+                        </Button>
+                      </>
+                    )}
+                    {(key.status === "used" || key.status === "revoked") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-amber-500 hover:text-amber-400 cursor-pointer"
+                        onClick={() => handleReissueKey(key.id)}
+                        disabled={reissuing === key.id}
+                        title="再発行"
+                      >
+                        <span className="material-symbols-outlined text-lg">
+                          {reissuing === key.id ? "hourglass_empty" : "refresh"}
+                        </span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {filteredKeys.length === 0 && (
+              <p className="py-8 text-center text-muted-foreground">
+                キーが見つかりません
+              </p>
+            )}
+          </div>
+
+          {/* Desktop: Table Layout */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">

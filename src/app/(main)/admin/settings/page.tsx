@@ -148,12 +148,12 @@ export default function OrganizationSettingsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">組織設定</h1>
           <p className="text-muted-foreground">組織全体の利用設定を管理します</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {saved && (
             <span className="text-green-400 text-sm flex items-center gap-1">
               <span className="material-symbols-outlined text-lg">check_circle</span>

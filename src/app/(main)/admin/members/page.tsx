@@ -584,7 +584,77 @@ export default function MembersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Mobile: Card Layout */}
+          <div className="sm:hidden space-y-3">
+            {members.map((member) => {
+              const usagePercent = member.allocatedPoints > 0
+                ? (member.usedPoints / member.allocatedPoints) * 100
+                : 0;
+              return (
+                <button
+                  key={member.id}
+                  onClick={() => handleViewMember(member.id)}
+                  className="w-full p-3 border rounded-lg space-y-2 text-left hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium text-sm shrink-0">
+                        {member.displayName?.charAt(0) || "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-medium text-sm truncate block">
+                          {member.displayName || "名前未設定"}
+                        </span>
+                        {member.email && (
+                          <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-medium shrink-0",
+                        member.status === "active"
+                          ? "bg-green-500/20 text-green-400"
+                          : "bg-gray-500/20 text-gray-400"
+                      )}
+                    >
+                      {member.status === "active" ? "アクティブ" : "非アクティブ"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full",
+                          usagePercent > 80
+                            ? "bg-red-500"
+                            : usagePercent > 50
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
+                        )}
+                        style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {member.usedPoints.toLocaleString()}/{member.allocatedPoints.toLocaleString()}pt
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>会話: {member.stats.totalConversations} | 学び: {member.stats.totalLearnings}</span>
+                    <span className="material-symbols-outlined text-base">chevron_right</span>
+                  </div>
+                </button>
+              );
+            })}
+            {members.length === 0 && (
+              <p className="py-8 text-center text-muted-foreground">
+                メンバーが見つかりません
+              </p>
+            )}
+          </div>
+
+          {/* Desktop: Table Layout */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
@@ -706,7 +776,7 @@ export default function MembersPage() {
 
       {/* Member Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>メンバー詳細</DialogTitle>
             <DialogDescription>
@@ -868,7 +938,7 @@ export default function MembersPage() {
               </div>
 
               {/* Statistics */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-2xl font-bold">{selectedMember.statistics.totalConversations}</p>
                   <p className="text-sm text-muted-foreground">会話数</p>
