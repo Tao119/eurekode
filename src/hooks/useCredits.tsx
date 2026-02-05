@@ -243,11 +243,60 @@ export function useCredits(): UseCreditReturn {
     });
   }, []);
 
+  // 他の useCredits インスタンスからの残高更新イベントをリッスン
+  useEffect(() => {
+    const handleCreditUpdate = (event: Event) => {
+      const { newBalance } = (event as CustomEvent<{ newBalance: number }>).detail;
+      setState((prev) => {
+        if (Math.floor(prev.totalRemaining) === Math.floor(newBalance)) return prev;
+
+        if (prev.allocated) {
+          return {
+            ...prev,
+            allocated: {
+              ...prev.allocated,
+              used: prev.allocated.total - newBalance,
+              remaining: newBalance,
+            },
+            totalRemaining: newBalance,
+            remainingConversations: {
+              sonnet: Math.floor(newBalance / MODEL_CONSUMPTION_RATE.sonnet),
+              opus: Math.floor(newBalance / MODEL_CONSUMPTION_RATE.opus),
+            },
+            canStartConversation: newBalance >= MODEL_CONSUMPTION_RATE.sonnet,
+            lowBalanceWarning: newBalance < 5,
+          };
+        }
+
+        return {
+          ...prev,
+          totalRemaining: newBalance,
+          remainingConversations: {
+            sonnet: Math.floor(newBalance / MODEL_CONSUMPTION_RATE.sonnet),
+            opus: Math.floor(newBalance / MODEL_CONSUMPTION_RATE.opus),
+          },
+          canStartConversation: newBalance >= MODEL_CONSUMPTION_RATE.sonnet,
+          lowBalanceWarning: newBalance < 5,
+        };
+      });
+    };
+
+    window.addEventListener("eurecode:credit-update", handleCreditUpdate);
+    return () => {
+      window.removeEventListener("eurecode:credit-update", handleCreditUpdate);
+    };
+  }, []);
+
   /**
    * 残高を直接更新（APIから返された値で上書き）
    * @param newBalance - 新しい総残高
    */
   const updateBalance = useCallback((newBalance: number) => {
+    // 他の useCredits インスタンスに残高変更を通知
+    window.dispatchEvent(
+      new CustomEvent("eurecode:credit-update", { detail: { newBalance } })
+    );
+
     setState((prev) => {
       // 差分から使用量を逆算
       const consumed = prev.totalRemaining - newBalance;
