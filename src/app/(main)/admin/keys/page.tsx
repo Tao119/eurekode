@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCredits } from "@/hooks/useCredits";
 import { MODE_CONFIG } from "@/config/modes";
+import { toast } from "sonner";
 import type { ChatMode } from "@/types/chat";
 
 interface AccessKeySettings {
@@ -168,14 +169,14 @@ export default function AccessKeysPage() {
   const handleGenerateKeys = async () => {
     // Validate credit limit (min 1)
     if (creditLimit < 1) {
-      alert("クレジット上限は1以上を設定してください");
+      toast.error("クレジット上限は1以上を設定してください");
       return;
     }
 
     // Check if total requested credits exceed remaining allocatable
     const totalRequestedCredits = creditLimit * keyCount;
     if (totalRequestedCredits > remainingAllocatable) {
-      alert(`クレジット上限を超えています。\n割り当て可能な残りクレジット: ${remainingAllocatable.toLocaleString()}pt\n要求したクレジット: ${totalRequestedCredits.toLocaleString()}pt`);
+      toast.error(`クレジット上限を超えています。割り当て可能: ${remainingAllocatable.toLocaleString()}pt / 要求: ${totalRequestedCredits.toLocaleString()}pt`);
       return;
     }
 
@@ -203,18 +204,19 @@ export default function AccessKeysPage() {
         setCreateDialogOpen(false);
         setShowCreatedDialog(true);
         fetchKeys();
+        toast.success("キーを発行しました");
       } else {
         // Handle credit limit exceeded error
         if (result.error?.code === "CREDIT_LIMIT_EXCEEDED") {
-          alert(result.error.message);
+          toast.error(result.error.message);
         } else {
           console.error("Failed to create keys:", result.error);
-          alert(result.error?.message || "キーの発行に失敗しました");
+          toast.error(result.error?.message || "キーの発行に失敗しました");
         }
       }
     } catch (error) {
       console.error("Failed to create keys:", error);
-      alert("キーの発行に失敗しました");
+      toast.error("キーの発行に失敗しました");
     } finally {
       setCreating(false);
     }
@@ -237,9 +239,13 @@ export default function AccessKeysPage() {
       const result = await response.json();
       if (result.success) {
         fetchKeys();
+        toast.success("キーを無効化しました");
+      } else {
+        toast.error(result.error?.message || "キーの無効化に失敗しました");
       }
     } catch (error) {
       console.error("Failed to revoke key:", error);
+      toast.error("キーの無効化に失敗しました");
     }
   };
 
@@ -266,12 +272,13 @@ export default function AccessKeysPage() {
           setShowCreatedDialog(true);
         }
         fetchKeys();
+        toast.success("キーを再発行しました");
       } else {
-        alert(result.error?.message || "再発行に失敗しました");
+        toast.error(result.error?.message || "再発行に失敗しました");
       }
     } catch (error) {
       console.error("Failed to reissue key:", error);
-      alert("再発行に失敗しました");
+      toast.error("再発行に失敗しました");
     } finally {
       setReissuing(null);
     }
@@ -279,7 +286,7 @@ export default function AccessKeysPage() {
 
   const handleSaveAdminAllocation = async () => {
     if (adminAllocationInput < 0) {
-      alert("割り当てポイントは0以上を設定してください");
+      toast.error("割り当てポイントは0以上を設定してください");
       return;
     }
 
@@ -287,7 +294,7 @@ export default function AccessKeysPage() {
     const currentAdminAllocation = adminCredits.allocated?.total ?? 0;
     const delta = adminAllocationInput - currentAdminAllocation;
     if (delta > 0 && delta > remainingAllocatable) {
-      alert(`クレジット上限を超えています。\n追加割り当て可能: ${remainingAllocatable.toLocaleString()}pt`);
+      toast.error(`クレジット上限を超えています。追加割り当て可能: ${remainingAllocatable.toLocaleString()}pt`);
       return;
     }
 
@@ -314,12 +321,13 @@ export default function AccessKeysPage() {
         // Refresh both admin credits and keys data
         adminCredits.refresh();
         fetchKeys();
+        toast.success("割り当てを保存しました");
       } else {
-        alert(result.error || "割り当ての保存に失敗しました");
+        toast.error(result.error || "割り当ての保存に失敗しました");
       }
     } catch (error) {
       console.error("Failed to save admin allocation:", error);
-      alert("割り当ての保存に失敗しました");
+      toast.error("割り当ての保存に失敗しました");
     } finally {
       setSavingAdminAllocation(false);
     }
@@ -339,7 +347,7 @@ export default function AccessKeysPage() {
 
     // Validate credit limit (min 1)
     if (editCreditLimit < 1) {
-      alert("クレジット上限は1以上を設定してください");
+      toast.error("クレジット上限は1以上を設定してください");
       return;
     }
 
@@ -347,7 +355,7 @@ export default function AccessKeysPage() {
     const currentKeyCredits = editingKey.dailyTokenLimit;
     const maxForThisKey = remainingAllocatable + currentKeyCredits;
     if (editCreditLimit > maxForThisKey) {
-      alert(`クレジット上限を超えています。\nこのキーに割り当て可能な上限: ${maxForThisKey.toLocaleString()}pt`);
+      toast.error(`クレジット上限を超えています。このキーに割り当て可能な上限: ${maxForThisKey.toLocaleString()}pt`);
       return;
     }
 
@@ -379,32 +387,35 @@ export default function AccessKeysPage() {
         setEditDialogOpen(false);
         setEditingKey(null);
         fetchKeys();
+        toast.success("設定を更新しました");
       } else {
         // Handle credit limit exceeded error
         if (result.error?.code === "CREDIT_LIMIT_EXCEEDED") {
-          alert(result.error.message);
+          toast.error(result.error.message);
         } else {
           console.error("Failed to update key:", result.error);
           if (result.error?.details) {
             console.error("Validation details:", JSON.stringify(result.error.details, null, 2));
           }
-          alert(result.error?.message || "更新に失敗しました");
+          toast.error(result.error?.message || "更新に失敗しました");
         }
       }
     } catch (error) {
       console.error("Failed to update key:", error);
-      alert("更新に失敗しました");
+      toast.error("更新に失敗しました");
     } finally {
       setUpdating(false);
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    toast.success("コピーしました");
   };
 
-  const copyAllKeys = () => {
-    navigator.clipboard.writeText(createdKeys.join("\n"));
+  const copyAllKeys = async () => {
+    await navigator.clipboard.writeText(createdKeys.join("\n"));
+    toast.success("すべてのキーをコピーしました");
   };
 
   const filteredKeys = data?.keys || [];

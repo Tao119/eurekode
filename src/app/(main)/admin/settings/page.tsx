@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface OrganizationSettings {
   allowedModes: ("explanation" | "generation" | "brainstorm")[];
@@ -104,9 +105,13 @@ export default function OrganizationSettingsPage() {
         setData(result.data);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+        toast.success("設定を保存しました");
+      } else {
+        toast.error(result.error?.message || "設定の保存に失敗しました");
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
+      toast.error("設定の保存に失敗しました");
     } finally {
       setSaving(false);
     }
