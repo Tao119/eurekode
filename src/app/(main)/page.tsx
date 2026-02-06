@@ -37,8 +37,8 @@ export default function HomePage() {
           }}
         />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="flex flex-col gap-6 text-center lg:text-left">
+          <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div className="flex flex-col gap-4 sm:gap-6 text-center md:text-left">
               <h1 className="text-4xl font-black leading-tight tracking-tight text-foreground sm:text-5xl lg:text-6xl">
                 <span className="block text-primary text-2xl sm:text-3xl font-bold mb-2">
                   Think, Don&apos;t Just Copy
@@ -47,14 +47,14 @@ export default function HomePage() {
                 <br className="hidden sm:block" />
                 思考を渡す
               </h1>
-              <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto lg:mx-0">
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto md:mx-0">
                 AIがあなたの「なぜ？」に答えます。
                 <br className="hidden sm:block" />
                 単に答えを教えるのではなく、解決への道筋を共に歩む
                 <br className="hidden sm:block" />
                 全く新しいプログラミング学習プラットフォーム。
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start pt-4">
                 <Button size="lg" className="shadow-lg" asChild>
                   <Link href="/register">無料で始める</Link>
                 </Button>
@@ -67,7 +67,7 @@ export default function HomePage() {
                   </Link>
                 </Button>
               </div>
-              <div className="pt-6 flex items-center justify-center lg:justify-start gap-4 text-sm text-muted-foreground">
+              <div className="pt-4 sm:pt-6 flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <span className="material-symbols-outlined text-[18px] text-primary">
                     check_circle
@@ -84,8 +84,8 @@ export default function HomePage() {
             </div>
 
             {/* Hero Visual */}
-            <div className="relative mx-auto w-full max-w-[600px] lg:max-w-none">
-              <Card className="shadow-2xl overflow-hidden">
+            <div className="relative mx-auto w-full max-w-[500px] md:max-w-none">
+              <Card className="shadow-2xl overflow-hidden border-border/50">
                 <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full bg-destructive/80" />
@@ -97,7 +97,7 @@ export default function HomePage() {
                   </div>
                   <div className="w-10" />
                 </div>
-                <CardContent className="p-6 font-mono text-sm space-y-6 bg-muted/30 min-h-[300px]">
+                <CardContent className="p-4 sm:p-6 font-mono text-xs sm:text-sm space-y-4 sm:space-y-6 bg-muted/30 min-h-[200px] sm:min-h-[280px]">
                   <div className="flex gap-4">
                     <div className="flex-shrink-0 size-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold border border-blue-500/30">
                       U
@@ -153,7 +153,7 @@ export default function HomePage() {
               あなたの思考プロセスをサポートし、真の理解へと導きます。
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             <ModeCard mode="explanation" />
             <ModeCard mode="generation" />
             <ModeCard mode="brainstorm" />

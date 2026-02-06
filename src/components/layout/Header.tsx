@@ -198,8 +198,11 @@ export function Header() {
                 <Button variant="ghost" size="sm" asChild>
                   <Link href="/login">ログイン</Link>
                 </Button>
-                <Button size="sm" asChild className="hidden sm:inline-flex">
-                  <Link href="/register">無料で始める</Link>
+                <Button size="sm" asChild className="text-xs sm:text-sm">
+                  <Link href="/register">
+                    <span className="hidden sm:inline">無料で始める</span>
+                    <span className="sm:hidden">始める</span>
+                  </Link>
                 </Button>
               </>
             )}
