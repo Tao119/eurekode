@@ -500,7 +500,9 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
             });
 
             // 非同期でembedding生成（プロジェクト紐付き会話のみ対象）
-            embedConversationMessages(currentConversationId).catch(() => {});
+            embedConversationMessages(currentConversationId).catch((err) => {
+              console.error("[Chat API] Embedding generation failed:", err);
+            });
           }
 
           // Update daily token usage

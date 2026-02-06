@@ -106,7 +106,9 @@ export function OutOfCreditsModal({
             setPendingRequestInfo(null);
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error("[OutOfCreditsModal] Failed to check pending request:", err);
+        });
     } else if (isOrganization) {
       // 管理者: 保留リクエスト件数を取得
       fetch("/api/billing/credits/allocation/request")
@@ -117,7 +119,9 @@ export function OutOfCreditsModal({
           ).length || 0;
           setPendingRequestCount(count);
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error("[OutOfCreditsModal] Failed to fetch pending requests:", err);
+        });
     }
   }, [open, isOrganizationMember, isOrganization]);
 
