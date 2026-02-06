@@ -389,33 +389,36 @@ export const ChatMessage = memo(function ChatMessage({
 
       {/* Action Buttons - Mobile: icon only, Desktop: with labels */}
       {isAssistant && !isStreaming && (
-        <div className="absolute right-3 sm:right-4 top-3 sm:top-4 flex items-center gap-1 sm:gap-2">
+        <div className="absolute right-2 sm:right-4 top-2 sm:top-4 flex items-center gap-1 sm:gap-2">
           {/* Save as Learning button */}
           <button
             onClick={handleSaveLearning}
-            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-medium bg-card/80 border border-border/50 text-muted-foreground hover:bg-muted/80 hover:border-amber-500/50 hover:text-amber-500 active:scale-95 transition-all shadow-sm cursor-pointer"
+            className="flex items-center gap-1.5 p-2.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-medium bg-card/80 border border-border/50 text-muted-foreground hover:bg-muted/80 hover:border-amber-500/50 hover:text-amber-500 active:scale-95 transition-all shadow-sm cursor-pointer"
             title="学びとして保存"
+            aria-label="学びとして保存"
           >
-            <span className="material-symbols-outlined text-lg sm:text-base">bookmark_add</span>
+            <span className="material-symbols-outlined text-lg sm:text-base" aria-hidden="true">bookmark_add</span>
             <span className="hidden sm:inline">保存</span>
           </button>
           {showRegenerateButton && onRegenerate && (
             <button
               onClick={onRegenerate}
-              className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-medium bg-card/80 border border-border/50 text-muted-foreground hover:bg-muted/80 hover:border-primary/50 hover:text-foreground active:scale-95 transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 p-2.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-medium bg-card/80 border border-border/50 text-muted-foreground hover:bg-muted/80 hover:border-primary/50 hover:text-foreground active:scale-95 transition-all shadow-sm cursor-pointer"
               title="この回答を再生成"
+              aria-label="この回答を再生成"
             >
-              <span className="material-symbols-outlined text-lg sm:text-base">refresh</span>
+              <span className="material-symbols-outlined text-lg sm:text-base" aria-hidden="true">refresh</span>
               <span className="hidden sm:inline">再生成</span>
             </button>
           )}
           {showForkButton && onFork && (
             <button
               onClick={onFork}
-              className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-medium bg-card/80 border border-border/50 text-muted-foreground hover:bg-muted/80 hover:border-primary/50 hover:text-foreground active:scale-95 transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 p-2.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-medium bg-card/80 border border-border/50 text-muted-foreground hover:bg-muted/80 hover:border-primary/50 hover:text-foreground active:scale-95 transition-all shadow-sm cursor-pointer"
               title="この時点から会話を分岐"
+              aria-label="この時点から会話を分岐"
             >
-              <span className="material-symbols-outlined text-lg sm:text-base">fork_right</span>
+              <span className="material-symbols-outlined text-lg sm:text-base" aria-hidden="true">fork_right</span>
               <span className="hidden sm:inline">分岐</span>
             </button>
           )}

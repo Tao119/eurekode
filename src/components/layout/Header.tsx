@@ -67,10 +67,11 @@ export function Header() {
             {session && (
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
-                aria-label="メニューを開く"
+                className="md:hidden p-3 -ml-3 rounded-lg hover:bg-muted transition-colors"
+                aria-label={mobileMenuOpen ? "メニューを閉じる" : "メニューを開く"}
+                aria-expanded={mobileMenuOpen}
               >
-                <span className="material-symbols-outlined text-xl">
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">
                   {mobileMenuOpen ? "close" : "menu"}
                 </span>
               </button>
@@ -118,13 +119,16 @@ export function Header() {
                 {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-1 rounded-full border border-border p-1 hover:bg-muted transition-colors">
+                    <button
+                      className="flex items-center gap-1 rounded-full border border-border p-1.5 hover:bg-muted transition-colors"
+                      aria-label="ユーザーメニュー"
+                    >
                       <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="text-xs font-medium text-primary">
                           {session.user.displayName?.charAt(0) || "U"}
                         </span>
                       </div>
-                      <span className="material-symbols-outlined text-muted-foreground text-[16px] mr-0.5">
+                      <span className="material-symbols-outlined text-muted-foreground text-[16px] mr-0.5" aria-hidden="true">
                         expand_more
                       </span>
                     </button>

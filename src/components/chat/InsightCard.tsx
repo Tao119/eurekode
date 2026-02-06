@@ -192,15 +192,17 @@ function TagInput({ onAdd }: { onAdd: (tag: string) => void }) {
       />
       <button
         onClick={handleSubmit}
-        className="p-1 rounded hover:bg-muted/50"
+        className="p-2 rounded hover:bg-muted/50"
+        aria-label="タグを追加"
       >
-        <span className="material-symbols-outlined text-sm text-primary">check</span>
+        <span className="material-symbols-outlined text-sm text-primary" aria-hidden="true">check</span>
       </button>
       <button
         onClick={() => setIsOpen(false)}
-        className="p-1 rounded hover:bg-muted/50"
+        className="p-2 rounded hover:bg-muted/50"
+        aria-label="キャンセル"
       >
-        <span className="material-symbols-outlined text-sm text-muted-foreground">close</span>
+        <span className="material-symbols-outlined text-sm text-muted-foreground" aria-hidden="true">close</span>
       </button>
     </div>
   );
