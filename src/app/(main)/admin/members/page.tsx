@@ -544,7 +544,7 @@ export default function MembersPage() {
             </div>
           </CardContent>
         </Card>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setStatusFilter("")}
             className={cn(
@@ -1015,7 +1015,7 @@ export default function MembersPage() {
               {/* Access Key */}
               <div className="p-4 border rounded-lg">
                 <h4 className="font-medium mb-2">アクセスキー</h4>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                   <div className="flex items-center gap-4">
                     {selectedMember.accessKey ? (
                       <span
@@ -1040,6 +1040,7 @@ export default function MembersPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowRegenerateKeyDialog(true)}
+                    className="self-start sm:self-auto"
                   >
                     <span className="material-symbols-outlined text-lg mr-1">vpn_key</span>
                     キー再発行
@@ -1083,15 +1084,15 @@ export default function MembersPage() {
                     {selectedMember.recentConversations.slice(0, 5).map((conv) => (
                       <div
                         key={conv.id}
-                        className="p-3 border rounded-lg flex items-center justify-between"
+                        className="p-3 border rounded-lg flex items-center justify-between gap-2"
                       >
-                        <div>
-                          <p className="font-medium text-sm">{conv.title || "無題の会話"}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm truncate">{conv.title || "無題の会話"}</p>
                           <p className="text-xs text-muted-foreground">
                             {conv.mode} | {conv.tokensConsumed.toLocaleString()}pt
                           </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                           {new Date(conv.updatedAt).toLocaleDateString("ja-JP")}
                         </p>
                       </div>
@@ -1290,8 +1291,8 @@ export default function MembersPage() {
           <div className="py-4">
             <div className="p-4 bg-muted rounded-lg">
               <Label className="text-sm text-muted-foreground mb-2 block">アクセスキー</Label>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 font-mono text-lg bg-background px-3 py-2 rounded border select-all">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <code className="flex-1 font-mono text-sm sm:text-lg bg-background px-3 py-2 rounded border select-all break-all">
                   {newKeyCode}
                 </code>
                 <Button
@@ -1299,6 +1300,7 @@ export default function MembersPage() {
                   size="icon"
                   onClick={handleCopyKey}
                   title="コピー"
+                  className="self-end sm:self-auto shrink-0"
                 >
                   <span className="material-symbols-outlined">content_copy</span>
                 </Button>

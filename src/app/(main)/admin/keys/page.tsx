@@ -561,7 +561,7 @@ export default function AccessKeysPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
                   管理者
                 </span>

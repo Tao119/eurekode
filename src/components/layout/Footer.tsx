@@ -17,7 +17,7 @@ export function Footer() {
           <Link href="/terms" className="hover:text-foreground transition-colors">
             利用規約
           </Link>
-          <Link href="/privacy" className="hover:text-foreground transition-colors hidden sm:inline">
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
             プライバシー
           </Link>
           <Link href="/help" className="hover:text-foreground transition-colors">

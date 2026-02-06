@@ -478,10 +478,10 @@ function RegisterForm() {
                   </FormControl>
                   <div className="space-y-1 leading-normal">
                     <FormLabel className="text-sm font-normal cursor-pointer">
-                      <Link href="/terms" className="text-primary hover:underline">利用規約</Link>
-                      および
-                      <Link href="/privacy" className="text-primary hover:underline">プライバシーポリシー</Link>
-                      に同意します
+                      <Link href="/terms" target="_blank" className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>利用規約</Link>
+                      {" "}および{" "}
+                      <Link href="/privacy" target="_blank" className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>プライバシーポリシー</Link>
+                      {" "}に同意します
                     </FormLabel>
                     <FormMessage />
                   </div>
