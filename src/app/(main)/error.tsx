@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { captureReactError } from "@/lib/error-monitor";
 
 export default function Error({
   error,
@@ -11,8 +12,8 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to monitoring service (e.g., Sentry)
-    console.error("Application error:", error);
+    // Log error to monitoring service
+    captureReactError(error, { componentStack: error.stack });
   }, [error]);
 
   return (
@@ -42,7 +43,7 @@ export default function Error({
             再試行
           </Button>
           <Button variant="outline" asChild>
-            <a href="/">
+            <a href="/home">
               <span className="material-symbols-outlined text-lg mr-2">home</span>
               ホームに戻る
             </a>
