@@ -170,17 +170,10 @@ function LoggedInDashboard({ displayName }: { displayName: string }) {
         )}
       </section>
 
-      {/* Two Column Layout for Desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-        {/* Left Column - Recent Conversations */}
-        <div>
-          <RecentConversationsSection />
-        </div>
-
-        {/* Right Column - Recent Learnings */}
-        <div>
-          <RecentLearningsSection />
-        </div>
+      {/* Recent Activity Sections - Stacked Layout */}
+      <div className="space-y-8">
+        <RecentConversationsSection />
+        <RecentLearningsSection />
       </div>
 
       {/* Tips Section */}
