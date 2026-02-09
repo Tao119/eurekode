@@ -242,7 +242,7 @@ function LearningsContent() {
 
       {/* Learning Detail Modal */}
       <Dialog
-        open={!!selectedLearning || !!selectedId}
+        open={!!selectedLearning}
         onOpenChange={(open) => !open && handleCloseDetail()}
       >
         <DialogContent className="max-w-2xl">

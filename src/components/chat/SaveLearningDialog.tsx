@@ -149,7 +149,7 @@ export function SaveLearningDialog({
           )}
         </div>
 
-        <DialogFooter className="mt-3 sm:mt-4 flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+        <DialogFooter className="mt-3 sm:mt-4 gap-2 sm:gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             キャンセル
           </Button>
