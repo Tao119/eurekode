@@ -92,11 +92,15 @@ export async function getPointBalance(
 
   if (!user) return null;
 
+  // 組織ユーザー（メンバーまたは管理者）かどうか
+  const isOrgUser = (user.userType === "member" || user.userType === "admin") && user.organization;
+  // 組織メンバー（割り当て制を使用）かどうか - 管理者は除く
   const isOrgMember = user.userType === "member" && user.organization;
 
   // プランのポイント上限を取得
   let planTotal = 0;
-  if (isOrgMember && user.organization) {
+  if (isOrgUser && user.organization) {
+    // 組織ユーザー（管理者含む）は組織プランのポイントを使用
     const orgPlan = user.organization.plan;
     planTotal = ORGANIZATION_PLANS[orgPlan].features.monthlyConversationPoints;
   } else if (user.subscription?.individualPlan) {
@@ -107,7 +111,8 @@ export async function getPointBalance(
   }
 
   // クレジット残高を取得または作成
-  let creditBalance = isOrgMember
+  // 組織ユーザー（管理者含む）は組織のcreditBalanceを使用
+  let creditBalance = isOrgUser
     ? user.organization?.creditBalance
     : user.creditBalance;
 
@@ -308,7 +313,10 @@ export async function consumePoints(
     };
   }
 
+  // 組織メンバー（割り当て制）かどうか
   const isOrgMember = balance.allocated !== undefined;
+  // 組織管理者かどうか（organizationIdがあるが割り当てがない = 管理者）
+  const isOrgAdmin = organizationId && !isOrgMember;
 
   try {
     // トランザクションでポイント消費
@@ -326,8 +334,42 @@ export async function consumePoints(
             usedPoints: { increment: cost },
           },
         });
+      } else if (isOrgAdmin) {
+        // 組織管理者: 組織のcreditBalanceから消費
+        const creditBalance = await tx.creditBalance.findUnique({
+          where: { organizationId },
+        });
+
+        if (creditBalance) {
+          const fromPlan = Math.min(cost, balance.planRemaining);
+          const fromPurchased = cost - fromPlan;
+
+          await tx.creditBalance.update({
+            where: { organizationId },
+            data: {
+              monthlyUsed: { increment: fromPlan },
+              purchasedUsed: fromPurchased > 0 ? { increment: fromPurchased } : undefined,
+            },
+          });
+        } else {
+          // 組織のCreditBalanceがない場合は作成
+          const now = new Date();
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+          await tx.creditBalance.create({
+            data: {
+              organizationId,
+              balance: 0,
+              monthlyUsed: cost,
+              purchasedUsed: 0,
+              periodStart: monthStart,
+              periodEnd: monthEnd,
+            },
+          });
+        }
       } else {
-        // 個人/組織管理者: プラン → 購入の順で消費
+        // 個人ユーザー: 個人のcreditBalanceから消費
         const creditBalance = await tx.creditBalance.findUnique({
           where: { userId },
         });
