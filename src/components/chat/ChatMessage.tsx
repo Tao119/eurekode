@@ -507,7 +507,7 @@ function OptionButtons({
           {isDisabled ? "回答済み" : "タップして回答"}
         </span>
       </div>
-      <div className="grid gap-1.5 sm:gap-2" role="radiogroup" aria-label="選択肢">
+      <div className="flex flex-col gap-2 sm:gap-2.5" role="radiogroup" aria-label="選択肢">
         {options.map((option, index) => (
           <button
             key={option.label}
@@ -520,26 +520,30 @@ function OptionButtons({
             aria-label={`選択肢 ${option.label}: ${option.text}`}
             tabIndex={isDisabled ? -1 : 0}
             className={cn(
-              "w-full text-left p-2.5 sm:p-3 rounded-lg border transition-all",
+              "w-full text-left p-3 sm:p-3.5 rounded-xl border transition-all overflow-hidden",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              "min-h-[48px]", // Minimum touch target size
               isDisabled
                 ? "border-border/50 bg-muted/30 cursor-not-allowed opacity-60"
                 : "border-border bg-card hover:bg-primary/10 hover:border-primary/50 active:scale-[0.98] group/option cursor-pointer"
             )}
           >
-            <span className="flex items-start gap-2 sm:gap-3">
+            <span className="flex items-start gap-2.5 sm:gap-3">
               <span className={cn(
-                "flex-shrink-0 size-6 sm:size-7 rounded-full font-bold flex items-center justify-center text-xs sm:text-sm transition-colors mt-0.5",
+                "flex-shrink-0 size-7 sm:size-8 rounded-full font-bold flex items-center justify-center text-sm sm:text-base transition-colors",
                 isDisabled
                   ? "bg-muted text-muted-foreground"
                   : "bg-primary/20 text-primary group-hover/option:bg-primary group-hover/option:text-primary-foreground"
               )}>
                 {option.label}
               </span>
-              <span className={cn(
-                "text-xs sm:text-sm min-w-0 break-words",
-                isDisabled ? "text-muted-foreground" : "text-foreground/90"
-              )}>
+              <span
+                className={cn(
+                  "text-sm sm:text-base min-w-0 flex-1 pt-0.5",
+                  isDisabled ? "text-muted-foreground" : "text-foreground/90"
+                )}
+                style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+              >
                 {option.text}
               </span>
             </span>

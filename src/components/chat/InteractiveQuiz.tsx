@@ -213,7 +213,7 @@ function ChoiceQuestion({
         </span>
         <span>{question.questionText || "選択してください"}</span>
       </div>
-      <div className="grid gap-2">
+      <div className="flex flex-col gap-2 sm:gap-2.5">
         {question.options?.map((option) => {
           const optionValue = `${option.label}) ${option.text}`;
           const isSelected = value === optionValue;
@@ -223,7 +223,8 @@ function ChoiceQuestion({
               onClick={() => onChange(optionValue, true)} // autoAdvance=true for choice
               disabled={disabled}
               className={cn(
-                "w-full text-left p-3 rounded-lg border transition-all",
+                "w-full text-left p-3 sm:p-3.5 rounded-xl border transition-all overflow-hidden",
+                "min-h-[48px]", // Minimum touch target size
                 disabled
                   ? "border-border/50 bg-muted/30 cursor-not-allowed opacity-60"
                   : isSelected
@@ -231,10 +232,10 @@ function ChoiceQuestion({
                     : "border-border bg-card hover:bg-primary/5 hover:border-primary/50"
               )}
             >
-              <span className="flex items-start gap-2 sm:gap-3">
+              <span className="flex items-start gap-2.5 sm:gap-3">
                 <span
                   className={cn(
-                    "flex-shrink-0 size-6 sm:size-7 rounded-full font-bold flex items-center justify-center text-xs sm:text-sm transition-colors mt-0.5",
+                    "flex-shrink-0 size-7 sm:size-8 rounded-full font-bold flex items-center justify-center text-sm sm:text-base transition-colors",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : "bg-primary/20 text-primary"
@@ -242,10 +243,13 @@ function ChoiceQuestion({
                 >
                   {option.label}
                 </span>
-                <span className={cn(
-                  "min-w-0 break-words text-sm",
-                  isSelected ? "text-foreground font-medium" : "text-foreground/90"
-                )}>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 text-sm sm:text-base pt-0.5",
+                    isSelected ? "text-foreground font-medium" : "text-foreground/90"
+                  )}
+                  style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+                >
                   {option.text}
                 </span>
               </span>

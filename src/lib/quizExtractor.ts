@@ -42,8 +42,9 @@ export function extractQuizOptions(content: string): ExtractedQuiz | null {
 
   // パターン1: 1行に複数の選択肢がある場合（次の選択肢ラベルまでキャプチャ）
   // 例: "A) Physics2D... B) Transform... C) Animator..."
+  // 改行や段落区切りでも停止するように修正
   const inlinePattern = new RegExp(
-    `(${labelChars})${separators}\\s*(.+?)(?=\\s*${labelChars}${separators}|$)`,
+    `(${labelChars})${separators}\\s*(.+?)(?=\\s*${labelChars}${separators}|\\n|$)`,
     "g"
   );
 
