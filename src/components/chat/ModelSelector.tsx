@@ -18,6 +18,19 @@ const MODEL_DESCRIPTIONS: Record<ClaudeModel, string> = {
   haiku: "高速・軽量タスクに最適",
 };
 
+// モジュールレベル定数: レンダリング毎の再生成を防止
+const TIER_COLORS: Record<string, string> = {
+  premium: "text-amber-500",
+  standard: "text-blue-500",
+  economy: "text-green-500",
+};
+
+const TIER_BG_COLORS: Record<string, string> = {
+  premium: "bg-amber-500/10",
+  standard: "bg-blue-500/10",
+  economy: "bg-green-500/10",
+};
+
 interface ModelSelectorProps {
   selectedModel: ClaudeModel;
   onModelChange: (model: ClaudeModel) => void;
@@ -57,18 +70,6 @@ export function ModelSelector({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const tierColors: Record<string, string> = {
-    premium: "text-amber-500",
-    standard: "text-blue-500",
-    economy: "text-green-500",
-  };
-
-  const tierBgColors: Record<string, string> = {
-    premium: "bg-amber-500/10",
-    standard: "bg-blue-500/10",
-    economy: "bg-green-500/10",
-  };
-
   return (
     <div ref={dropdownRef} className={cn("relative shrink-0", className)}>
       <button
@@ -82,7 +83,7 @@ export function ModelSelector({
           isOpen && "bg-muted/50"
         )}
       >
-        <span className={cn("material-symbols-outlined text-lg", tierColors[currentModel.tier])}>
+        <span className={cn("material-symbols-outlined text-lg", TIER_COLORS[currentModel.tier])}>
           {currentModel.icon}
         </span>
         <span className="text-sm font-medium">{currentModel.name}</span>
@@ -120,11 +121,11 @@ export function ModelSelector({
                   <div
                     className={cn(
                       "size-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                      tierBgColors[model.tier]
+                      TIER_BG_COLORS[model.tier]
                     )}
                   >
                     <span
-                      className={cn("material-symbols-outlined", tierColors[model.tier])}
+                      className={cn("material-symbols-outlined", TIER_COLORS[model.tier])}
                     >
                       {model.icon}
                     </span>

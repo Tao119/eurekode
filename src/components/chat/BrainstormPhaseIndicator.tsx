@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { BRAINSTORM_PHASES, type BrainstormPhase } from "@/types/chat";
 
@@ -22,8 +22,13 @@ export function BrainstormPhaseIndicator({
   disabled = false,
 }: BrainstormPhaseIndicatorProps) {
   const [showDropdown, setShowDropdown] = useState(false);
-  const currentIndex = BRAINSTORM_PHASES.findIndex((p) => p.phase === currentPhase);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // フェーズインデックスをメモ化して不要な再計算を防止
+  const currentIndex = useMemo(
+    () => BRAINSTORM_PHASES.findIndex((p) => p.phase === currentPhase),
+    [currentPhase]
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
