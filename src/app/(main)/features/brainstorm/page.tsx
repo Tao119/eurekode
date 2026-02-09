@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const metadata = {
   title: "壁打ちモード | Eurecode",
@@ -40,9 +46,38 @@ export default function BrainstormFeaturePage() {
                 <Button size="lg" className="bg-violet-500 hover:bg-violet-600" asChild>
                   <Link href="/register">無料で試してみる</Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="/#features">他のモードを見る</Link>
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="lg" variant="outline">
+                      他のモードを見る
+                      <span className="material-symbols-outlined ml-1 text-lg">expand_more</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    <DropdownMenuItem asChild>
+                      <Link href="/features/explanation" className="flex items-center gap-3 py-2 cursor-pointer">
+                        <div className="size-8 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-lg">menu_book</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">解説モード</p>
+                          <p className="text-xs text-muted-foreground">コードの仕組みを理解する</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/features/generation" className="flex items-center gap-3 py-2 cursor-pointer">
+                        <div className="size-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-lg">bolt</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">生成モード</p>
+                          <p className="text-xs text-muted-foreground">実装したい機能を言葉で伝える</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 

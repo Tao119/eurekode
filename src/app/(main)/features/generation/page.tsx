@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const metadata = {
   title: "生成モード | Eurecode",
@@ -40,14 +46,43 @@ export default function GenerationFeaturePage() {
                 <Button size="lg" className="bg-amber-500 hover:bg-amber-600" asChild>
                   <Link href="/register">無料で試してみる</Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="/#features">他のモードを見る</Link>
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="lg" variant="outline">
+                      他のモードを見る
+                      <span className="material-symbols-outlined ml-1 text-lg">expand_more</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    <DropdownMenuItem asChild>
+                      <Link href="/features/explanation" className="flex items-center gap-3 py-2 cursor-pointer">
+                        <div className="size-8 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-lg">menu_book</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">解説モード</p>
+                          <p className="text-xs text-muted-foreground">コードの仕組みを理解する</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/features/brainstorm" className="flex items-center gap-3 py-2 cursor-pointer">
+                        <div className="size-8 rounded-lg bg-violet-500/15 text-violet-400 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-lg">lightbulb</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">壁打ちモード</p>
+                          <p className="text-xs text-muted-foreground">設計やアイデアを一緒に考える</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
             {/* Hero Mockup */}
-            <div className="relative">
+            <div className="relative min-w-0">
               <Card className="shadow-2xl border-amber-500/20 overflow-hidden">
                 <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-3">
                   <div className="h-3 w-3 rounded-full bg-red-400/80" />
@@ -55,35 +90,35 @@ export default function GenerationFeaturePage() {
                   <div className="h-3 w-3 rounded-full bg-green-400/80" />
                   <span className="ml-auto text-xs text-muted-foreground">生成モード</span>
                 </div>
-                <CardContent className="p-6 bg-card/80">
+                <CardContent className="p-4 sm:p-6 bg-card/80">
                   <div className="space-y-4">
-                    <div className="flex gap-3">
-                      <div className="size-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">
+                    <div className="flex gap-2 sm:gap-3">
+                      <div className="size-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
                         U
                       </div>
-                      <div className="flex-1 p-3 bg-muted/50 rounded-lg text-sm">
+                      <div className="flex-1 min-w-0 p-3 bg-muted/50 rounded-lg text-sm">
                         <p className="text-foreground">
                           入力欄にメールアドレスを入力したら、
                           リアルタイムでバリデーションしたい
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-3">
-                      <div className="size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+                    <div className="flex gap-2 sm:gap-3">
+                      <div className="size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center flex-shrink-0">
                         <span className="material-symbols-outlined text-sm">psychology</span>
                       </div>
-                      <div className="flex-1 p-3 bg-amber-500/5 rounded-lg text-sm border border-amber-500/20">
+                      <div className="flex-1 min-w-0 p-3 bg-amber-500/5 rounded-lg text-sm border border-amber-500/20 overflow-hidden">
                         <p className="font-medium text-foreground mb-2">
                           メールバリデーションを実装しますね。
                         </p>
-                        <pre className="text-xs bg-muted/50 p-2 rounded overflow-x-auto">
+                        <pre className="text-xs bg-muted/50 p-2 rounded overflow-x-auto max-w-full">
 {`const [email, setEmail] = useState('')
 const [error, setError] = useState('')
 
 const validateEmail = (value) => {
-  const regex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/
+  const regex = /^[^\\s@]+@[^\\s@]+$/
   if (!regex.test(value)) {
-    setError('有効なメールアドレスを入力')
+    setError('メールアドレスが無効')
   } else {
     setError('')
   }
@@ -102,8 +137,8 @@ const validateEmail = (value) => {
       {/* Key Feature: Quiz */}
       <section className="py-20 sm:py-28 bg-muted/30">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div className="order-2 lg:order-1">
               <div className="inline-flex items-center gap-2 text-amber-400 mb-4">
                 <span className="material-symbols-outlined">quiz</span>
                 <span className="text-sm font-medium">生成モードの特徴</span>
@@ -120,42 +155,42 @@ const validateEmail = (value) => {
               </p>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-amber-400 mt-0.5">check_circle</span>
+                  <span className="material-symbols-outlined text-amber-400 mt-0.5 flex-shrink-0">check_circle</span>
                   <span className="text-muted-foreground">正解すると次のステップへ進める</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-amber-400 mt-0.5">check_circle</span>
+                  <span className="material-symbols-outlined text-amber-400 mt-0.5 flex-shrink-0">check_circle</span>
                   <span className="text-muted-foreground">間違えても丁寧な解説が表示される</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-amber-400 mt-0.5">check_circle</span>
+                  <span className="material-symbols-outlined text-amber-400 mt-0.5 flex-shrink-0">check_circle</span>
                   <span className="text-muted-foreground">クイズの結果は学習記録として保存</span>
                 </li>
               </ul>
             </div>
 
-            <div>
+            <div className="order-1 lg:order-2">
               <Card className="border-amber-500/20 overflow-hidden">
                 <div className="flex items-center gap-2 border-b border-border bg-amber-500/5 px-4 py-3">
                   <span className="material-symbols-outlined text-amber-400 text-lg">quiz</span>
                   <span className="text-sm font-medium text-foreground">理解度チェック</span>
                 </div>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <p className="text-foreground font-medium mb-4">
                     このコードで使われている正規表現は、何をチェックしていますか？
                   </p>
                   <div className="space-y-3">
                     <div className="p-3 bg-muted/50 rounded-lg border border-border hover:border-amber-500/30 cursor-pointer transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="size-6 rounded-full border-2 border-muted-foreground/30" />
+                      <div className="flex items-start gap-3">
+                        <div className="size-6 rounded-full border-2 border-muted-foreground/30 flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-muted-foreground">
                           文字列の長さが10文字以上かどうか
                         </span>
                       </div>
                     </div>
                     <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
-                      <div className="flex items-center gap-3">
-                        <div className="size-6 rounded-full bg-amber-500 flex items-center justify-center">
+                      <div className="flex items-start gap-3">
+                        <div className="size-6 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <span className="material-symbols-outlined text-white text-sm">check</span>
                         </div>
                         <span className="text-sm text-foreground">
@@ -164,8 +199,8 @@ const validateEmail = (value) => {
                       </div>
                     </div>
                     <div className="p-3 bg-muted/50 rounded-lg border border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="size-6 rounded-full border-2 border-muted-foreground/30" />
+                      <div className="flex items-start gap-3">
+                        <div className="size-6 rounded-full border-2 border-muted-foreground/30 flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-muted-foreground">
                           特殊文字が含まれていないかどうか
                         </span>
@@ -174,7 +209,7 @@ const validateEmail = (value) => {
                   </div>
                   <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                     <div className="flex items-start gap-2">
-                      <span className="material-symbols-outlined text-green-400 text-lg">check_circle</span>
+                      <span className="material-symbols-outlined text-green-400 text-lg flex-shrink-0">check_circle</span>
                       <p className="text-sm text-muted-foreground">
                         正解！この正規表現は、標準的なメールアドレスの形式をチェックしています。
                       </p>
@@ -306,14 +341,14 @@ const validateEmail = (value) => {
             </h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
+          <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
             <Card className="border-border/50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4">
                   <div className="size-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center flex-shrink-0">
                     <span className="material-symbols-outlined">speed</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-bold text-foreground mb-2">よくあるパターンを素早く</h3>
                     <p className="text-sm text-muted-foreground">
                       フォームバリデーション、API呼び出し、状態管理など、
@@ -325,12 +360,12 @@ const validateEmail = (value) => {
             </Card>
 
             <Card className="border-border/50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4">
                   <div className="size-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center flex-shrink-0">
                     <span className="material-symbols-outlined">lightbulb</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-bold text-foreground mb-2">書き方が分からない時</h3>
                     <p className="text-sm text-muted-foreground">
                       やりたいことは分かるけど、どう書けばいいか分からない。
@@ -342,12 +377,12 @@ const validateEmail = (value) => {
             </Card>
 
             <Card className="border-border/50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4">
                   <div className="size-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center flex-shrink-0">
                     <span className="material-symbols-outlined">school</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-bold text-foreground mb-2">新しい技術を学ぶ時</h3>
                     <p className="text-sm text-muted-foreground">
                       初めて使うライブラリやフレームワークでも、
@@ -359,12 +394,12 @@ const validateEmail = (value) => {
             </Card>
 
             <Card className="border-border/50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4">
                   <div className="size-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center flex-shrink-0">
                     <span className="material-symbols-outlined">work_history</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-bold text-foreground mb-2">プロトタイピング</h3>
                     <p className="text-sm text-muted-foreground">
                       まずは動くものを作りたい時に。
@@ -403,19 +438,19 @@ const validateEmail = (value) => {
       </section>
 
       {/* Other modes */}
-      <section className="py-16 border-t border-border/50 bg-muted/20">
+      <section className="py-12 sm:py-16 border-t border-border/50 bg-muted/20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <h3 className="text-center text-lg font-medium text-muted-foreground mb-8">
+          <h3 className="text-center text-lg font-medium text-muted-foreground mb-6 sm:mb-8">
             他のモードも見る
           </h3>
-          <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-2xl mx-auto">
             <Link href="/features/explanation" className="group">
               <Card className="border-border/50 hover:border-blue-500/30 transition-colors">
-                <CardContent className="p-6 flex items-center gap-4">
-                  <div className="size-12 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-2xl">menu_book</span>
+                <CardContent className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4">
+                  <div className="size-10 sm:size-12 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-xl sm:text-2xl">menu_book</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h4 className="font-bold text-foreground group-hover:text-blue-400 transition-colors">
                       解説モード
                     </h4>
@@ -428,11 +463,11 @@ const validateEmail = (value) => {
             </Link>
             <Link href="/features/brainstorm" className="group">
               <Card className="border-border/50 hover:border-violet-500/30 transition-colors">
-                <CardContent className="p-6 flex items-center gap-4">
-                  <div className="size-12 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-2xl">lightbulb</span>
+                <CardContent className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4">
+                  <div className="size-10 sm:size-12 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-xl sm:text-2xl">lightbulb</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h4 className="font-bold text-foreground group-hover:text-violet-400 transition-colors">
                       壁打ちモード
                     </h4>
