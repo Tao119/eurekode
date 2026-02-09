@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChatContainer, ModelSelector } from "@/components/chat";
+import { ModelSelector } from "@/components/chat";
+import { ExplanationChatContainer } from "@/components/chat/ExplanationChatContainer";
 import { ProjectSelector } from "@/components/chat/ProjectSelector";
 import type { ClaudeModel } from "@/types/chat";
 import { DEFAULT_MODEL } from "@/types/chat";
@@ -109,8 +110,7 @@ export default function ExplanationModePage() {
   }, [generationRecovery, clearGenerationRecovery]);
 
   return (
-    <ChatContainer
-      mode="explanation"
+    <ExplanationChatContainer
       messages={messages}
       isLoading={isLoading}
       onSendMessage={sendMessage}

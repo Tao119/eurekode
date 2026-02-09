@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, use, useCallback } from "react";
-import { ChatContainer } from "@/components/chat";
+import { ExplanationChatContainer } from "@/components/chat/ExplanationChatContainer";
 import { useChat } from "@/hooks/useChat";
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "sonner";
@@ -81,11 +81,9 @@ export default function ExplanationRoomPage({ params }: PageProps) {
   }, [generationRecovery, clearGenerationRecovery]);
 
   return (
-    <ChatContainer
-      mode="explanation"
+    <ExplanationChatContainer
       messages={messages}
       isLoading={isLoading}
-      isLoadingHistory={isLoadingHistory}
       onSendMessage={sendMessage}
       welcomeMessage="コードや技術的な概念について質問してください。わかりやすく解説します。"
       inputPlaceholder="コードを貼り付けるか、質問を入力してください..."
