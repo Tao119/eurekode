@@ -1,425 +1,298 @@
 import Link from "next/link";
-import { ModeCard } from "@/components/common/ModeCard";
+import { FeatureCard } from "@/components/landing/FeatureCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Landing page - always visible regardless of auth status (for SEO)
 export default function LandingPage() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-32">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-50" />
-        <div
-          className="absolute inset-0 -z-10 opacity-20"
-          style={{
-            backgroundImage: "radial-gradient(hsl(var(--border)) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div className="flex flex-col gap-4 sm:gap-6 text-center md:text-left">
-              <h1 className="text-4xl font-black leading-tight tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                <span className="block text-primary text-2xl sm:text-3xl font-bold mb-2">
-                  Think, Don&apos;t Just Copy
-                </span>
-                コードを渡すのではなく、
-                <br className="hidden sm:block" />
-                思考を渡す
-              </h1>
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto md:mx-0">
-                AIがあなたの「なぜ？」に答えます。
-                <br className="hidden sm:block" />
-                単に答えを教えるのではなく、解決への道筋を共に歩む
-                <br className="hidden sm:block" />
-                全く新しいプログラミング学習プラットフォーム。
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start pt-4">
-                <Button size="lg" className="shadow-lg" asChild>
-                  <Link href="/register">無料で始める</Link>
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="/join">
-                    <span className="material-symbols-outlined mr-2 text-xl">
-                      vpn_key
-                    </span>
-                    キーで参加
-                  </Link>
-                </Button>
-              </div>
-              <div className="pt-4 sm:pt-6 flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[18px] text-primary">
-                    check_circle
-                  </span>
-                  クレカ登録不要
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[18px] text-primary">
-                    check_circle
-                  </span>
-                  14日間無料トライアル
-                </span>
-              </div>
+      <section className="relative overflow-hidden pt-16 pb-24 lg:pt-24 lg:pb-36">
+        {/* Gradient background - Stripe inspired */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/8 via-background to-background" />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+          <div className="absolute top-20 right-1/4 w-80 h-80 bg-violet-500/15 rounded-full blur-3xl" />
+        </div>
+
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm text-primary mb-8">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+              </span>
+              プログラミング学習の新しいかたち
             </div>
 
-            {/* Hero Visual */}
-            <div className="relative mx-auto w-full max-w-[500px] md:max-w-none">
-              <Card className="shadow-2xl overflow-hidden border-border/50">
-                <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-destructive/80" />
-                    <div className="h-3 w-3 rounded-full bg-warning/80" />
-                    <div className="h-3 w-3 rounded-full bg-success/80" />
-                  </div>
-                  <div className="text-xs text-muted-foreground font-mono">
-                    mentor_session.ts
-                  </div>
-                  <div className="w-10" />
+            {/* Main Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight text-foreground leading-[1.1]">
+              コピペで
+              <br className="sm:hidden" />
+              終わらせない。
+            </h1>
+
+            {/* Subheadline */}
+            <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              AIにコードを書いてもらう時代。
+              <br className="hidden sm:block" />
+              でも、「自分で考えて解けた」感覚を忘れていませんか？
+            </p>
+
+            {/* CTA */}
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" className="text-base px-8 h-12 shadow-lg shadow-primary/20" asChild>
+                <Link href="/register">無料で始める</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="text-base px-8 h-12" asChild>
+                <Link href="/pricing">料金プランを見る</Link>
+              </Button>
+            </div>
+
+            {/* Trust indicators */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-lg text-primary">check_circle</span>
+                クレカ登録不要
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-lg text-primary">check_circle</span>
+                14日間無料
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-lg text-primary">check_circle</span>
+                いつでも解約OK
+              </span>
+            </div>
+          </div>
+
+          {/* Product Visual */}
+          <div className="mt-16 sm:mt-20">
+            <Card className="shadow-2xl border-border/30 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-400/80" />
+                  <div className="h-3 w-3 rounded-full bg-yellow-400/80" />
+                  <div className="h-3 w-3 rounded-full bg-green-400/80" />
                 </div>
-                <CardContent className="p-4 sm:p-6 font-mono text-xs sm:text-sm space-y-4 sm:space-y-6 bg-muted/30 min-h-[200px] sm:min-h-[280px]">
+                <div className="text-xs text-muted-foreground font-mono">Eurecode</div>
+                <div className="w-10" />
+              </div>
+              <CardContent className="p-6 sm:p-8 bg-card/50 backdrop-blur">
+                <div className="space-y-6">
+                  {/* User message */}
                   <div className="flex gap-4">
-                    <div className="flex-shrink-0 size-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold border border-blue-500/30">
-                      U
+                    <div className="flex-shrink-0 size-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-500/30">
+                      You
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 pt-2">
                       <p className="text-foreground">
-                        ReactのuseEffectで無限ループが発生してしまいます。
+                        useEffectで無限ループが起きてるんですが、なぜですか？
                       </p>
                     </div>
                   </div>
+
+                  {/* AI response */}
                   <div className="flex gap-4">
-                    <div className="flex-shrink-0 size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold border border-primary/30">
-                      <span className="material-symbols-outlined text-[18px]">
-                        smart_toy
-                      </span>
+                    <div className="flex-shrink-0 size-10 rounded-full bg-primary/20 text-primary flex items-center justify-center border border-primary/30">
+                      <span className="material-symbols-outlined text-lg">psychology</span>
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                        </span>
-                        思考プロセスを展開中...
-                      </div>
-                      <p className="text-muted-foreground">
-                        答えを出す前に、まず原因を特定しましょう。
-                        <code className="bg-muted text-foreground rounded px-1">
-                          useEffect
-                        </code>
-                        の依存配列には何が含まれていますか？
+                    <div className="flex-1 pt-2 space-y-3">
+                      <p className="text-foreground font-medium">
+                        まず、一緒に原因を探ってみましょう。
                       </p>
+                      <p className="text-muted-foreground">
+                        useEffectの依存配列には何を入れていますか？
+                        <br />
+                        もし空配列を入れていないなら、レンダーのたびにeffectが実行されているかもしれません。
+                      </p>
+                      <div className="inline-flex items-center gap-2 text-xs text-primary bg-primary/10 px-3 py-1.5 rounded-full">
+                        <span className="material-symbols-outlined text-sm">lightbulb</span>
+                        ヒント: 依存配列の値が毎回新しく生成されていませんか？
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof */}
+      <section className="py-12 border-y border-border/50 bg-muted/20">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">1,200+</div>
+              <div className="text-sm text-muted-foreground mt-1">アクティブユーザー</div>
+            </div>
+            <div>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">50,000+</div>
+              <div className="text-sm text-muted-foreground mt-1">学習セッション</div>
+            </div>
+            <div>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">4.8</div>
+              <div className="text-sm text-muted-foreground mt-1">ユーザー満足度</div>
+            </div>
+            <div>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">30+</div>
+              <div className="text-sm text-muted-foreground mt-1">導入企業</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Problem Section */}
-      <section className="py-16 sm:py-20 border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">
-              The Problem
-            </h2>
-            <h3 className="text-2xl sm:text-3xl font-bold text-foreground">
-              AIにコードを書いてもらうだけでは、<br className="hidden sm:block" />
-              本当の力は身につかない
-            </h3>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-6 lg:gap-8">
-            <Card className="border-destructive/30 bg-destructive/5">
-              <CardContent className="p-6">
-                <div className="size-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-2xl text-destructive">
-                    content_copy
-                  </span>
-                </div>
-                <h4 className="font-bold text-foreground mb-2">コピペ依存</h4>
-                <p className="text-sm text-muted-foreground">
-                  AIが生成したコードをそのまま使うと、なぜそう書くのか理解できないまま
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-destructive/30 bg-destructive/5">
-              <CardContent className="p-6">
-                <div className="size-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-2xl text-destructive">
-                    psychology_alt
-                  </span>
-                </div>
-                <h4 className="font-bold text-foreground mb-2">思考停止</h4>
-                <p className="text-sm text-muted-foreground">
-                  自分で考える機会が減り、問題解決能力が育たない
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-destructive/30 bg-destructive/5">
-              <CardContent className="p-6">
-                <div className="size-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-2xl text-destructive">
-                    trending_down
-                  </span>
-                </div>
-                <h4 className="font-bold text-foreground mb-2">成長の停滞</h4>
-                <p className="text-sm text-muted-foreground">
-                  短期的には楽でも、長期的なスキルアップに繋がらない
-                </p>
-              </CardContent>
-            </Card>
+      {/* Problem & Solution */}
+      <section className="py-20 sm:py-28">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Problem */}
+            <div>
+              <span className="text-sm font-medium text-destructive/80 uppercase tracking-wider">課題</span>
+              <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                AIがコードを書いてくれる時代に、
+                <br />
+                あなたのスキルは育っていますか？
+              </h2>
+              <div className="mt-6 space-y-4 text-muted-foreground">
+                <p>ChatGPTやCopilotにコードを書いてもらえば、今日の仕事は片付く。</p>
+                <p>でも、半年後のあなたは成長しているだろうか？</p>
+                <p className="text-foreground font-medium">答えをもらうだけでは、考える力は育たない。</p>
+              </div>
+            </div>
+
+            {/* Solution */}
+            <div>
+              <span className="text-sm font-medium text-primary uppercase tracking-wider">解決策</span>
+              <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                Eurecodeは、答えではなく
+                <br />
+                「考え方」を渡します。
+              </h2>
+              <div className="mt-6 space-y-4 text-muted-foreground">
+                <p>問題を一緒に分解し、解決への道筋を示す。</p>
+                <p>あなたが自分の力でたどり着けるよう、AIがサポート。</p>
+                <p className="text-foreground font-medium">「自分で解けた」という実感が、本当の力になる。</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Solution / Features Section */}
-      <section className="py-16 sm:py-20 bg-muted/30" id="features">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-16 text-center">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">
-              Our Solution
+      {/* Features */}
+      <section className="py-20 sm:py-28 bg-muted/30" id="features">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+              3つのモードで、あなたの学びをサポート
             </h2>
-            <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-              学習を加速する3つのモード
-            </h3>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Eurecodeは単なるコード生成ツールではありません。
-              あなたの思考プロセスをサポートし、真の理解へと導きます。
+            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+              目的に合わせて最適なモードを選べます。各モードの詳細をクリックしてご覧ください。
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            <ModeCard mode="explanation" />
-            <ModeCard mode="generation" />
-            <ModeCard mode="brainstorm" />
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <FeatureCard mode="explanation" />
+            <FeatureCard mode="generation" />
+            <FeatureCard mode="brainstorm" />
           </div>
         </div>
       </section>
 
-      {/* How it Works Section */}
-      <section className="py-16 sm:py-20 border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">
-              How it Works
-            </h2>
-            <h3 className="text-2xl sm:text-3xl font-bold text-foreground">
-              3ステップで学習を開始
-            </h3>
+      {/* Testimonial */}
+      <section className="py-20 sm:py-28">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
+          <div className="size-16 rounded-full bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center mx-auto mb-8">
+            <span className="material-symbols-outlined text-3xl text-primary">format_quote</span>
           </div>
-          <div className="grid sm:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary">1</span>
-              </div>
-              <h4 className="font-bold text-foreground mb-2">モードを選択</h4>
-              <p className="text-sm text-muted-foreground">
-                解説・生成・壁打ちから、今の学習目的に合ったモードを選びます
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary">2</span>
-              </div>
-              <h4 className="font-bold text-foreground mb-2">質問を投げかける</h4>
-              <p className="text-sm text-muted-foreground">
-                分からないこと、実装したいことを自由に質問してください
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary">3</span>
-              </div>
-              <h4 className="font-bold text-foreground mb-2">思考を深める</h4>
-              <p className="text-sm text-muted-foreground">
-                AIと対話しながら、自分の力で答えにたどり着きます
-              </p>
-            </div>
+          <blockquote className="text-xl sm:text-2xl font-medium text-foreground leading-relaxed">
+            「今までAIにコードを書いてもらって済ませていたけど、
+            Eurecodeを使い始めてから、自分で考えて解決できるようになった。
+            面接でもコードの意図を説明できるようになって、内定をもらえました。」
+          </blockquote>
+          <div className="mt-8">
+            <div className="font-medium text-foreground">Y.S.</div>
+            <div className="text-sm text-muted-foreground">Web開発者 / 26歳</div>
           </div>
         </div>
       </section>
 
-      {/* Benefits Section */}
-      <section className="py-16 sm:py-20 bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">
-              Benefits
-            </h2>
-            <h3 className="text-2xl sm:text-3xl font-bold text-foreground">
-              Eurecodeで得られること
-            </h3>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="size-12 rounded-xl bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-2xl text-blue-400">
-                    psychology
-                  </span>
-                </div>
-                <h4 className="font-bold text-foreground mb-2">思考力の向上</h4>
-                <p className="text-sm text-muted-foreground">
-                  問題を分解し、論理的に考える力が身につく
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="size-12 rounded-xl bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-2xl text-green-400">
-                    trending_up
-                  </span>
-                </div>
-                <h4 className="font-bold text-foreground mb-2">持続的な成長</h4>
-                <p className="text-sm text-muted-foreground">
-                  理解に基づいた学習で、応用力が身につく
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="size-12 rounded-xl bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-2xl text-purple-400">
-                    auto_stories
-                  </span>
-                </div>
-                <h4 className="font-bold text-foreground mb-2">学習の記録</h4>
-                <p className="text-sm text-muted-foreground">
-                  気づきカードで振り返り、知識を定着
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="size-12 rounded-xl bg-orange-500/10 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-2xl text-orange-400">
-                    groups
-                  </span>
-                </div>
-                <h4 className="font-bold text-foreground mb-2">チーム学習</h4>
-                <p className="text-sm text-muted-foreground">
-                  組織向けプランでチーム全体の成長を支援
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing CTA Section */}
-      <section className="py-16 sm:py-20 border-t border-border">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-            まずは無料で体験
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            14日間の無料トライアルで、Eurecodeの学習体験をお試しください。
-            クレジットカード登録不要で、すぐに始められます。
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="shadow-lg" asChild>
-              <Link href="/register">
-                <span className="material-symbols-outlined mr-2">rocket_launch</span>
-                無料で始める
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/pricing">
-                <span className="material-symbols-outlined mr-2">payments</span>
-                料金プランを見る
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-16 sm:py-20 bg-muted/30">
+      {/* FAQ */}
+      <section className="py-20 sm:py-28 bg-muted/30">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-primary font-bold tracking-wide uppercase text-sm mb-3">
-              FAQ
-            </h2>
-            <h3 className="text-2xl sm:text-3xl font-bold text-foreground">
-              よくある質問
-            </h3>
-          </div>
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-6">
-                <h4 className="font-bold text-foreground mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">help</span>
-                  ChatGPTやCopilotとの違いは？
-                </h4>
-                <p className="text-sm text-muted-foreground pl-8">
-                  一般的なAIツールはコードを「渡す」ことに特化していますが、
-                  Eurecodeは「思考プロセスを渡す」ことに特化しています。
-                  答えを教えるのではなく、あなた自身が答えにたどり着けるようサポートします。
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <h4 className="font-bold text-foreground mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">help</span>
-                  プログラミング初心者でも使える？
-                </h4>
-                <p className="text-sm text-muted-foreground pl-8">
-                  はい、初心者の方にこそおすすめです。
-                  解説モードでは基礎的な概念から丁寧に説明し、
-                  あなたのペースで理解を深められます。
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <h4 className="font-bold text-foreground mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">help</span>
-                  無料トライアル後は自動課金される？
-                </h4>
-                <p className="text-sm text-muted-foreground pl-8">
-                  いいえ、クレジットカードの登録は不要です。
-                  無料トライアル終了後も、無料プランとして継続利用できます。
-                  有料プランへのアップグレードは任意です。
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <h4 className="font-bold text-foreground mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">help</span>
-                  組織・チームで利用できる？
-                </h4>
-                <p className="text-sm text-muted-foreground pl-8">
-                  はい、企業・教育機関向けのBusinessプランとEnterpriseプランをご用意しています。
-                  アクセスキーによるメンバー管理、利用状況の分析などの機能があります。
-                </p>
-              </CardContent>
-            </Card>
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-12">
+            よくある質問
+          </h2>
+
+          <div className="space-y-6">
+            <div className="border-b border-border pb-6">
+              <h3 className="font-medium text-foreground mb-2">
+                ChatGPTやCopilotとの違いは？
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                一般的なAIは「答え」を渡します。Eurecodeは「考え方」を渡します。
+                あなたが自分で答えにたどり着けるよう、質問を投げかけ、ヒントを与え、
+                思考プロセスをサポートします。
+              </p>
+            </div>
+
+            <div className="border-b border-border pb-6">
+              <h3 className="font-medium text-foreground mb-2">
+                プログラミング初心者でも使えますか？
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                はい。むしろ初心者にこそ使ってほしいサービスです。
+                解説モードでは、基礎的な概念から丁寧に説明します。
+                コピペの癖がつく前に、正しい学習習慣を身につけましょう。
+              </p>
+            </div>
+
+            <div className="border-b border-border pb-6">
+              <h3 className="font-medium text-foreground mb-2">
+                無料トライアル後は自動課金されますか？
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                いいえ。クレジットカードの登録は不要です。
+                14日間の無料期間終了後も、機能制限付きの無料プランで継続利用できます。
+              </p>
+            </div>
+
+            <div className="pb-6">
+              <h3 className="font-medium text-foreground mb-2">
+                チームや企業で導入できますか？
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                はい。Businessプラン・Enterpriseプランでは、
+                アクセスキーによるメンバー管理、利用状況の分析、専用サポートを提供しています。
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Final CTA Section */}
-      <section className="py-20 sm:py-24 bg-gradient-to-b from-primary/10 to-background">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            今日から、<br className="sm:hidden" />
-            本当の学習を始めよう
+      {/* Final CTA */}
+      <section className="py-24 sm:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-transparent" />
+        </div>
+
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+            考える力を、取り戻そう。
           </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            コードを渡すのではなく、思考を渡す。
-            Eurecodeで、あなたのプログラミング学習を加速させましょう。
+          <p className="mt-6 text-lg text-muted-foreground">
+            今日から、本当の意味でのプログラミング学習を始めませんか。
           </p>
-          <Button size="lg" className="shadow-lg text-lg px-8 py-6" asChild>
-            <Link href="/register">
-              無料で始める
-              <span className="material-symbols-outlined ml-2">arrow_forward</span>
-            </Link>
-          </Button>
+          <div className="mt-10">
+            <Button size="lg" className="text-base px-10 h-14 shadow-lg shadow-primary/20" asChild>
+              <Link href="/register">
+                無料で始める
+                <span className="material-symbols-outlined ml-2">arrow_forward</span>
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>
