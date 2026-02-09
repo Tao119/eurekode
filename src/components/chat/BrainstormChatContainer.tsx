@@ -589,8 +589,14 @@ export function BrainstormChatContainer({
               <>
                 {/* Mobile: Compact phase button */}
                 <button
-                  onClick={() => setShowPhaseMenu(!showPhaseMenu)}
-                  className="sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 whitespace-nowrap"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPhaseMenu(!showPhaseMenu);
+                  }}
+                  className={cn(
+                    "sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 whitespace-nowrap",
+                    showPhaseMenu && "relative z-[46]"
+                  )}
                 >
                   <span className="text-xs font-bold text-purple-400">
                     {BRAINSTORM_PHASES.indexOf(state.currentPhase) + 1}/{BRAINSTORM_PHASES.length}
