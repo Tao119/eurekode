@@ -76,6 +76,9 @@ export function Header() {
     return pathname.startsWith(href);
   };
 
+  // LP uses simplified header regardless of auth state
+  const isLandingPage = pathname === "/";
+
   const filteredNavItems = NAV_ITEMS.filter((item) => {
     if (item.adminOnly && session?.user.userType !== "admin") return false;
     return true;
@@ -87,8 +90,8 @@ export function Header() {
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4">
           {/* Left: Menu Button (Mobile) + Logo */}
           <div className="flex items-center gap-2">
-            {/* Mobile Menu Button */}
-            {session && (
+            {/* Mobile Menu Button - Hide on LP */}
+            {session && !isLandingPage && (
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-3 -ml-3 rounded-lg hover:bg-muted transition-colors"
@@ -101,12 +104,12 @@ export function Header() {
               </button>
             )}
 
-            {/* Logo - /home for logged in users, / (LP) for guests */}
-            <Logo size="sm" href={session ? "/home" : "/"} />
+            {/* Logo - Always / on LP, /home for logged in users elsewhere */}
+            <Logo size="sm" href={isLandingPage ? "/" : (session ? "/home" : "/")} />
           </div>
 
-          {/* Center: Navigation (Desktop) */}
-          {session && (
+          {/* Center: Navigation (Desktop) - Hide on LP */}
+          {session && !isLandingPage && (
             <nav className="hidden md:flex items-center gap-1">
               {filteredNavItems.map((item) => (
                 <Link
@@ -133,7 +136,37 @@ export function Header() {
           <div className="flex items-center gap-2">
             {isLoading ? (
               <div className="h-8 w-8 bg-muted animate-pulse rounded-full" />
+            ) : isLandingPage ? (
+              // LP: Simplified header for both logged in and guest users
+              <>
+                <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+                  <Link href="/pricing">料金</Link>
+                </Button>
+                {session ? (
+                  // Logged in on LP: Show "ホームへ" button
+                  <Button size="sm" asChild>
+                    <Link href="/home">
+                      <span className="material-symbols-outlined text-[16px] mr-1">home</span>
+                      ホームへ
+                    </Link>
+                  </Button>
+                ) : (
+                  // Guest on LP: Show login and register
+                  <>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href="/login">ログイン</Link>
+                    </Button>
+                    <Button size="sm" asChild className="text-xs sm:text-sm">
+                      <Link href="/register">
+                        <span className="hidden sm:inline">無料で始める</span>
+                        <span className="sm:hidden">始める</span>
+                      </Link>
+                    </Button>
+                  </>
+                )}
+              </>
             ) : session ? (
+              // Logged in (not LP): Full header
               <>
                 {/* New Chat Button - Quick Action */}
                 <DropdownMenu>
@@ -265,6 +298,7 @@ export function Header() {
                 </DropdownMenu>
               </>
             ) : (
+              // Guest (not LP): Show login and register
               <>
                 <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
                   <Link href="/pricing">料金</Link>
@@ -284,8 +318,8 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile Navigation Drawer */}
-      {session && (
+      {/* Mobile Navigation Drawer - Hide on LP */}
+      {session && !isLandingPage && (
         <>
           {/* Backdrop */}
           <div
