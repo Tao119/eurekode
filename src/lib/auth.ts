@@ -75,7 +75,7 @@ export const authConfig: NextAuthConfig = {
   // Database operations are handled manually in authorize callbacks
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60, // 1 hour
+    maxAge: 60 * 60 * 24 * 7, // 7 days
   },
   pages: {
     signIn: "/login",
