@@ -1,4 +1,5 @@
 import { Logo } from "@/components/layout/Logo";
+import { Footer } from "@/components/layout/Footer";
 
 export default function AuthLayout({
   children,
@@ -15,16 +16,12 @@ export default function AuthLayout({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-4">
+      <main className="flex-1">
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <p>© 2026 Eurecode. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
