@@ -16,18 +16,18 @@ export default function LandingPage() {
       <section className="relative pt-12 pb-16 sm:pt-16 sm:pb-24 bg-gradient-to-b from-sky-50 to-white">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            {/* Main Headline - Empathetic, beginner-focused */}
+            {/* Main Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 leading-tight">
               「わからない」が、
               <br />
               <span className="text-sky-600">わかる</span>に変わる瞬間。
             </h1>
 
-            {/* Subheadline */}
+            {/* Subheadline - Positive first, then differentiator */}
             <p className="mt-6 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Eurecodeは答えを渡しません。
+              あなたが<span className="font-medium text-slate-800">「自分で解けた！」</span>と思える体験を、AIがつくる。
               <br className="hidden sm:block" />
-              あなたが<span className="font-medium text-slate-800">「自分で解けた！」</span>と思える体験を、AIがつくります。
+              <span className="text-slate-500">答えではなく、考える力を。</span>
             </p>
 
             {/* CTA */}
@@ -56,14 +56,14 @@ export default function LandingPage() {
       <section className="py-12 sm:py-20 bg-white">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 text-center mb-8 sm:mb-12">
-            ふつうのAIと、Eurecodeの違い
+            一般的なAIチャットと、Eurecodeの違い
           </h2>
 
           <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
             {/* Before: Regular AI */}
             <Card className="!border-slate-200 !bg-slate-50 overflow-hidden">
               <div className="px-4 py-3 border-b !border-slate-200 !bg-slate-100">
-                <span className="text-sm font-medium text-slate-500">ふつうのAI</span>
+                <span className="text-sm font-medium text-slate-500">一般的なAIチャット</span>
               </div>
               <CardContent className="p-4 sm:p-6 space-y-4">
                 <div className="flex gap-3">
@@ -127,8 +127,17 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-center text-sm text-sky-700 font-medium">
-                  自分で考えて → 気づく → 次は書ける！
+                {/* User's "Aha!" moment */}
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 size-8 rounded-full bg-sky-200 text-sky-700 flex items-center justify-center text-xs font-bold">
+                    U
+                  </div>
+                  <div className="flex-1 text-sm text-slate-700">
+                    あ、i が 0 から始まって 5 より小さい間、繰り返すってことか！
+                  </div>
+                </div>
+                <div className="text-center text-sm text-sky-700 font-medium bg-sky-100 py-2 rounded-lg">
+                  💡 自分で気づけた！→ 次は書ける！
                 </div>
               </CardContent>
             </Card>
@@ -172,11 +181,14 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-sky-600 mt-0.5">check_circle</span>
-                  <span className="text-slate-700">答えを教えるのではなく、質問で理解を促す</span>
+                  <span className="text-slate-700">AIが「ここは何をしてると思う？」と問いかけてくれる</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-sky-600 mt-0.5">check_circle</span>
-                  <span className="text-slate-700">学んだことは「気づきカード」に記録</span>
+                  <span className="text-slate-700">
+                    理解できたことは「気づきカード」として自動で記録
+                    <span className="text-slate-500 text-xs ml-1">（後から振り返れる）</span>
+                  </span>
                 </li>
               </ul>
 
@@ -191,21 +203,27 @@ export default function LandingPage() {
             </CardContent>
           </Card>
 
-          {/* Other modes */}
-          <div className="mt-8 text-center">
-            <p className="text-sm text-slate-500 mb-4">慣れてきたら、こちらのモードも</p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/features/generation" className="flex items-center gap-2 text-sm text-slate-600 hover:text-amber-600 transition-colors">
-                <span className="size-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-lg">bolt</span>
+          {/* Other modes with descriptions */}
+          <div className="mt-8">
+            <p className="text-sm text-slate-500 mb-4 text-center">慣れてきたら、こちらのモードも</p>
+            <div className="grid sm:grid-cols-2 gap-4 max-w-xl mx-auto">
+              <Link href="/features/generation" className="group flex items-start gap-3 p-3 rounded-lg hover:bg-white transition-colors">
+                <span className="size-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined">bolt</span>
                 </span>
-                生成モード
+                <div>
+                  <span className="font-medium text-slate-900 group-hover:text-amber-600 transition-colors">生成モード</span>
+                  <p className="text-xs text-slate-500">やりたいことを伝えてコード生成</p>
+                </div>
               </Link>
-              <Link href="/features/brainstorm" className="flex items-center gap-2 text-sm text-slate-600 hover:text-violet-600 transition-colors">
-                <span className="size-8 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-lg">lightbulb</span>
+              <Link href="/features/brainstorm" className="group flex items-start gap-3 p-3 rounded-lg hover:bg-white transition-colors">
+                <span className="size-10 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined">lightbulb</span>
                 </span>
-                壁打ちモード
+                <div>
+                  <span className="font-medium text-slate-900 group-hover:text-violet-600 transition-colors">壁打ちモード</span>
+                  <p className="text-xs text-slate-500">設計やアイデアを一緒に考える</p>
+                </div>
               </Link>
             </div>
           </div>
@@ -226,9 +244,9 @@ export default function LandingPage() {
               </div>
               <h3 className="font-bold text-slate-900 mb-2">無料登録</h3>
               <p className="text-sm text-slate-600">
-                メールアドレスだけでOK。
+                メールアドレスだけ。
                 <br />
-                クレカ不要です。
+                30秒で完了。
               </p>
             </div>
 
@@ -236,11 +254,11 @@ export default function LandingPage() {
               <div className="size-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto mb-4 font-bold text-lg">
                 2
               </div>
-              <h3 className="font-bold text-slate-900 mb-2">質問する</h3>
+              <h3 className="font-bold text-slate-900 mb-2">わからないことを聞く</h3>
               <p className="text-sm text-slate-600">
-                わからないことを
+                AIが答えの代わりに
                 <br />
-                そのまま聞くだけ。
+                ヒントをくれる。
               </p>
             </div>
 
@@ -248,11 +266,11 @@ export default function LandingPage() {
               <div className="size-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto mb-4 font-bold text-lg">
                 3
               </div>
-              <h3 className="font-bold text-slate-900 mb-2">考えて解く</h3>
+              <h3 className="font-bold text-slate-900 mb-2">「わかった！」が積み上がる</h3>
               <p className="text-sm text-slate-600">
-                AIのヒントを頼りに、
+                気づきが記録され、
                 <br />
-                自分で答えにたどり着く。
+                あなたの成長が見える。
               </p>
             </div>
           </div>
@@ -261,12 +279,12 @@ export default function LandingPage() {
 
       {/* Who is this for - Persona section */}
       <section className="py-12 sm:py-20 bg-slate-50">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 text-center mb-8 sm:mb-12">
             こんな人におすすめ
           </h2>
 
-          <div className="grid sm:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="!border-slate-200 !bg-white">
               <CardContent className="p-6 text-center">
                 <div className="size-12 rounded-full bg-sky-100 flex items-center justify-center mx-auto mb-4">
@@ -274,7 +292,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-bold text-slate-900 mb-2">プログラミング初心者</h3>
                 <p className="text-sm text-slate-600">
-                  独学で始めたけど、わからないことだらけ。誰かに聞きたいけど、聞ける人がいない。
+                  独学で始めたけど、わからないことだらけ。誰かに聞きたい。
                 </p>
               </CardContent>
             </Card>
@@ -286,7 +304,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-bold text-slate-900 mb-2">コピペ脱却したい人</h3>
                 <p className="text-sm text-slate-600">
-                  ChatGPTでコードは書けるけど、自分では何もできない気がする。ちゃんと理解したい。
+                  AIでコードは書けるけど、自分では何もできない気がする。
                 </p>
               </CardContent>
             </Card>
@@ -298,7 +316,19 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-bold text-slate-900 mb-2">転職・就活準備中</h3>
                 <p className="text-sm text-slate-600">
-                  面接でコードの説明を求められても答えられない。理解した上で書けるようになりたい。
+                  面接でコードの説明を求められても答えられない。
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="!border-slate-200 !bg-white">
+              <CardContent className="p-6 text-center">
+                <div className="size-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-2xl text-green-600">trending_up</span>
+                </div>
+                <h3 className="font-bold text-slate-900 mb-2">もっと深く理解したい人</h3>
+                <p className="text-sm text-slate-600">
+                  動くコードは書ける。でも、もっと原理を理解したい。
                 </p>
               </CardContent>
             </Card>
@@ -356,6 +386,17 @@ export default function LandingPage() {
                 初心者の方は、まずHTML/CSSやJavaScriptから始めることをおすすめします。
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="item-5" className="!border-slate-200">
+              <AccordionTrigger className="text-left text-slate-900 hover:no-underline">
+                チームや企業で導入できますか？
+              </AccordionTrigger>
+              <AccordionContent className="text-slate-600">
+                はい。BusinessプランとEnterpriseプランでは、
+                アクセスキーによるメンバー管理、利用状況の分析、専用サポートを提供しています。
+                詳しくは料金プランをご覧ください。
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </div>
       </section>
@@ -369,7 +410,7 @@ export default function LandingPage() {
             あなたの「わかった！」を体験しよう。
           </h2>
           <p className="mt-4 text-slate-600">
-            クレジットカード不要。いつでも解約OK。
+            クレジットカード不要。無料プランはずっと使えます。
           </p>
           <div className="mt-8">
             <Button size="lg" className="!bg-sky-600 hover:!bg-sky-700 !text-white text-base px-10 h-14" asChild>
@@ -429,7 +470,7 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-8 pt-8 border-t !border-slate-200 text-center text-sm text-slate-500">
-            © 2025 Eurecode. All rights reserved.
+            © 2026 Eurecode. All rights reserved.
           </div>
         </div>
       </footer>

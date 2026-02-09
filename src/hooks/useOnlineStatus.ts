@@ -50,14 +50,21 @@ export function useOnlineStatus(options: OnlineStatusOptions = {}): OnlineStatus
     onOffline,
   } = options;
 
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  // Initialize with true to avoid hydration mismatch (SSR always assumes online)
+  // The actual value is synced in useEffect after hydration
+  const [isOnline, setIsOnline] = useState(true);
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
-  const wasOnlineRef = useRef(isOnline);
+  const wasOnlineRef = useRef(true);
+
+  // Sync with actual navigator.onLine after mount (avoids hydration mismatch)
+  useEffect(() => {
+    const actualOnline = navigator.onLine;
+    setIsOnline(actualOnline);
+    wasOnlineRef.current = actualOnline;
+  }, []);
 
   // Ping check function
   const checkConnection = useCallback(async (): Promise<boolean> => {
@@ -144,11 +151,13 @@ export function useOnlineStatus(options: OnlineStatusOptions = {}): OnlineStatus
  * Simple hook that just returns online status
  */
 export function useIsOnline(): boolean {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  // Initialize with true to avoid hydration mismatch (SSR always assumes online)
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
+    // Sync with actual navigator.onLine after mount
+    setIsOnline(navigator.onLine);
+
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
