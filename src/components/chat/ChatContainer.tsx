@@ -261,6 +261,28 @@ function BranchSelector({
   );
 }
 
+// Module-level constant to avoid recreating on every render
+const WELCOME_SUGGESTIONS: Record<ChatMode, ReadonlyArray<{ text: string; icon: string }>> = {
+  explanation: [
+    { text: "コードを貼り付けて解説を聞く", icon: "code" },
+    { text: "エラーメッセージを貼り付けて原因を探る", icon: "bug_report" },
+    { text: "async/await の使い方を理解したい", icon: "sync" },
+    { text: "配列メソッドの違いを教えて", icon: "format_list_numbered" },
+  ],
+  generation: [
+    { text: "React でログインフォームを作りたい", icon: "login" },
+    { text: "Python で CSV ファイルを処理したい", icon: "description" },
+    { text: "REST API のエンドポイントを実装したい", icon: "api" },
+    { text: "データベースに接続するコードが欲しい", icon: "storage" },
+  ],
+  brainstorm: [
+    { text: "新しいアプリのアイデアを整理したい", icon: "lightbulb" },
+    { text: "技術スタックの選定を相談したい", icon: "build" },
+    { text: "プロジェクトの設計を一緒に考えたい", icon: "architecture" },
+    { text: "機能の優先順位を決めたい", icon: "checklist" },
+  ],
+} as const;
+
 function WelcomeScreen({
   mode,
   welcomeMessage,
@@ -271,28 +293,7 @@ function WelcomeScreen({
   onSuggestionClick?: (message: string) => void;
 }) {
   const config = MODE_CONFIG[mode];
-
-  // 具体的でアクション誘導的なサジェスチョン
-  const suggestions: Record<ChatMode, Array<{ text: string; icon: string }>> = {
-    explanation: [
-      { text: "コードを貼り付けて解説を聞く", icon: "code" },
-      { text: "エラーメッセージを貼り付けて原因を探る", icon: "bug_report" },
-      { text: "async/await の使い方を理解したい", icon: "sync" },
-      { text: "配列メソッドの違いを教えて", icon: "format_list_numbered" },
-    ],
-    generation: [
-      { text: "React でログインフォームを作りたい", icon: "login" },
-      { text: "Python で CSV ファイルを処理したい", icon: "description" },
-      { text: "REST API のエンドポイントを実装したい", icon: "api" },
-      { text: "データベースに接続するコードが欲しい", icon: "storage" },
-    ],
-    brainstorm: [
-      { text: "新しいアプリのアイデアを整理したい", icon: "lightbulb" },
-      { text: "技術スタックの選定を相談したい", icon: "build" },
-      { text: "プロジェクトの設計を一緒に考えたい", icon: "architecture" },
-      { text: "機能の優先順位を決めたい", icon: "checklist" },
-    ],
-  };
+  const suggestions = WELCOME_SUGGESTIONS[mode];
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-4 sm:p-8">
@@ -320,7 +321,7 @@ function WelcomeScreen({
           クリックして始める:
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {suggestions[mode].map((suggestion, index) => (
+          {suggestions.map((suggestion, index) => (
             <button
               key={index}
               onClick={() => onSuggestionClick?.(suggestion.text)}

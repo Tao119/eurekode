@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,8 +52,8 @@ export function PricingCard({
     ? (plan as OrganizationPlanConfig).maxMembers
     : null;
 
-  // 機能リスト
-  const features = [
+  // 機能リスト (memoized to avoid recreation on every render)
+  const features = useMemo(() => [
     `AIモデル: ${plan.features.availableModels.join(", ").toUpperCase()}`,
     plan.features.historyRetentionDays === null
       ? "履歴保持: 無制限"
@@ -63,7 +64,7 @@ export function PricingCard({
       : isOrganization && !maxMembers
         ? ["メンバー数無制限"]
         : []),
-  ];
+  ], [plan.features.availableModels, plan.features.historyRetentionDays, isOrganization, maxMembers]);
 
   return (
     <Card

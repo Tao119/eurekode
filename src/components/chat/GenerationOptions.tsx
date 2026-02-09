@@ -1,8 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { GenerationOptions } from "@/hooks/useGenerationMode";
+
+// モジュールレベル定数: レンダリング毎の再生成を防止
+const UNLOCK_METHODS_BASE = [
+  { value: "quiz", label: "クイズ", icon: "quiz", description: "選択式で理解を確認" },
+  { value: "explanation", label: "説明", icon: "chat", description: "自分の言葉で説明" },
+] as const;
+
+const SKIP_OPTION = {
+  value: "skip",
+  label: "スキップ",
+  icon: "skip_next",
+  description: "理解確認なし",
+} as const;
+
+const HINT_SPEED_OPTIONS = [
+  { value: "immediate", label: "即座に", description: "すぐにヒントを表示" },
+  { value: "30sec", label: "30秒後", description: "少し考えてから" },
+  { value: "none", label: "なし", description: "ヒントなしで挑戦" },
+] as const;
 
 interface GenerationOptionsBarProps {
   options: GenerationOptions;
@@ -18,6 +37,12 @@ export function GenerationOptionsBar({
   canSkip = false,
 }: GenerationOptionsBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // canSkipに応じてアンロックメソッドを条件付きで構成
+  const unlockMethods = useMemo(
+    () => (canSkip ? [...UNLOCK_METHODS_BASE, SKIP_OPTION] : UNLOCK_METHODS_BASE),
+    [canSkip]
+  );
 
   return (
     <div className="border-t border-border bg-muted/30">
@@ -78,13 +103,7 @@ export function GenerationOptionsBar({
               アンロック方式
             </label>
             <div className="flex gap-2">
-              {[
-                { value: "quiz", label: "クイズ", icon: "quiz", description: "選択式で理解を確認" },
-                { value: "explanation", label: "説明", icon: "chat", description: "自分の言葉で説明" },
-                ...(canSkip
-                  ? [{ value: "skip", label: "スキップ", icon: "skip_next", description: "理解確認なし" }]
-                  : []),
-              ].map((item) => (
+              {unlockMethods.map((item) => (
                 <button
                   key={item.value}
                   onClick={() => onOptionsChange({ unlockMethod: item.value as GenerationOptions["unlockMethod"] })}
@@ -125,11 +144,7 @@ export function GenerationOptionsBar({
                 ヒント表示タイミング
               </label>
               <div className="flex gap-2">
-                {[
-                  { value: "immediate", label: "即座に", description: "すぐにヒントを表示" },
-                  { value: "30sec", label: "30秒後", description: "少し考えてから" },
-                  { value: "none", label: "なし", description: "ヒントなしで挑戦" },
-                ].map((item) => (
+                {HINT_SPEED_OPTIONS.map((item) => (
                   <button
                     key={item.value}
                     onClick={() => onOptionsChange({ hintSpeed: item.value as GenerationOptions["hintSpeed"] })}

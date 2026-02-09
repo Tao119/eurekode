@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -235,7 +235,7 @@ export default function ProjectsPage() {
   );
 }
 
-function ProjectCard({
+const ProjectCard = memo(function ProjectCard({
   project,
   onDelete,
 }: {
@@ -243,9 +243,15 @@ function ProjectCard({
   onDelete: (e: React.MouseEvent) => void;
 }) {
   const statusConfig = STATUS_CONFIG[project.status as ProjectStatus];
-  const completedTasks = project.taskStats?.completed ?? 0;
-  const totalTasks = project.taskStats?.total ?? 0;
-  const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  const { completedTasks, totalTasks, progress } = useMemo(() => {
+    const completed = project.taskStats?.completed ?? 0;
+    const total = project.taskStats?.total ?? 0;
+    return {
+      completedTasks: completed,
+      totalTasks: total,
+      progress: total > 0 ? (completed / total) * 100 : 0,
+    };
+  }, [project.taskStats]);
 
   return (
     <Link href={`/projects/${project.id}`}>
@@ -333,4 +339,4 @@ function ProjectCard({
       </Card>
     </Link>
   );
-}
+});
