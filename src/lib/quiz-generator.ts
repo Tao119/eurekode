@@ -4,6 +4,48 @@ import type { UnlockLevel, UnlockQuiz } from "@/hooks/useGenerationMode";
 // ローカル型エイリアス
 type QuizOption = UnlockQuizOption;
 
+/**
+ * Shuffle quiz options randomly and update correctLabel accordingly
+ * クイズの選択肢をランダムにシャッフルし、正解ラベルを更新
+ */
+function shuffleQuizOptions(
+  options: QuizOption[],
+  correctLabel: string
+): { options: QuizOption[]; correctLabel: string } {
+  if (options.length === 0) {
+    return { options, correctLabel };
+  }
+
+  // Find the correct answer text before shuffling
+  const correctOption = options.find((opt) => opt.label === correctLabel);
+  if (!correctOption) {
+    return { options, correctLabel };
+  }
+  const correctText = correctOption.text;
+
+  // Fisher-Yates shuffle algorithm
+  const shuffled = [...options];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  // Reassign labels A, B, C, D... based on new positions
+  const labels = ["A", "B", "C", "D", "E", "F"];
+  let newCorrectLabel = correctLabel;
+
+  const relabeled = shuffled.map((opt, index) => {
+    const newLabel = labels[index] || String.fromCharCode(65 + index);
+    // Track where the correct answer ended up
+    if (opt.text === correctText) {
+      newCorrectLabel = newLabel;
+    }
+    return { ...opt, label: newLabel };
+  });
+
+  return { options: relabeled, correctLabel: newCorrectLabel };
+}
+
 // Session-based flag to track if fallback helper has been used
 // Key: artifactId, Value: true if helper was used
 const fallbackUsedInSession = new Map<string, boolean>();
@@ -416,12 +458,17 @@ export function generateFallbackQuiz(
   const patternIndex = Math.min(level - 1, patterns.length - 1);
   if (patterns.length > 0 && patternIndex >= 0) {
     const pattern = patterns[patternIndex];
+    // Shuffle options to randomize correct answer position
+    const { options, correctLabel } = shuffleQuizOptions(
+      pattern.options,
+      pattern.correctLabel
+    );
     return {
       level,
       totalQuestions: Math.max(patterns.length, 1),
       question: pattern.question,
-      options: pattern.options,
-      correctLabel: pattern.correctLabel,
+      options,
+      correctLabel,
       hint: "コードの該当部分をよく見て、その構文の目的を考えてみてください。",
       codeSnippet: pattern.snippet,
       codeLanguage: language,
@@ -439,28 +486,35 @@ export function generateFallbackQuiz(
   const nameMatch = firstMeaningfulLine.match(/(?:function|const|let|var|class)\s+(\w+)/);
   const name = nameMatch?.[1] || "この処理";
 
+  // Shuffle options for generic fallback quiz too
+  const fallbackOptions = [
+    {
+      label: "A",
+      text: "可読性と保守性を重視した設計",
+      explanation: "コードの構造を見て、どのような設計思想があるか考えてみましょう。",
+    },
+    {
+      label: "B",
+      text: "パフォーマンスを最適化するため",
+      explanation: "パフォーマンスも重要ですが、このコードの主な目的は何でしょうか。",
+    },
+    {
+      label: "C",
+      text: "特定の機能要件を満たすため",
+      explanation: "コードが何を達成しようとしているか、入力と出力を考えてみましょう。",
+    },
+  ];
+  const { options: shuffledFallbackOptions, correctLabel: shuffledFallbackLabel } = shuffleQuizOptions(
+    fallbackOptions,
+    "A"
+  );
+
   return {
     level,
     totalQuestions: 1,
     question: `なぜ ${name} はこのような実装になっていますか？`,
-    options: [
-      {
-        label: "A",
-        text: "可読性と保守性を重視した設計",
-        explanation: "コードの構造を見て、どのような設計思想があるか考えてみましょう。",
-      },
-      {
-        label: "B",
-        text: "パフォーマンスを最適化するため",
-        explanation: "パフォーマンスも重要ですが、このコードの主な目的は何でしょうか。",
-      },
-      {
-        label: "C",
-        text: "特定の機能要件を満たすため",
-        explanation: "コードが何を達成しようとしているか、入力と出力を考えてみましょう。",
-      },
-    ],
-    correctLabel: "A", // 汎用的な質問なので、どれでも学習になる
+    options: shuffledFallbackOptions,
+    correctLabel: shuffledFallbackLabel,
     hint: "コードの構造と命名を見て、設計意図を読み取ってみてください。",
     codeSnippet: firstMeaningfulLine,
     codeLanguage: language,
@@ -469,14 +523,21 @@ export function generateFallbackQuiz(
 
 /**
  * Convert StructuredQuiz to UnlockQuiz format
+ * Options are shuffled to randomize correct answer position
  */
 export function structuredQuizToUnlockQuiz(quiz: StructuredQuiz): UnlockQuiz {
+  // Shuffle options to randomize correct answer position
+  const { options, correctLabel } = shuffleQuizOptions(
+    quiz.options,
+    quiz.correctLabel
+  );
+
   return {
     level: quiz.level as UnlockLevel,
     totalQuestions: quiz.totalQuestions,
     question: quiz.question,
-    options: quiz.options,
-    correctLabel: quiz.correctLabel,
+    options,
+    correctLabel,
     hint: quiz.hint,
     codeSnippet: quiz.codeSnippet,
     codeLanguage: quiz.codeLanguage,

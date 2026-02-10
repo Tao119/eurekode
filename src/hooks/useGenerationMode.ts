@@ -52,17 +52,24 @@ export interface Plan {
   estimatedTime?: number;
 }
 
+// クイズ履歴アイテム
+export interface QuizHistoryItem {
+  level: number;
+  question: string;
+  userAnswer: string;
+  isCorrect: boolean;
+  /** 回答時点でのメッセージ数（インライン表示位置の計算用） */
+  answeredAtMessageCount?: number;
+  /** 完了したクイズの全データ（再表示用） */
+  completedQuiz?: UnlockQuiz;
+}
+
 // アーティファクトごとの進行状況
 export interface ArtifactProgress {
   unlockLevel: UnlockLevel;
   totalQuestions: number;
   currentQuiz: UnlockQuiz | null;
-  quizHistory: {
-    level: number;
-    question: string;
-    userAnswer: string;
-    isCorrect: boolean;
-  }[];
+  quizHistory: QuizHistoryItem[];
 }
 
 // 生成モードの状態
@@ -72,12 +79,7 @@ export interface GenerationModeState {
   totalQuestions: number;
   generatedCode: GeneratedCode | null;
   plan: Plan | null;
-  quizHistory: {
-    level: number;
-    question: string;
-    userAnswer: string;
-    isCorrect: boolean;
-  }[];
+  quizHistory: QuizHistoryItem[];
   currentQuiz: UnlockQuiz | null;
   hintVisible: boolean;
   hintTimer: number | null;
@@ -362,18 +364,20 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     }
   }, [currentOptions.hintSpeed]);
 
-  const answerQuiz = useCallback((answer: string): boolean => {
+  const answerQuiz = useCallback((answer: string, messageCount?: number): boolean => {
     if (!state.currentQuiz) return false;
 
     const isCorrect = answer === state.currentQuiz.correctLabel;
     const activeId = state.activeArtifactId;
     const currentProgress = activeId ? state.artifactProgress[activeId] : null;
 
-    const newHistoryItem = {
+    const newHistoryItem: QuizHistoryItem = {
       level: state.currentQuiz.level,
       question: state.currentQuiz.question,
       userAnswer: answer,
       isCorrect,
+      answeredAtMessageCount: messageCount,
+      completedQuiz: isCorrect ? { ...state.currentQuiz } : undefined,
     };
 
     // API同期（非ブロッキング）- 正解時のみ進捗を更新

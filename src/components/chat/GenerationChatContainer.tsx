@@ -433,11 +433,12 @@ export function GenerationChatContainer({
   );
 
   // クイズに回答（メッセージは送信せず、ローカルで処理）
+  // メッセージ数を渡してインライン表示位置を記録
   const handleQuizAnswer = useCallback(
     (answer: string) => {
-      answerQuiz(answer);
+      answerQuiz(answer, messages.length);
     },
-    [answerQuiz]
+    [answerQuiz, messages.length]
   );
 
   // スキップ
@@ -607,6 +608,12 @@ export function GenerationChatContainer({
                     ? { ...message, content: getProcessedContent(message.content, isMessageStreaming) }
                     : message;
 
+                  // このメッセージの後に回答された完了済みクイズを検索
+                  // answeredAtMessageCount は回答時点でのメッセージ数なので、index + 1 と比較
+                  const completedQuizzesAfterThis = activeArtifactProgress.quizHistory.filter(
+                    (item) => item.answeredAtMessageCount === index + 1 && item.isCorrect && item.completedQuiz
+                  );
+
                   return (
                     <div key={message.id || index} id={`msg-${index}`}>
                       <ChatMessage
@@ -620,6 +627,19 @@ export function GenerationChatContainer({
                         mode="generation"
                         conversationId={conversationId}
                       />
+
+                      {/* 完了済みクイズをインライン表示（このメッセージの後に回答されたもの） - 正解時は展開表示 */}
+                      {completedQuizzesAfterThis.map((quizItem, quizIndex) => (
+                        <div key={`completed-quiz-${index}-${quizIndex}`} className="px-4 py-4">
+                          <GenerationQuiz
+                            quiz={quizItem.completedQuiz!}
+                            onAnswer={() => {}}
+                            hintVisible={false}
+                            completedAnswer={quizItem.userAnswer}
+                            defaultCollapsed={false}
+                          />
+                        </div>
+                      ))}
 
                       {/* 簡易計画選択（AIが計画を促した後に表示） */}
                       {message.role === "assistant" &&
@@ -672,7 +692,7 @@ export function GenerationChatContainer({
                   );
                 })}
 
-                {/* クイズ（チャット内に表示） */}
+                {/* クイズ（チャット内に表示、折りたたみ可能） */}
                 {state.currentQuiz ? (
                   <div className="px-4 py-4">
                     <GenerationQuiz
@@ -681,6 +701,7 @@ export function GenerationChatContainer({
                       hintVisible={state.hintVisible}
                       onSkip={canSkip ? handleSkip : undefined}
                       canSkip={canSkip}
+                      isCollapsible={true}
                       onAskAboutQuestion={(question, options) => {
                         const optionsList = options.join("\n");
                         sendMessageWithArtifact(
@@ -748,68 +769,48 @@ export function GenerationChatContainer({
                   )
                 )}
 
-                {/* クイズ完了サマリー（全問正解後に表示） */}
+                {/* クイズ完了通知と振り返り（全問正解後に表示） */}
                 {state.phase === "unlocked" && activeArtifactProgress.quizHistory.length > 0 && (
-                  <div className="px-4 py-4">
-                    <div className="rounded-xl border border-green-500/30 bg-gradient-to-b from-green-500/5 to-emerald-500/5 overflow-hidden">
-                      {/* ヘッダー */}
-                      <div className="px-4 py-3 bg-green-500/10 border-b border-green-500/20">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-green-400 text-xl">verified</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-green-400">クイズ完了！</p>
-                            <p className="text-xs text-muted-foreground">
-                              {activeArtifactProgress.quizHistory.length}問全て正解しました
-                            </p>
-                          </div>
-                          <div className="ml-auto flex items-center gap-1 text-green-400">
-                            <span className="material-symbols-outlined text-base">lock_open</span>
-                            <span className="text-sm font-medium">アンロック済み</span>
-                          </div>
+                  <div className="px-4 py-4 space-y-4">
+                    {/* 完了通知ヘッダー */}
+                    <div className="rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="size-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-green-400 text-2xl">emoji_events</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-lg text-green-400">
+                            クイズ完了！
+                          </p>
+                          <p className="text-sm text-foreground/80">
+                            {activeArtifactProgress.quizHistory.length}問全て正解しました。コードをコピーできます。
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 text-green-400 bg-green-500/20 px-3 py-1.5 rounded-full">
+                          <span className="material-symbols-outlined text-lg">lock_open</span>
+                          <span className="text-sm font-medium">アンロック</span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* 振り返り */}
-                      <div className="p-4 space-y-3">
-                        <p className="text-sm font-medium text-foreground/80 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-base text-blue-400">history_edu</span>
-                          学習の振り返り
-                        </p>
-                        <div className="space-y-2">
-                          {activeArtifactProgress.quizHistory.map((item, index) => (
-                            <div
-                              key={index}
-                              className="p-3 rounded-lg bg-card/50 border border-border/50"
-                            >
-                              <div className="flex items-start gap-2">
-                                <span className="material-symbols-outlined text-green-400 text-base mt-0.5">
-                                  check_circle
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground/90 mb-1">
-                                    Q{index + 1}. {item.question}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    回答: <span className="text-green-400 font-medium">{item.userAnswer}</span>
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* コードがコピー可能になったことを強調 */}
-                        <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="material-symbols-outlined text-yellow-400 text-base">content_copy</span>
-                            <span className="text-yellow-400 font-medium">
-                              コードをコピーできるようになりました
-                            </span>
-                          </div>
-                        </div>
+                    {/* 全問題の振り返り（フルビュー） */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground/70">
+                        <span className="material-symbols-outlined text-base">school</span>
+                        <span>クイズ振り返り</span>
                       </div>
+                      {activeArtifactProgress.quizHistory.map((quizItem, quizIndex) => (
+                        quizItem.completedQuiz && (
+                          <GenerationQuiz
+                            key={`summary-quiz-${quizIndex}`}
+                            quiz={quizItem.completedQuiz}
+                            onAnswer={() => {}}
+                            hintVisible={false}
+                            completedAnswer={quizItem.userAnswer}
+                            defaultCollapsed={false}
+                          />
+                        )
+                      ))}
                     </div>
                   </div>
                 )}

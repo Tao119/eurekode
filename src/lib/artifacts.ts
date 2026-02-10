@@ -1,5 +1,10 @@
 import type { Artifact } from "@/types/chat";
 
+// Extended Artifact type with truncation info
+export interface ParsedArtifact extends Artifact {
+  isTruncated?: boolean;
+}
+
 /**
  * Parse artifacts from AI response content
  * Format: <!--ARTIFACT:{"id":"main","type":"code","title":"main.ts","language":"typescript"}-->
@@ -7,16 +12,20 @@ import type { Artifact } from "@/types/chat";
  * // code
  * ```
  * <!--/ARTIFACT-->
+ *
+ * Also handles truncated artifacts (missing closing tag)
  */
 export function parseArtifacts(content: string): {
-  artifacts: Artifact[];
+  artifacts: ParsedArtifact[];
   contentWithoutArtifacts: string;
+  hasTruncatedArtifact: boolean;
 } {
   // More flexible regex that handles various whitespace/newline variations
   const artifactRegex =
     /<!--ARTIFACT:\s*([\s\S]*?)\s*-->\s*```(\w+)?\r?\n([\s\S]*?)```\s*<!--\/ARTIFACT-->/g;
-  const artifacts: Artifact[] = [];
+  const artifacts: ParsedArtifact[] = [];
   const now = new Date().toISOString();
+  let hasTruncatedArtifact = false;
 
   // Track IDs to ensure uniqueness within this parse
   const usedIds = new Set<string>();
@@ -66,7 +75,82 @@ export function parseArtifacts(content: string): {
     }
   );
 
-  return { artifacts, contentWithoutArtifacts };
+  // Check for truncated artifacts (has opening tag but no closing tag)
+  const truncatedArtifact = parseTruncatedArtifact(contentWithoutArtifacts);
+  if (truncatedArtifact) {
+    artifacts.push(truncatedArtifact);
+    hasTruncatedArtifact = true;
+    // Remove the truncated artifact from content
+    const truncatedRegex = /<!--ARTIFACT:\s*[\s\S]*?-->\s*```(\w+)?\r?\n[\s\S]*$/;
+    const cleanedContent = contentWithoutArtifacts.replace(
+      truncatedRegex,
+      "\n> ⚠️ **コードが途中で切れています** - 「続きを生成」をクリックしてください\n"
+    );
+    return { artifacts, contentWithoutArtifacts: cleanedContent, hasTruncatedArtifact };
+  }
+
+  return { artifacts, contentWithoutArtifacts, hasTruncatedArtifact };
+}
+
+/**
+ * Parse a truncated artifact (missing closing tag)
+ * Returns the partial artifact if found, null otherwise
+ */
+function parseTruncatedArtifact(content: string): ParsedArtifact | null {
+  // Check if there's an unclosed artifact
+  const openTagMatch = content.match(/<!--ARTIFACT:\s*([\s\S]*?)\s*-->\s*```(\w+)?\r?\n([\s\S]*)$/);
+  if (!openTagMatch) return null;
+
+  // Make sure there's no closing tag after this
+  const afterOpen = openTagMatch[0];
+  if (afterOpen.includes("<!--/ARTIFACT-->")) return null;
+
+  try {
+    const metaJson = openTagMatch[1].trim().replace(/\n/g, "");
+    const meta = JSON.parse(metaJson) as {
+      id: string;
+      type?: "code" | "component" | "config";
+      title: string;
+      language?: string;
+    };
+    const language = openTagMatch[2] || meta.language || "text";
+    let code = openTagMatch[3] || "";
+
+    // Remove incomplete closing backticks if any
+    code = code.replace(/`{0,2}$/, "").trim();
+
+    const now = new Date().toISOString();
+    return {
+      id: `${meta.id}-${meta.title}-truncated`,
+      type: meta.type || "code",
+      title: `${meta.title} (途中)`,
+      content: code,
+      language,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+      isTruncated: true,
+    };
+  } catch (e) {
+    console.error("Failed to parse truncated artifact:", e);
+    return null;
+  }
+}
+
+/**
+ * Check if content likely has a truncated artifact or code block
+ */
+export function hasIncompleteContent(content: string): boolean {
+  // Check for unclosed artifact
+  const artifactOpens = (content.match(/<!--ARTIFACT:/g) || []).length;
+  const artifactCloses = (content.match(/<!--\/ARTIFACT-->/g) || []).length;
+  if (artifactOpens > artifactCloses) return true;
+
+  // Check for unclosed code block (odd number of triple backticks)
+  const backtickMatches = content.match(/```/g) || [];
+  if (backtickMatches.length % 2 !== 0) return true;
+
+  return false;
 }
 
 /**
