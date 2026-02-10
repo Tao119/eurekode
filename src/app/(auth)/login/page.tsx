@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 
 const loginSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
@@ -77,11 +78,18 @@ function LoginForm() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(
-    error === "CredentialsSignin"
-      ? "メールアドレスまたはパスワードが正しくありません"
-      : null
-  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
+    if (error === "CredentialsSignin") {
+      return "メールアドレスまたはパスワードが正しくありません";
+    }
+    if (error === "OAuthAccountNotLinked") {
+      return "このメールアドレスは別の方法で登録されています。元の方法でログインしてください。";
+    }
+    if (error === "OAuthSignin" || error === "OAuthCallback") {
+      return "Google認証に失敗しました。もう一度お試しください。";
+    }
+    return null;
+  });
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
@@ -285,6 +293,8 @@ function LoginForm() {
                 </span>
               </div>
             </div>
+
+            <GoogleLoginButton callbackUrl={callbackUrl} mode="login" />
 
             <div className="flex flex-col gap-2 w-full text-sm text-center">
               <p className="text-muted-foreground">

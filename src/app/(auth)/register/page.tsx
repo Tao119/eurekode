@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   INDIVIDUAL_PLANS,
@@ -509,6 +510,23 @@ function RegisterForm() {
                 "アカウントを作成"
               )}
             </Button>
+
+            {userType === "individual" && (
+              <>
+                <div className="relative w-full">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">
+                      または
+                    </span>
+                  </div>
+                </div>
+
+                <GoogleLoginButton callbackUrl="/home" mode="register" />
+              </>
+            )}
 
             <div className="flex flex-col gap-2 text-sm text-center">
               <p className="text-muted-foreground">
