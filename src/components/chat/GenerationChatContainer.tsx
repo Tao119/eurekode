@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ChatModeSelector } from "./ChatModeSelector";
@@ -98,6 +99,7 @@ export function GenerationChatContainer({
   conversationId,
   initialGenerationState,
 }: GenerationChatContainerProps) {
+  const router = useRouter();
   const { containerRef, endRef } = useAutoScroll(messages);
   const [showBranchSelector, setShowBranchSelector] = useState(false);
   const [isCodePanelCollapsed, setIsCodePanelCollapsed] = useState(false);
@@ -444,6 +446,22 @@ export function GenerationChatContainer({
     sendMessageWithArtifact("アンロックをスキップしました。");
   }, [skipToUnlock, sendMessageWithArtifact]);
 
+  // 解説モードでコードを解説
+  const handleExplainCode = useCallback(() => {
+    if (!activeArtifact) return;
+
+    // セッションストレージに解説リクエストを保存
+    const explainRequest = {
+      code: activeArtifact.content,
+      language: activeArtifact.language || "text",
+      title: activeArtifact.title,
+    };
+    sessionStorage.setItem("explain-code-request", JSON.stringify(explainRequest));
+
+    // 解説モードに遷移
+    router.push("/chat/explanation");
+  }, [activeArtifact, router]);
+
   // チャットメッセージを処理（アーティファクトのみ置換、通常コードブロックはそのまま）
   // ストリーミング中は不完全なタグを隠す
   const getProcessedContent = useCallback((content: string, isStreaming: boolean = false) => {
@@ -663,6 +681,12 @@ export function GenerationChatContainer({
                       hintVisible={state.hintVisible}
                       onSkip={canSkip ? handleSkip : undefined}
                       canSkip={canSkip}
+                      onAskAboutQuestion={(question, options) => {
+                        const optionsList = options.join("\n");
+                        sendMessageWithArtifact(
+                          `このクイズについて教えてください：\n\n質問: ${question}\n\n選択肢:\n${optionsList}\n\n正解を教えずに、この問題を解くためのヒントや考え方を教えてください。`
+                        );
+                      }}
                     />
                   </div>
                 ) : (
@@ -839,6 +863,7 @@ export function GenerationChatContainer({
             state={state}
             activeArtifactProgress={activeArtifactProgress}
             setActiveArtifact={setActiveArtifact}
+            onExplainCode={handleExplainCode}
           />
         )}
 
@@ -959,6 +984,8 @@ export function GenerationChatContainer({
                   totalQuestions={activeArtifactProgress.totalQuestions}
                   progressPercentage={activeArtifactProgress.progressPercentage}
                   canCopy={activeArtifactProgress.canCopy}
+                  showExplainButton={true}
+                  onExplainCode={handleExplainCode}
                 />
               )}
             </div>
@@ -1147,6 +1174,7 @@ function MobileCodeSheet({
   state,
   activeArtifactProgress,
   setActiveArtifact,
+  onExplainCode,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -1166,6 +1194,7 @@ function MobileCodeSheet({
     isUnlocked: boolean;
   };
   setActiveArtifact: (id: string) => void;
+  onExplainCode: () => void;
 }) {
   if (!isOpen) return null;
 
@@ -1272,6 +1301,8 @@ function MobileCodeSheet({
               totalQuestions={activeArtifactProgress.totalQuestions}
               progressPercentage={activeArtifactProgress.progressPercentage}
               canCopy={activeArtifactProgress.canCopy}
+              showExplainButton={true}
+              onExplainCode={onExplainCode}
             />
           )}
         </div>

@@ -16,6 +16,8 @@ interface BlurredCodeProps {
   totalQuestions: number; // 0 の場合は即アンロック
   progressPercentage: number;
   canCopy?: boolean;
+  showExplainButton?: boolean;
+  onExplainCode?: () => void;
 }
 
 // 行の重要度を分類
@@ -122,6 +124,8 @@ export function BlurredCode({
   totalQuestions,
   progressPercentage,
   canCopy = false,
+  showExplainButton = false,
+  onExplainCode,
 }: BlurredCodeProps) {
   const [copied, setCopied] = useState(false);
 
@@ -307,12 +311,40 @@ export function BlurredCode({
       {/* フッター（アンロック完了時） */}
       {canCopy && (
         <div className="px-4 py-3 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-t border-border">
-          <div className="flex items-center gap-2 text-green-400">
-            <span className="material-symbols-outlined">verified</span>
-            <span className="text-sm font-medium">
-              コードを完全に理解しました
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-green-400">
+              <span className="material-symbols-outlined">verified</span>
+              <span className="text-sm font-medium">
+                コードを完全に理解しました
+              </span>
+            </div>
+            {showExplainButton && onExplainCode && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExplainCode}
+                className="h-8 px-3 text-xs border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+              >
+                <span className="material-symbols-outlined text-sm mr-1.5">school</span>
+                解説モードで詳しく聞く
+              </Button>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* 解説モードへのリンク（アンロック前でも表示） */}
+      {showExplainButton && onExplainCode && !canCopy && (
+        <div className="px-4 py-3 border-t border-border bg-[#252526]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onExplainCode}
+            className="w-full h-9 text-sm border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+          >
+            <span className="material-symbols-outlined text-base mr-2">school</span>
+            このコードを解説モードで解説を聞く
+          </Button>
         </div>
       )}
     </div>

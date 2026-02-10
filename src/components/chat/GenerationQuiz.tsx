@@ -12,6 +12,8 @@ interface GenerationQuizProps {
   hintVisible: boolean;
   onSkip?: () => void;
   canSkip?: boolean;
+  /** この問題について質問するコールバック */
+  onAskAboutQuestion?: (question: string, options: string[]) => void;
 }
 
 export function GenerationQuiz({
@@ -20,6 +22,7 @@ export function GenerationQuiz({
   hintVisible,
   onSkip,
   canSkip = false,
+  onAskAboutQuestion,
 }: GenerationQuizProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -327,31 +330,48 @@ export function GenerationQuiz({
         )}
 
         {/* アクションボタン */}
-        <div className="mt-4 flex items-center gap-3">
-          {showResult && (
-            <Button
-              onClick={handleNext}
-              className={cn(
-                "flex-1",
-                isCorrect
-                  ? "bg-green-600 hover:bg-green-700 text-white"
-                  : "bg-yellow-600 hover:bg-yellow-700 text-white"
-              )}
-            >
-              <span className="material-symbols-outlined text-lg mr-2">
-                {isCorrect ? "arrow_forward" : "refresh"}
-              </span>
-              {isCorrect ? "次のレベルへ" : "もう一度挑戦"}
-            </Button>
-          )}
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            {showResult && (
+              <Button
+                onClick={handleNext}
+                className={cn(
+                  "flex-1",
+                  isCorrect
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-yellow-600 hover:bg-yellow-700 text-white"
+                )}
+              >
+                <span className="material-symbols-outlined text-lg mr-2">
+                  {isCorrect ? "arrow_forward" : "refresh"}
+                </span>
+                {isCorrect ? "次のレベルへ" : "もう一度挑戦"}
+              </Button>
+            )}
 
-          {canSkip && !showResult && (
+            {canSkip && !showResult && (
+              <Button
+                onClick={onSkip}
+                variant="ghost"
+                className="text-muted-foreground"
+              >
+                スキップ
+              </Button>
+            )}
+          </div>
+
+          {/* この問題について質問するボタン（回答前のみ表示） */}
+          {!showResult && onAskAboutQuestion && (
             <Button
-              onClick={onSkip}
-              variant="ghost"
-              className="text-muted-foreground"
+              onClick={() => {
+                const optionsText = quiz.options.map(o => `${o.label}) ${o.text}`).join("\n");
+                onAskAboutQuestion(quiz.question, quiz.options.map(o => `${o.label}) ${o.text}`));
+              }}
+              variant="outline"
+              className="w-full border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
             >
-              スキップ
+              <span className="material-symbols-outlined text-lg mr-2">help</span>
+              この問題について質問する
             </Button>
           )}
         </div>

@@ -109,6 +109,40 @@ export default function ExplanationModePage() {
     }
   }, [generationRecovery, clearGenerationRecovery]);
 
+  // Auto-send code from generation mode
+  const autoSendRef = useRef(false);
+  useEffect(() => {
+    // Only run once and only if no messages yet
+    if (autoSendRef.current || messages.length > 0 || isLoading) return;
+
+    const stored = sessionStorage.getItem("explain-code-request");
+    if (!stored) return;
+
+    try {
+      const request = JSON.parse(stored) as {
+        code: string;
+        language: string;
+        title?: string;
+      };
+
+      // Clear storage immediately to prevent re-processing
+      sessionStorage.removeItem("explain-code-request");
+      autoSendRef.current = true;
+
+      // Format and send the code with explanation request
+      const titlePart = request.title ? `（${request.title}）` : "";
+      const message = `以下のコード${titlePart}を解説してください：\n\n\`\`\`${request.language}\n${request.code}\n\`\`\``;
+
+      // Use setTimeout to ensure component is fully mounted
+      setTimeout(() => {
+        sendMessage(message);
+      }, 100);
+    } catch (e) {
+      console.error("Failed to parse explain-code-request:", e);
+      sessionStorage.removeItem("explain-code-request");
+    }
+  }, [messages.length, isLoading, sendMessage]);
+
   return (
     <ExplanationChatContainer
       messages={messages}
