@@ -628,7 +628,8 @@ export function GenerationChatContainer({
                         conversationId={conversationId}
                       />
 
-                      {/* 完了済みクイズをインライン表示（このメッセージの後に回答されたもの） - 正解時は展開表示 */}
+                      {/* 完了済みクイズをインライン表示（このメッセージの後に回答されたもの） */}
+                      {/* 最後のサマリーでフル表示するため、ここでは折りたたみ */}
                       {completedQuizzesAfterThis.map((quizItem, quizIndex) => (
                         <div key={`completed-quiz-${index}-${quizIndex}`} className="px-4 py-4">
                           <GenerationQuiz
@@ -636,7 +637,7 @@ export function GenerationChatContainer({
                             onAnswer={() => {}}
                             hintVisible={false}
                             completedAnswer={quizItem.userAnswer}
-                            defaultCollapsed={false}
+                            defaultCollapsed={true}
                           />
                         </div>
                       ))}
