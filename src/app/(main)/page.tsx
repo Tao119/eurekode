@@ -17,14 +17,14 @@ export default function LandingPage() {
           <div className="text-center">
             {/* Main Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
-              「わからない」が、
+              わからないが、
               <br />
               <span className="text-sky-400">わかる</span>に変わる瞬間。
             </h1>
 
             {/* Subheadline */}
             <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              あなたが<span className="font-medium text-foreground">「自分で解けた！」</span>と思える体験を、AIがつくる。
+              自分で解けたと思える体験を、AIがつくる。
               <br className="hidden sm:block" />
               <span className="text-muted-foreground/80">答えではなく、考える力を。</span>
             </p>
@@ -90,7 +90,7 @@ export default function LandingPage() {
                   <span className="text-xs text-muted-foreground/60">↓ コピペ ↓</span>
                 </div>
                 <div className="text-center text-sm text-muted-foreground italic">
-                  動いた！...でも、なんで動くの？
+                  動いた。でも、なんで動くのかわからない。
                 </div>
               </CardContent>
             </Card>
@@ -136,7 +136,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div className="text-center text-sm text-sky-400 font-medium bg-sky-500/10 py-2 rounded-lg">
-                  💡 自分で気づけた！→ 次は書ける！
+                  💡 自分で気づけた。次は書ける。
                 </div>
               </CardContent>
             </Card>
@@ -153,11 +153,11 @@ export default function LandingPage() {
               初心者におすすめ
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-              まずは「解説モード」から
+              まずは解説モードから
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
               わからないコードを貼り付けるだけ。
-              AIが一緒に読み解きながら、あなたの理解をサポートします。
+              AIが一緒に読み解きながら、理解をサポートする。
             </p>
           </div>
 
@@ -180,13 +180,12 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-sky-400 mt-0.5">check_circle</span>
-                  <span className="text-foreground">AIが「ここは何をしてると思う？」と問いかけてくれる</span>
+                  <span className="text-foreground">AIがここは何をしてると思う？と問いかけてくれる</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-sky-400 mt-0.5">check_circle</span>
                   <span className="text-foreground">
-                    理解できたことは「気づきカード」として自動で記録
-                    <span className="text-muted-foreground text-xs ml-1">（後から振り返れる）</span>
+                    理解できたことは気づきカードとして自動で記録される。後から振り返れる。
                   </span>
                 </li>
               </ul>
@@ -265,11 +264,11 @@ export default function LandingPage() {
               <div className="size-12 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center mx-auto mb-4 font-bold text-lg">
                 3
               </div>
-              <h3 className="font-bold text-foreground mb-2">「わかった！」が積み上がる</h3>
+              <h3 className="font-bold text-foreground mb-2">わかったが積み上がる</h3>
               <p className="text-sm text-muted-foreground">
                 気づきが記録され、
                 <br />
-                あなたの成長が見える。
+                成長が見える。
               </p>
             </div>
           </div>
@@ -301,9 +300,9 @@ export default function LandingPage() {
                 <div className="size-12 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4">
                   <span className="material-symbols-outlined text-2xl text-amber-400">content_copy</span>
                 </div>
-                <h3 className="font-bold text-foreground mb-2">コピペ脱却したい人</h3>
+                <h3 className="font-bold text-foreground mb-2">コピペを脱却したい人</h3>
                 <p className="text-sm text-muted-foreground">
-                  AIでコードは書けるけど、自分では何もできない気がする。
+                  AIでコードは書ける。でも自分では何もできない気がする。
                 </p>
               </CardContent>
             </Card>
@@ -345,12 +344,12 @@ export default function LandingPage() {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1" className="border-border">
               <AccordionTrigger className="text-left text-foreground hover:no-underline">
-                プログラミング完全初心者でも大丈夫？
+                プログラミング完全初心者でも使える？
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                はい、むしろ初心者にこそおすすめです。
-                Eurecodeは「forループって何？」「変数ってどう使うの？」というレベルから対応しています。
-                コピペの癖がつく前に、正しい学習習慣を身につけられます。
+                初心者にこそおすすめ。
+                Eurecodeはforループって何？　変数ってどう使うの？　というレベルから対応している。
+                コピペの癖がつく前に、正しい学習習慣を身につけられる。
               </AccordionContent>
             </AccordionItem>
 
@@ -359,9 +358,9 @@ export default function LandingPage() {
                 ChatGPTやCopilotとの違いは？
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                一般的なAIは「答え」を渡します。Eurecodeは「考え方」を渡します。
+                一般的なAIは答えを渡す。Eurecodeは考え方を渡す。
                 すぐに答えを教えるのではなく、質問を投げかけ、ヒントを与えながら、
-                あなた自身が答えにたどり着けるようサポートします。
+                自分で答えにたどり着けるようサポートする。
               </AccordionContent>
             </AccordionItem>
 
@@ -370,9 +369,9 @@ export default function LandingPage() {
                 無料トライアル後は自動課金される？
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                いいえ。クレジットカードの登録は不要です。
-                14日間の無料期間終了後も、機能制限付きの無料プランで継続利用できます。
-                有料プランへのアップグレードは任意です。
+                されない。クレジットカードの登録は不要。
+                14日間の無料期間終了後も、機能制限付きの無料プランで継続利用できる。
+                有料プランへのアップグレードは任意。
               </AccordionContent>
             </AccordionItem>
 
@@ -381,19 +380,19 @@ export default function LandingPage() {
                 どんなプログラミング言語に対応している？
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                JavaScript、Python、Java、C、HTML/CSSなど、主要なプログラミング言語に対応しています。
-                初心者の方は、まずHTML/CSSやJavaScriptから始めることをおすすめします。
+                JavaScript、Python、Java、C、HTML/CSSなど主要な言語に対応している。
+                初心者はHTML/CSSやJavaScriptから始めるのがおすすめ。
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="item-5" className="border-border">
               <AccordionTrigger className="text-left text-foreground hover:no-underline">
-                チームや企業で導入できますか？
+                チームや企業で導入できる？
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                はい。BusinessプランとEnterpriseプランでは、
-                アクセスキーによるメンバー管理、利用状況の分析、専用サポートを提供しています。
-                詳しくは料金プランをご覧ください。
+                できる。BusinessプランとEnterpriseプランでは、
+                アクセスキーによるメンバー管理、利用状況の分析、専用サポートを提供している。
+                詳しくは料金プランを参照。
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -406,7 +405,7 @@ export default function LandingPage() {
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
             14日間無料。
             <br />
-            あなたの「わかった！」を体験しよう。
+            わかったを体験しよう。
           </h2>
           <p className="mt-4 text-muted-foreground">
             クレジットカード不要。無料プランはずっと使えます。

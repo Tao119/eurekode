@@ -39,7 +39,7 @@ export default function BrainstormFeaturePage() {
 
               <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
                 設計の悩み、アーキテクチャの選択、新機能のアイデア出し。
-                AIを「壁打ち相手」として、思考を整理し、より良い答えにたどり着けます。
+                AIを壁打ち相手として、思考を整理し、より良い答えにたどり着ける。
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
@@ -207,9 +207,9 @@ export default function BrainstormFeaturePage() {
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 壁打ちモードでは、AIが質問を投げかけながら、
-                あなたの考えを引き出し、整理します。
+                考えを引き出し、整理する。
                 一人で悩んでいては気づかなかった視点や、
-                見落としていた選択肢が見つかることも。
+                見落としていた選択肢が見つかることもある。
               </p>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
@@ -246,7 +246,7 @@ export default function BrainstormFeaturePage() {
               </div>
               <h3 className="font-bold text-foreground mb-2">設計相談</h3>
               <p className="text-sm text-muted-foreground">
-                アーキテクチャや技術選定について、AIと議論しながら検討
+                アーキテクチャや技術選定について、AIと議論しながら検討できる
               </p>
             </div>
 
@@ -256,7 +256,7 @@ export default function BrainstormFeaturePage() {
               </div>
               <h3 className="font-bold text-foreground mb-2">思考の整理</h3>
               <p className="text-sm text-muted-foreground">
-                モヤモヤしたアイデアを、対話を通じて具体化
+                モヤモヤしたアイデアを、対話を通じて具体化できる
               </p>
             </div>
 
@@ -266,7 +266,7 @@ export default function BrainstormFeaturePage() {
               </div>
               <h3 className="font-bold text-foreground mb-2">選択肢の比較</h3>
               <p className="text-sm text-muted-foreground">
-                複数の方法のメリット・デメリットを整理して比較
+                複数の方法の長所と短所を整理して比較できる
               </p>
             </div>
           </div>
@@ -293,7 +293,7 @@ export default function BrainstormFeaturePage() {
                     <h3 className="font-bold text-foreground mb-2">新しいプロジェクトを始める時</h3>
                     <p className="text-sm text-muted-foreground">
                       技術スタック、ディレクトリ構成、アーキテクチャなど、
-                      最初の設計方針を一緒に考えられます。
+                      最初の設計方針を一緒に考えられる。
                     </p>
                   </div>
                 </div>
@@ -309,8 +309,8 @@ export default function BrainstormFeaturePage() {
                   <div>
                     <h3 className="font-bold text-foreground mb-2">リファクタリングを検討する時</h3>
                     <p className="text-sm text-muted-foreground">
-                      「この設計、本当に正しい？」という不安を、
-                      対話を通じて確認し、より良い方向性を見つけます。
+                      この設計、本当に正しい？　という不安を、
+                      対話を通じて確認し、より良い方向性を見つけられる。
                     </p>
                   </div>
                 </div>
@@ -327,7 +327,7 @@ export default function BrainstormFeaturePage() {
                     <h3 className="font-bold text-foreground mb-2">技術選定で迷った時</h3>
                     <p className="text-sm text-muted-foreground">
                       ライブラリやフレームワークの選択で悩んだら、
-                      要件を整理しながら最適な選択を探れます。
+                      要件を整理しながら最適な選択を探れる。
                     </p>
                   </div>
                 </div>
@@ -344,7 +344,7 @@ export default function BrainstormFeaturePage() {
                     <h3 className="font-bold text-foreground mb-2">チームへの提案前に</h3>
                     <p className="text-sm text-muted-foreground">
                       チームに提案する前に、AIと壁打ちして
-                      論点を整理し、説得力のある提案を作れます。
+                      論点を整理し、説得力のある提案を作れる。
                     </p>
                   </div>
                 </div>
@@ -426,7 +426,7 @@ export default function BrainstormFeaturePage() {
             一人で悩まず、AIと一緒に考えよう
           </h2>
           <p className="mt-6 text-lg text-muted-foreground">
-            14日間無料で、壁打ちモードを体験できます。
+            14日間無料で、壁打ちモードを体験できる。
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="bg-violet-500 hover:bg-violet-600 text-base px-10 h-14" asChild>

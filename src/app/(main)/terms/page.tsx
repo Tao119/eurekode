@@ -18,16 +18,16 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">第1条（適用）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本規約は、Eurecode（以下「本サービス」）の利用に関する条件を定めるものです。
-            ユーザーは本規約に同意した上で本サービスを利用するものとします。
+            この規約は、Eurecodeの利用に関する条件を定めるものである。
+            ユーザーはこの規約に同意した上でサービスを利用するものとする。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">第2条（利用登録）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本サービスの利用を希望する方は、本規約に同意の上、所定の方法により利用登録を行うものとします。
-            利用登録の申請者に以下の事由があると判断した場合、登録を拒否することがあります。
+            サービスの利用を希望する方は、この規約に同意の上、所定の方法により利用登録を行うものとする。
+            利用登録の申請者に以下の事由があると判断した場合、登録を拒否することがある。
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
             <li>虚偽の事項を届け出た場合</li>
@@ -39,7 +39,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">第3条（禁止事項）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            ユーザーは、本サービスの利用にあたり、以下の行為をしてはなりません。
+            ユーザーは、サービスの利用にあたり、以下の行為をしてはならない。
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
             <li>法令または公序良俗に違反する行為</li>
@@ -56,8 +56,8 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">第4条（本サービスの提供の停止等）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            当社は、以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく
-            本サービスの全部または一部の提供を停止または中断することができるものとします。
+            以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく
+            サービスの全部または一部の提供を停止または中断することができるものとする。
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
             <li>本サービスにかかるコンピュータシステムの保守点検または更新を行う場合</li>
@@ -70,34 +70,34 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">第5条（知的財産権）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本サービスにおいて提供されるコンテンツ（テキスト、画像、動画、プログラム等）に関する
-            知的財産権は、当社または正当な権利を有する第三者に帰属します。
-            ユーザーは、これらを当社の許可なく複製、転載、改変、販売等することはできません。
+            サービスにおいて提供されるコンテンツの知的財産権は、
+            当社または正当な権利を有する第三者に帰属する。
+            ユーザーは、これらを当社の許可なく複製、転載、改変、販売等することはできない。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">第6条（免責事項）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            当社は、本サービスに関して、ユーザーと他のユーザーまたは第三者との間において生じた
-            取引、連絡または紛争等について一切責任を負いません。
-            本サービスで提供される情報の正確性、完全性、有用性等について保証するものではありません。
+            サービスに関して、ユーザーと他のユーザーまたは第三者との間において生じた
+            取引、連絡または紛争等について一切責任を負わない。
+            サービスで提供される情報の正確性、完全性、有用性等について保証するものではない。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">第7条（規約の変更）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            当社は、必要と判断した場合には、ユーザーに通知することなくいつでも本規約を変更することができるものとします。
-            変更後の利用規約は、当社ウェブサイトに掲載したときから効力を生じるものとします。
+            必要と判断した場合には、ユーザーに通知することなくいつでもこの規約を変更することができるものとする。
+            変更後の利用規約は、ウェブサイトに掲載したときから効力を生じるものとする。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">第8条（準拠法・裁判管轄）</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本規約の解釈にあたっては、日本法を準拠法とします。
-            本サービスに関して紛争が生じた場合には、当社の本店所在地を管轄する裁判所を専属的合意管轄とします。
+            この規約の解釈にあたっては、日本法を準拠法とする。
+            サービスに関して紛争が生じた場合には、当社の本店所在地を管轄する裁判所を専属的合意管轄とする。
           </p>
         </section>
 

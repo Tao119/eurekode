@@ -38,8 +38,8 @@ export default function GenerationFeaturePage() {
               </h1>
 
               <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-                実装したいことを自然な言葉で伝えるだけで、AIがコードを生成。
-                さらに、理解度クイズに答えることで、生成されたコードを「自分のもの」にできます。
+                実装したいことを自然な言葉で伝えるだけで、AIがコードを生成する。
+                さらに、理解度クイズに答えることで、生成されたコードを自分のものにできる。
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
@@ -149,9 +149,9 @@ const validateEmail = (value) => {
                 理解度クイズで定着。
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                AIがコードを生成した後、そのコードに関するクイズが出題されます。
-                「なぜこう書くのか」「他の書き方はないか」を考えることで、
-                単なるコピペではなく、本当に理解したコードになります。
+                AIがコードを生成した後、そのコードに関するクイズが出題される。
+                なぜこう書くのか、他の書き方はないか、を考えることで、
+                単なるコピペではなく、本当に理解したコードになる。
               </p>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
@@ -238,7 +238,7 @@ const validateEmail = (value) => {
               </div>
               <h3 className="font-bold text-foreground mb-2">自然言語で指示</h3>
               <p className="text-sm text-muted-foreground">
-                「ボタンをクリックしたら〜」のように、日本語でやりたいことを伝えるだけ
+                ボタンをクリックしたら、のように日本語でやりたいことを伝えるだけ
               </p>
             </div>
 
@@ -248,7 +248,7 @@ const validateEmail = (value) => {
               </div>
               <h3 className="font-bold text-foreground mb-2">コード生成</h3>
               <p className="text-sm text-muted-foreground">
-                要件に合ったコードをAIが生成。コメント付きで分かりやすく
+                要件に合ったコードをAIが生成する。コメント付きでわかりやすい
               </p>
             </div>
 
@@ -258,7 +258,7 @@ const validateEmail = (value) => {
               </div>
               <h3 className="font-bold text-foreground mb-2">理解度クイズ</h3>
               <p className="text-sm text-muted-foreground">
-                生成されたコードについてクイズを出題。コピペで終わらせない
+                生成されたコードについてクイズを出題する。コピペで終わらせない
               </p>
             </div>
           </div>
@@ -273,7 +273,7 @@ const validateEmail = (value) => {
               使い方
             </h2>
             <p className="mt-4 text-muted-foreground">
-              4ステップで、生成されたコードを自分のものに
+              4ステップで、生成されたコードを自分のものにできる
             </p>
           </div>
 
@@ -286,7 +286,7 @@ const validateEmail = (value) => {
                 やりたいことを書く
               </h3>
               <p className="text-sm text-muted-foreground text-center">
-                「〜したい」「〜を実装したい」など、自然な言葉で入力
+                〜したい、〜を実装したいなど、自然な言葉で入力
               </p>
               <div className="hidden lg:block absolute top-6 left-full w-full h-0.5 bg-amber-500/30" />
             </div>
@@ -352,7 +352,7 @@ const validateEmail = (value) => {
                     <h3 className="font-bold text-foreground mb-2">よくあるパターンを素早く</h3>
                     <p className="text-sm text-muted-foreground">
                       フォームバリデーション、API呼び出し、状態管理など、
-                      定番のパターンをサッと生成できます。
+                      定番のパターンをサッと生成できる。
                     </p>
                   </div>
                 </div>
@@ -366,10 +366,10 @@ const validateEmail = (value) => {
                     <span className="material-symbols-outlined">lightbulb</span>
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-bold text-foreground mb-2">書き方が分からない時</h3>
+                    <h3 className="font-bold text-foreground mb-2">書き方がわからない時</h3>
                     <p className="text-sm text-muted-foreground">
-                      やりたいことは分かるけど、どう書けばいいか分からない。
-                      そんな時に最適なコードを提案します。
+                      やりたいことはわかるけど、どう書けばいいかわからない。
+                      そんな時に最適なコードを提案する。
                     </p>
                   </div>
                 </div>
@@ -386,7 +386,7 @@ const validateEmail = (value) => {
                     <h3 className="font-bold text-foreground mb-2">新しい技術を学ぶ時</h3>
                     <p className="text-sm text-muted-foreground">
                       初めて使うライブラリやフレームワークでも、
-                      まずはコードを生成して動きを理解できます。
+                      まずはコードを生成して動きを理解できる。
                     </p>
                   </div>
                 </div>
@@ -403,7 +403,7 @@ const validateEmail = (value) => {
                     <h3 className="font-bold text-foreground mb-2">プロトタイピング</h3>
                     <p className="text-sm text-muted-foreground">
                       まずは動くものを作りたい時に。
-                      クイズで理解を深めながら、実装を進められます。
+                      クイズで理解を深めながら、実装を進められる。
                     </p>
                   </div>
                 </div>
@@ -424,7 +424,7 @@ const validateEmail = (value) => {
             生成して、理解して、使いこなす
           </h2>
           <p className="mt-6 text-lg text-muted-foreground">
-            14日間無料で、生成モードを体験できます。
+            14日間無料で、生成モードを体験できる。
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-base px-10 h-14" asChild>

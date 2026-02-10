@@ -59,11 +59,11 @@ export default function PricingPage() {
           シンプルな料金体系
         </Badge>
         <h1 className="text-4xl font-bold tracking-tight mb-4">
-          あなたの学習に合わせたプラン
+          学習に合わせたプラン
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
           プログラミング学習をAIと一緒に。<br />
-          すべてのプランで全機能が使えます。
+          すべてのプランで全機能を使える。
         </p>
 
         {/* Plan Type Toggle */}
@@ -154,20 +154,20 @@ export default function PricingPage() {
           <h2 className="text-2xl font-bold text-center mb-8">よくある質問</h2>
           <div className="space-y-4">
             <FAQItem
-              question="ポイントとは何ですか？"
-              answer="AIとの会話に必要なクレジットです。標準モデル（Sonnet）は1ポイント、高性能モデル（Opus）は1.6ポイント消費します。"
+              question="ポイントとは？"
+              answer="AIとの会話に必要なクレジット。標準モデルのSonnetは1ポイント、高性能モデルのOpusは1.6ポイント消費する。"
             />
             <FAQItem
               question="ポイントが足りなくなったら？"
-              answer="追加クレジットを購入するか、上位プランにアップグレードできます。翌月にはポイントがリセットされます。"
+              answer="追加クレジットを購入するか、上位プランにアップグレードできる。翌月にはポイントがリセットされる。"
             />
             <FAQItem
-              question="プランの変更はいつでもできますか？"
-              answer="はい、いつでもアップグレード・ダウングレードが可能です。差額は日割り計算されます。"
+              question="プランの変更はいつでもできる？"
+              answer="いつでもアップグレード・ダウングレードできる。差額は日割り計算される。"
             />
             <FAQItem
               question="組織プランと個人プランの違いは？"
-              answer="組織プランはチームメンバーを招待して一括管理できます。また、組織全体でポイントを共有します。"
+              answer="組織プランはチームメンバーを招待して一括管理できる。また、組織全体でポイントを共有する。"
             />
           </div>
         </div>
@@ -179,7 +179,7 @@ export default function PricingPage() {
               <Zap className="h-12 w-12 text-primary mx-auto mb-4" />
               <h2 className="text-2xl font-bold mb-2">まずは無料で始めよう</h2>
               <p className="text-muted-foreground mb-6">
-                クレジットカード不要。今すぐ学習を始められます。
+                クレジットカード不要。今すぐ学習を始められる。
               </p>
               <Button size="lg" asChild>
                 <Link href="/register">無料アカウントを作成</Link>

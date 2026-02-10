@@ -18,16 +18,16 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">1. はじめに</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Eurecode（以下「本サービス」）は、ユーザーのプライバシーを尊重し、
-            個人情報の保護に努めます。本プライバシーポリシーは、本サービスにおける
-            個人情報の取り扱いについて説明するものです。
+            Eurecodeはユーザーのプライバシーを尊重し、
+            個人情報の保護に努める。このプライバシーポリシーは、
+            個人情報の取り扱いについて説明するものである。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">2. 収集する情報</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本サービスでは、以下の情報を収集する場合があります。
+            以下の情報を収集する場合がある。
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
             <li>アカウント情報（メールアドレス、表示名、パスワード）</li>
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">3. 情報の利用目的</h2>
           <p className="text-muted-foreground leading-relaxed">
-            収集した情報は、以下の目的で利用します。
+            収集した情報は、以下の目的で利用する。
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
             <li>本サービスの提供・運営のため</li>
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">4. 情報の第三者提供</h2>
           <p className="text-muted-foreground leading-relaxed">
-            当社は、以下の場合を除き、ユーザーの個人情報を第三者に提供することはありません。
+            以下の場合を除き、ユーザーの個人情報を第三者に提供することはない。
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
             <li>ユーザーの同意がある場合</li>
@@ -67,26 +67,26 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">5. Cookieの使用</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本サービスでは、ユーザー体験の向上とサービスの改善のために
-            Cookieおよび類似の技術を使用しています。ユーザーはブラウザの設定により
-            Cookieの受け入れを拒否することができますが、その場合、本サービスの
-            一部機能が利用できなくなる可能性があります。
+            ユーザー体験の向上とサービスの改善のために
+            Cookieおよび類似の技術を使用している。ユーザーはブラウザの設定により
+            Cookieの受け入れを拒否できるが、その場合、
+            一部機能が利用できなくなる可能性がある。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">6. 情報の安全管理</h2>
           <p className="text-muted-foreground leading-relaxed">
-            当社は、個人情報の漏洩、滅失またはき損の防止その他の個人情報の安全管理のために
-            必要かつ適切な措置を講じます。これには、データの暗号化、アクセス制限、
-            定期的なセキュリティ監査が含まれます。
+            個人情報の漏洩、滅失またはき損の防止その他の個人情報の安全管理のために
+            必要かつ適切な措置を講じる。データの暗号化、アクセス制限、
+            定期的なセキュリティ監査を実施する。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">7. ユーザーの権利</h2>
           <p className="text-muted-foreground leading-relaxed">
-            ユーザーは、当社が保有する自己の個人情報について、以下の権利を有します。
+            ユーザーは、保有する自己の個人情報について、以下の権利を有する。
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
             <li>個人情報の開示を請求する権利</li>
@@ -99,26 +99,26 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold mb-3">8. お子様のプライバシー</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本サービスは、13歳未満のお子様を対象としておりません。
-            13歳未満のお子様から意図せず個人情報を収集したことが判明した場合、
-            当該情報は速やかに削除します。
+            本サービスは、13歳未満を対象としていない。
+            13歳未満から意図せず個人情報を収集したことが判明した場合、
+            当該情報は速やかに削除する。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">9. ポリシーの変更</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本プライバシーポリシーは、法令の変更や本サービスの変更に伴い、
-            予告なく変更されることがあります。変更後のプライバシーポリシーは、
-            本ページに掲載した時点から効力を生じるものとします。
+            このプライバシーポリシーは、法令の変更やサービスの変更に伴い、
+            予告なく変更されることがある。変更後のプライバシーポリシーは、
+            本ページに掲載した時点から効力を生じる。
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-3">10. お問い合わせ</h2>
           <p className="text-muted-foreground leading-relaxed">
-            本プライバシーポリシーに関するお問い合わせは、
-            本サービスのヘルプページよりご連絡ください。
+            このプライバシーポリシーに関するお問い合わせは、
+            ヘルプページより連絡を。
           </p>
         </section>
 

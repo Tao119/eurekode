@@ -20,19 +20,19 @@ export default function HelpPage() {
           </h2>
           <div className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-lg">
-              <h3 className="font-medium mb-2">Eurecodeとは？</h3>
+              <h3 className="font-medium mb-2">Eurecodeとは</h3>
               <p className="text-sm text-muted-foreground">
-                Eurecodeは、AIを活用したプログラミング学習支援サービスです。
+                AIを活用したプログラミング学習支援サービス。
                 コードの説明を受けたり、ブレインストーミングをしたり、
-                コード生成の練習をすることができます。
+                コード生成の練習をしたりできる。
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
               <h3 className="font-medium mb-2">アカウントの作成方法</h3>
               <p className="text-sm text-muted-foreground">
                 <Link href="/register" className="text-primary hover:underline">新規登録ページ</Link>
-                からメールアドレスとパスワードを入力してアカウントを作成できます。
-                組織で利用する場合は「管理者」アカウントを選択してください。
+                からメールアドレスとパスワードを入力してアカウントを作成できる。
+                組織で利用する場合は管理者アカウントを選択する。
               </p>
             </div>
           </div>
@@ -48,22 +48,22 @@ export default function HelpPage() {
             <div className="p-4 bg-muted/50 rounded-lg">
               <h3 className="font-medium mb-2">コード説明モード</h3>
               <p className="text-sm text-muted-foreground">
-                コードを入力すると、AIがそのコードの動作を詳しく説明します。
-                わからないコードを理解するのに役立ちます。
+                コードを入力すると、AIがそのコードの動作を詳しく説明する。
+                わからないコードを理解するのに役立つ。
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
               <h3 className="font-medium mb-2">ブレインストーミングモード</h3>
               <p className="text-sm text-muted-foreground">
-                アイデアをAIと一緒にブラッシュアップできます。
-                新機能の設計やアーキテクチャの検討に活用できます。
+                アイデアをAIと一緒にブラッシュアップできる。
+                新機能の設計やアーキテクチャの検討に活用できる。
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
               <h3 className="font-medium mb-2">コード生成モード</h3>
               <p className="text-sm text-muted-foreground">
-                要件を伝えると、AIがコードを生成します。
-                クイズに回答することで、生成されたコードの理解を深められます。
+                要件を伝えると、AIがコードを生成する。
+                クイズに回答することで、生成されたコードの理解を深められる。
               </p>
             </div>
           </div>
@@ -80,15 +80,15 @@ export default function HelpPage() {
               <h3 className="font-medium mb-2">パスワードを忘れた場合</h3>
               <p className="text-sm text-muted-foreground">
                 <Link href="/forgot-password" className="text-primary hover:underline">パスワードリセットページ</Link>
-                からメールアドレスを入力してリセット用のリンクを受け取ってください。
+                からメールアドレスを入力してリセット用のリンクを受け取る。
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
               <h3 className="font-medium mb-2">アクセスキーでの参加</h3>
               <p className="text-sm text-muted-foreground">
-                組織から発行されたアクセスキーをお持ちの方は、
+                組織から発行されたアクセスキーを持っている場合は、
                 <Link href="/join" className="text-primary hover:underline">キー入力ページ</Link>
-                からキーを入力して参加できます。
+                からキーを入力して参加できる。
               </p>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function HelpPage() {
           </h2>
           <div className="p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground mb-4">
-              ご質問やご要望がございましたら、お問い合わせフォームからご連絡ください。
+              質問や要望があれば、お問い合わせフォームから連絡を。
             </p>
             <Link
               href="/contact"

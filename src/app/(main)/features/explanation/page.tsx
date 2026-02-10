@@ -32,14 +32,14 @@ export default function ExplanationFeaturePage() {
               </div>
 
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
-                コードの「なぜ」を
+                コードのなぜを
                 <br />
                 理解する
               </h1>
 
               <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-                分からないコードを貼り付けるだけで、AIがその仕組みを丁寧に解説。
-                ただ答えを教えるのではなく、あなたが自分で理解できるようサポートします。
+                わからないコードを貼り付けるだけで、AIがその仕組みを丁寧に解説する。
+                ただ答えを教えるのではなく、自分で理解できるようサポートする。
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
@@ -143,7 +143,7 @@ export default function ExplanationFeaturePage() {
               </div>
               <h3 className="font-bold text-foreground mb-2">コード解説</h3>
               <p className="text-sm text-muted-foreground">
-                貼り付けたコードの動作を、ステップバイステップで解説します
+                貼り付けたコードの動作を、ステップバイステップで解説する
               </p>
             </div>
 
@@ -153,7 +153,7 @@ export default function ExplanationFeaturePage() {
               </div>
               <h3 className="font-bold text-foreground mb-2">質問で深掘り</h3>
               <p className="text-sm text-muted-foreground">
-                答えを教えるのではなく、質問を投げかけて理解を促します
+                答えを教えるのではなく、質問を投げかけて理解を促す
               </p>
             </div>
 
@@ -163,7 +163,7 @@ export default function ExplanationFeaturePage() {
               </div>
               <h3 className="font-bold text-foreground mb-2">気づきカード</h3>
               <p className="text-sm text-muted-foreground">
-                学んだことを「気づきカード」として記録し、振り返れます
+                学んだことを気づきカードとして記録し、振り返れる
               </p>
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function ExplanationFeaturePage() {
               使い方
             </h2>
             <p className="mt-4 text-muted-foreground">
-              3ステップで、コードの理解を深められます
+              3ステップで、コードの理解を深められる
             </p>
           </div>
 
@@ -196,9 +196,9 @@ export default function ExplanationFeaturePage() {
                 </div>
                 <p className="text-muted-foreground leading-relaxed">
                   理解したいコードをそのまま貼り付けるだけ。
-                  どんなプログラミング言語でも対応しています。
-                  「このコードは何をしている？」「なぜこう書くの？」など、
-                  自由に質問してください。
+                  どんなプログラミング言語でも対応している。
+                  このコードは何をしている？　なぜこう書くの？　など、
+                  自由に質問できる。
                 </p>
               </div>
               <div className="order-1 lg:order-2">
@@ -274,10 +274,10 @@ export default function ExplanationFeaturePage() {
                   </h3>
                 </div>
                 <p className="text-muted-foreground leading-relaxed">
-                  AIは答えをすぐに教えません。
+                  AIは答えをすぐに教えない。
                   質問を投げかけ、ヒントを与えながら、
-                  あなた自身が理解にたどり着けるようサポートします。
-                  「分かった！」という瞬間を大切にしています。
+                  自分で理解にたどり着けるようサポートする。
+                  わかったという瞬間を大切にしている。
                 </p>
               </div>
             </div>
@@ -294,9 +294,9 @@ export default function ExplanationFeaturePage() {
                   </h3>
                 </div>
                 <p className="text-muted-foreground leading-relaxed">
-                  対話の中で得た気づきは「気づきカード」として保存できます。
+                  対話の中で得た気づきは気づきカードとして保存できる。
                   後から振り返ることで、知識が定着し、
-                  同じことで悩むことが減っていきます。
+                  同じことで悩むことが減っていく。
                 </p>
               </div>
               <div className="order-1 lg:order-2">
@@ -361,8 +361,8 @@ export default function ExplanationFeaturePage() {
                   <div>
                     <h3 className="font-bold text-foreground mb-2">プログラミング学習中</h3>
                     <p className="text-sm text-muted-foreground">
-                      教材のサンプルコードが理解できない時、AIが丁寧に解説してくれます。
-                      一人で悩む時間を減らせます。
+                      教材のサンプルコードが理解できない時、AIが丁寧に解説してくれる。
+                      一人で悩む時間を減らせる。
                     </p>
                   </div>
                 </div>
@@ -378,7 +378,7 @@ export default function ExplanationFeaturePage() {
                   <div>
                     <h3 className="font-bold text-foreground mb-2">業務でレガシーコードを読む時</h3>
                     <p className="text-sm text-muted-foreground">
-                      前任者が書いた複雑なコードも、AIと一緒に読み解けます。
+                      前任者が書いた複雑なコードも、AIと一緒に読み解ける。
                       ドキュメントがなくても大丈夫。
                     </p>
                   </div>
@@ -396,7 +396,7 @@ export default function ExplanationFeaturePage() {
                     <h3 className="font-bold text-foreground mb-2">バグの原因を探る時</h3>
                     <p className="text-sm text-muted-foreground">
                       エラーが出ているコードを貼り付けて、
-                      なぜそのエラーが起きているのかを一緒に考えられます。
+                      なぜそのエラーが起きているのかを一緒に考えられる。
                     </p>
                   </div>
                 </div>
@@ -413,7 +413,7 @@ export default function ExplanationFeaturePage() {
                     <h3 className="font-bold text-foreground mb-2">コードレビューの準備</h3>
                     <p className="text-sm text-muted-foreground">
                       レビュー対象のコードを事前に理解しておくことで、
-                      より建設的なフィードバックができます。
+                      より建設的なフィードバックができる。
                     </p>
                   </div>
                 </div>
@@ -434,7 +434,7 @@ export default function ExplanationFeaturePage() {
             コードを理解する力を、身につけよう
           </h2>
           <p className="mt-6 text-lg text-muted-foreground">
-            14日間無料で、解説モードを体験できます。
+            14日間無料で、解説モードを体験できる。
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="bg-blue-500 hover:bg-blue-600 text-base px-10 h-14" asChild>
