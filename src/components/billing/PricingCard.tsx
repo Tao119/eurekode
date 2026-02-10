@@ -84,7 +84,7 @@ export function PricingCard({
 
       {isCurrentPlan && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-full">
+          <span className="bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
             現在のプラン
           </span>
         </div>
