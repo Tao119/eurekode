@@ -3,13 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Learning } from "@/generated/prisma/client";
-import {
-  checkTokenLimit,
-  estimateTokens,
-  updateTokenUsage,
-  TOKEN_LIMIT_EXCEEDED_CODE,
-} from "@/lib/token-limit";
-import { rateLimiters, rateLimitErrorResponse, rateLimitHeaders } from "@/lib/rate-limit";
+import { rateLimiters, rateLimitErrorResponse } from "@/lib/rate-limit";
 
 const validLearningTypes = ["insight", "reflection"] as const;
 
@@ -187,30 +181,6 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id;
 
-    // Estimate token usage (1 token ≈ 4 characters)
-    const estimatedTokens = estimateTokens(content);
-
-    // Check token limit before creating learning
-    const tokenCheck = await checkTokenLimit(userId, estimatedTokens);
-    if (!tokenCheck.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: TOKEN_LIMIT_EXCEEDED_CODE,
-            message: "本日のトークン上限に達しました",
-            details: {
-              currentUsage: tokenCheck.currentUsage,
-              dailyLimit: tokenCheck.dailyLimit,
-              remaining: tokenCheck.remaining,
-              required: estimatedTokens,
-            },
-          },
-        },
-        { status: 429 }
-      );
-    }
-
     const learning = await prisma.learning.create({
       data: {
         userId,
@@ -240,15 +210,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Update daily token usage
-    await updateTokenUsage(userId, estimatedTokens, "learning");
-
     return NextResponse.json({
       success: true,
       data: {
         ...learning,
         createdAt: learning.createdAt.toISOString(),
-        tokensUsed: estimatedTokens,
       },
     });
   } catch (error) {
