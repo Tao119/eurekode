@@ -589,8 +589,8 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
             brainstormSubMode: mode === "brainstorm" ? brainstormSubMode : undefined,
             activeArtifact: mode === "generation" ? activeArtifact : undefined,
             model,
-            projectId,
-            conversationId,
+            ...(projectId && { projectId }),
+            ...(conversationId && { conversationId }),
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -845,8 +845,8 @@ export function useChat({ mode, conversationId: initialConversationId, projectId
           messages: messagesForApi,
           brainstormSubMode: mode === "brainstorm" ? brainstormSubMode : undefined,
           model,
-          projectId,
-          conversationId,
+          ...(projectId && { projectId }),
+          ...(conversationId && { conversationId }),
         }),
         signal: abortControllerRef.current.signal,
       });
