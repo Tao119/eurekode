@@ -7,6 +7,11 @@ type QuizOption = UnlockQuizOption;
 // Session-based flag to track if fallback helper has been used
 // Key: artifactId, Value: true if helper was used
 const fallbackUsedInSession = new Map<string, boolean>();
+
+// Session-based flag to track if auto quiz request has been sent
+// Key: artifactId, Value: true if request was sent
+const autoQuizRequestSentInSession = new Map<string, boolean>();
+
 const MAX_FALLBACK_ENTRIES = 100;
 
 /**
@@ -121,6 +126,38 @@ export function resetFallbackUsage(artifactId?: string): void {
     fallbackUsedInSession.delete(artifactId);
   } else {
     fallbackUsedInSession.clear();
+  }
+}
+
+/**
+ * Check if auto quiz request has been sent for this artifact in the current session
+ */
+export function hasAutoQuizRequestBeenSent(artifactId: string): boolean {
+  return autoQuizRequestSentInSession.get(artifactId) === true;
+}
+
+/**
+ * Mark auto quiz request as sent for this artifact
+ */
+export function markAutoQuizRequestSent(artifactId: string): void {
+  // Prevent unbounded memory growth
+  if (autoQuizRequestSentInSession.size >= MAX_FALLBACK_ENTRIES) {
+    const firstKey = autoQuizRequestSentInSession.keys().next().value;
+    if (firstKey) {
+      autoQuizRequestSentInSession.delete(firstKey);
+    }
+  }
+  autoQuizRequestSentInSession.set(artifactId, true);
+}
+
+/**
+ * Reset auto quiz request tracking
+ */
+export function resetAutoQuizRequest(artifactId?: string): void {
+  if (artifactId) {
+    autoQuizRequestSentInSession.delete(artifactId);
+  } else {
+    autoQuizRequestSentInSession.clear();
   }
 }
 

@@ -37,6 +37,8 @@ import {
   removeIncompleteStreamingTags,
   hasFallbackBeenUsed,
   markFallbackAsUsed,
+  hasAutoQuizRequestBeenSent,
+  markAutoQuizRequestSent,
 } from "@/lib/quiz-generator";
 
 interface GenerationChatContainerProps {
@@ -372,6 +374,44 @@ export function GenerationChatContainer({
       setCurrentQuiz(fallbackQuiz);
     }
   }, [state.phase, state.currentQuiz, state.unlockLevel, state.activeArtifactId, activeArtifact, artifactsList.length, setCurrentQuiz, state.totalQuestions]);
+
+  // クイズが抽出できなかった場合にAIに自動リクエスト
+  // 注意: フォールバック使用後、AIレスポンスにクイズがなかった場合のみ1回だけ自動実行
+  useEffect(() => {
+    // ストリーミング中は処理しない（完了を待つ）
+    if (isLoading) return;
+
+    // 初期化前はスキップ
+    if (!initializedRef.current) return;
+
+    // クイズがある場合はスキップ
+    if (state.currentQuiz) return;
+
+    // アクティブなアーティファクトがない場合はスキップ
+    const artifactId = state.activeArtifactId;
+    if (!artifactId || !activeArtifact) return;
+
+    // 完全アンロック済みの場合はスキップ
+    const needsQuiz = state.totalQuestions > 0 && state.unlockLevel < state.totalQuestions;
+    if (!needsQuiz) return;
+
+    // unlocking/coding フェーズでない場合はスキップ
+    if (state.phase !== "unlocking" && state.phase !== "coding") return;
+
+    // フォールバックがまだ使用されていない場合はスキップ（まずフォールバックを試す）
+    if (!hasFallbackBeenUsed(artifactId)) return;
+
+    // 自動リクエスト済みの場合はスキップ
+    if (hasAutoQuizRequestBeenSent(artifactId)) return;
+
+    // 自動リクエスト送信済みをマーク
+    markAutoQuizRequestSent(artifactId);
+
+    // AIにクイズ生成をリクエスト
+    sendMessageWithArtifact(
+      "生成されたコードについて、理解度確認のクイズを出題してください。「なぜ〜していますか？」形式の質問でお願いします。"
+    );
+  }, [isLoading, state.currentQuiz, state.activeArtifactId, activeArtifact, state.totalQuestions, state.unlockLevel, state.phase, sendMessageWithArtifact]);
 
   // 簡易計画を選択して送信
   const handleQuickPlanSelect = useCallback(
