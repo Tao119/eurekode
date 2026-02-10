@@ -168,7 +168,6 @@ export function GenerationChatContainer({
     setActiveArtifact,
   } = useGenerationMode(initialOptions);
 
-  const [showPlanningHelper, setShowPlanningHelper] = useState(false);
   const prevMessagesLengthRef = useRef(0);
   const initializedRef = useRef(false);
 
@@ -191,6 +190,15 @@ export function GenerationChatContainer({
       quizHistory,
     };
   }, [state.activeArtifactId, state.artifactProgress, state.totalQuestions, state.unlockLevel, state.quizHistory]);
+
+  // Check if the last message has a truncated artifact
+  const hasTruncatedArtifact = useMemo(() => {
+    if (messages.length === 0) return false;
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role !== "assistant") return false;
+    const { hasTruncatedArtifact } = parseArtifacts(lastMessage.content);
+    return hasTruncatedArtifact;
+  }, [messages]);
 
   // Wrapped sendMessage that includes active artifact context
   const sendMessageWithArtifact = useCallback(
@@ -292,7 +300,6 @@ export function GenerationChatContainer({
       // アーティファクトが見つかったらcodingフェーズに移行
       if (state.phase === "initial" || state.phase === "planning") {
         setPhase("coding");
-        setShowPlanningHelper(false);
       }
     }
   }, [isLoading, messages, addOrUpdateArtifact, state.phase, setPhase]);
@@ -331,16 +338,6 @@ export function GenerationChatContainer({
       // アーティファクトが見つかったらcodingフェーズに移行
       if (state.phase === "initial" || state.phase === "planning") {
         setPhase("coding");
-        setShowPlanningHelper(false);
-      }
-    }
-
-    // フェーズに応じた処理
-    if (state.phase === "initial" || state.phase === "planning") {
-      // 計画を促すメッセージがあれば計画フェーズへ
-      if (content.includes("手順") || content.includes("ステップ") || content.includes("計画")) {
-        setPhase("planning");
-        setShowPlanningHelper(true);
       }
     }
 
@@ -416,21 +413,6 @@ export function GenerationChatContainer({
       "生成されたコードについて、理解度確認のクイズを出題してください。「なぜ〜していますか？」形式の質問でお願いします。"
     );
   }, [isLoading, state.currentQuiz, state.activeArtifactId, activeArtifact, state.totalQuestions, state.unlockLevel, state.phase, sendMessageWithArtifact]);
-
-  // 簡易計画を選択して送信
-  const handleQuickPlanSelect = useCallback(
-    (planType: string) => {
-      setShowPlanningHelper(false);
-      const planMessages: Record<string, string> = {
-        "basic": "基本的な実装で進めます。まずは動くものを作ってください。",
-        "detailed": "詳細な設計から始めます。型定義とインターフェースを先に見せてください。",
-        "step-by-step": "段階的に進めたいです。まず最小限の実装から始めてください。",
-        "skip": "計画はスキップして、すぐにコードを生成してください。",
-      };
-      sendMessageWithArtifact(planMessages[planType] || planType);
-    },
-    [sendMessageWithArtifact]
-  );
 
   // クイズに回答（メッセージは送信せず、ローカルで処理）
   // メッセージ数を渡してインライン表示位置を記録
@@ -643,56 +625,39 @@ export function GenerationChatContainer({
                         </div>
                       ))}
 
-                      {/* 簡易計画選択（AIが計画を促した後に表示） */}
-                      {message.role === "assistant" &&
-                        showPlanningHelper &&
-                        index === messages.length - 1 &&
-                        !isLoading && (
-                          <div className="px-4 py-4">
-                            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
-                              <p className="text-sm text-foreground/80 mb-3">
-                                どのように進めますか？
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleQuickPlanSelect("basic")}
-                                  className="text-xs"
-                                >
-                                  基本実装で進める
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleQuickPlanSelect("detailed")}
-                                  className="text-xs"
-                                >
-                                  詳細設計から
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleQuickPlanSelect("step-by-step")}
-                                  className="text-xs"
-                                >
-                                  段階的に進める
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleQuickPlanSelect("skip")}
-                                  className="text-xs text-muted-foreground"
-                                >
-                                  スキップ
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
                     </div>
                   );
                 })}
+
+                {/* 続きを生成ボタン（truncatedアーティファクト検出時） */}
+                {hasTruncatedArtifact && !isLoading && (
+                  <div className="px-4 py-4">
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-amber-400">warning</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground/90">
+                            コードが途中で切れています
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            トークン上限に達したため、生成が中断されました
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => sendMessageWithArtifact("続きを生成してください。前回の途中から続けてください。")}
+                          className="shrink-0 gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-base">play_arrow</span>
+                          続きを生成
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* クイズ（チャット内に表示、折りたたみ可能） */}
                 {state.currentQuiz ? (
