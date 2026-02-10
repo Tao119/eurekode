@@ -219,7 +219,7 @@ function IndividualPlanCard({
         </Badge>
       )}
       {showCurrentPlan && (
-        <Badge variant="outline" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
+        <Badge variant="outline" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground whitespace-nowrap">
           現在のプラン
         </Badge>
       )}
@@ -314,7 +314,7 @@ function OrganizationPlanCard({
         </Badge>
       )}
       {showCurrentPlan && (
-        <Badge variant="outline" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
+        <Badge variant="outline" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground whitespace-nowrap">
           現在のプラン
         </Badge>
       )}
