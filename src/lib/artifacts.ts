@@ -165,3 +165,16 @@ export function replaceCodeBlocksWithPlaceholder(content: string): string {
     return `\n> 📄 **コード ${index}** が右パネルに表示されています\n`;
   });
 }
+
+/**
+ * Remove <!--EXPLAIN_CODE--> tags from content (for explanation mode)
+ * The code is displayed in the side panel, so we just remove the tags
+ */
+export function removeExplainCodeTags(content: string): string {
+  const explainCodeRegex = /<!--EXPLAIN_CODE:\w*-->\n?([\s\S]*?)<!--\/EXPLAIN_CODE-->\n?/g;
+
+  return content.replace(explainCodeRegex, (match, code) => {
+    // Replace with a placeholder indicating code is in the panel
+    return `\n> コードを右パネルに表示しています\n\n`;
+  });
+}

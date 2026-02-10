@@ -14,6 +14,7 @@ import { LockedCodeBlock } from "./LockedCodeBlock";
 import { SaveLearningDialog } from "./SaveLearningDialog";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
 import { extractQuizOptions, extractMultipleQuizzes } from "@/lib/quizExtractor";
+import { removeExplainCodeTags } from "@/lib/artifacts";
 
 // Context to pass mode and lock state to nested components
 interface CodeBlockContextValue {
@@ -303,11 +304,16 @@ export const ChatMessage = memo(function ChatMessage({
   }, [isAssistant, isStreaming, shouldShowSimpleOptions, interactiveQuiz, message.content]);
 
   // Determine display content
-  const displayContent = interactiveQuiz
+  const baseContent = interactiveQuiz
     ? interactiveQuiz.contentWithoutQuestions
     : detectedOptions
       ? detectedOptions.contentWithoutOptions
       : message.content;
+
+  // For explanation mode, remove EXPLAIN_CODE tags (code is shown in side panel)
+  const displayContent = mode === "explanation" && isAssistant
+    ? removeExplainCodeTags(baseContent)
+    : baseContent;
 
   return (
     <div

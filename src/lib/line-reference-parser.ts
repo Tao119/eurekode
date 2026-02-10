@@ -152,16 +152,45 @@ export function extractFirstCodeBlock(content: string): ExtractedCodeBlock | nul
 }
 
 /**
+ * AI応答から<!--EXPLAIN_CODE-->タグを検出
+ */
+export function extractExplainCodeFromAI(content: string): ExtractedCodeBlock | null {
+  const pattern = /<!--EXPLAIN_CODE:(\w*)-->\n?([\s\S]*?)<!--\/EXPLAIN_CODE-->/;
+  const match = content.match(pattern);
+
+  if (match) {
+    return {
+      language: match[1] || "text",
+      code: match[2].trim(),
+      startIndex: match.index || 0,
+      endIndex: (match.index || 0) + match[0].length,
+    };
+  }
+  return null;
+}
+
+/**
  * 複数のメッセージから最初のコードブロックを検索
+ * 優先順位: AI検出コード > ユーザーのバッククォート
  */
 export function findFirstCodeBlockInMessages(
   messages: Array<{ role: string; content: string }>
 ): ExtractedCodeBlock | null {
+  // まずAI応答から検出コードを探す
   for (const message of messages) {
-    // ユーザーメッセージからコードを検索（貼り付けられたコード）
+    if (message.role === "assistant") {
+      const aiCode = extractExplainCodeFromAI(message.content);
+      if (aiCode && aiCode.code.length > 20) {
+        return aiCode;
+      }
+    }
+  }
+
+  // 次にユーザーメッセージからバッククォートで囲まれたコードを検索
+  for (const message of messages) {
     if (message.role === "user") {
       const block = extractFirstCodeBlock(message.content);
-      if (block && block.code.length > 50) { // 短すぎるコードは除外
+      if (block && block.code.length > 50) {
         return block;
       }
     }
