@@ -674,12 +674,16 @@ export function GenerationChatContainer({
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-foreground/90">
-                              クイズが表示されていません
+                              {hasAutoQuizRequestBeenSent(activeArtifact.id)
+                                ? "クイズが生成されませんでした"
+                                : "クイズが表示されていません"}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {hasFallbackBeenUsed(activeArtifact.id)
-                                ? "AIにクイズの再生成をリクエストできます"
-                                : "クイズに回答してコードをアンロックしましょう"}
+                              {hasAutoQuizRequestBeenSent(activeArtifact.id)
+                                ? "もう一度リクエストするか、コードを確認してください"
+                                : hasFallbackBeenUsed(activeArtifact.id)
+                                  ? "AIにクイズを自動リクエスト中..."
+                                  : "クイズに回答してコードをアンロックしましょう"}
                             </p>
                           </div>
                           <Button
@@ -704,9 +708,13 @@ export function GenerationChatContainer({
                             className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
                           >
                             <span className="material-symbols-outlined text-base mr-1.5">
-                              {hasFallbackBeenUsed(activeArtifact.id) ? "smart_toy" : "quiz"}
+                              {hasFallbackBeenUsed(activeArtifact.id) ? "refresh" : "quiz"}
                             </span>
-                            {hasFallbackBeenUsed(activeArtifact.id) ? "AIに質問を依頼" : "クイズを表示"}
+                            {hasAutoQuizRequestBeenSent(activeArtifact.id)
+                              ? "再リクエスト"
+                              : hasFallbackBeenUsed(activeArtifact.id)
+                                ? "AIに質問を依頼"
+                                : "クイズを表示"}
                           </Button>
                         </div>
                       </div>
