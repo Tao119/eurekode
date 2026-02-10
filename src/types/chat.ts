@@ -66,6 +66,7 @@ export interface Message {
 }
 
 // Supported file types for Claude API
+// Images and PDF have strict types, text files are permissive
 export type FileMediaType =
   | "image/jpeg"
   | "image/png"
@@ -76,10 +77,31 @@ export type FileMediaType =
   | "text/html"
   | "text/css"
   | "text/javascript"
+  | "application/javascript"
+  | "text/typescript"
   | "application/json"
   | "text/markdown"
   | "text/csv"
-  | "application/xml";
+  | "application/xml"
+  | "text/xml"
+  | "text/x-python"
+  | "text/x-java"
+  | "text/x-c"
+  | "text/x-cpp"
+  | "text/x-csharp"
+  | "text/x-go"
+  | "text/x-rust"
+  | "text/x-ruby"
+  | "text/x-php"
+  | "text/x-swift"
+  | "text/x-kotlin"
+  | "text/x-scala"
+  | "text/x-shellscript"
+  | "text/x-sql"
+  | "text/x-yaml"
+  | "text/x-toml"
+  | "application/x-yaml"
+  | "application/toml";
 
 export interface FileAttachment {
   id: string;
