@@ -92,16 +92,62 @@ const defaultState: CreditState = {
 
 // キャッシュ期間（ミリ秒）- 30秒間は再フェッチしない
 const CACHE_DURATION = 30000;
+const LOCALSTORAGE_KEY = "eurecode:credits-cache";
 
 // モジュールレベルの共有キャッシュ（複数のuseCreditsインスタンス間で共有）
 let globalLastFetch = 0;
 let globalFetching = false;
 let globalCachedData: CreditState | null = null;
 
+// localStorageから初期キャッシュを読み込み
+function loadCachedCredits(): CreditState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const cached = localStorage.getItem(LOCALSTORAGE_KEY);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    // 24時間以内のキャッシュのみ使用（古すぎるデータは使わない）
+    if (Date.now() - timestamp > 24 * 60 * 60 * 1000) return null;
+    // isLoadingをfalseに、periodのDateを復元
+    return {
+      ...data,
+      isLoading: false,
+      period: {
+        start: new Date(data.period.start),
+        end: new Date(data.period.end),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// localStorageにキャッシュを保存
+function saveCachedCredits(data: CreditState): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now(),
+    }));
+  } catch {
+    // localStorage容量超過等は無視
+  }
+}
+
 export function useCredits(): UseCreditReturn {
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated" && !!session;
-  const [state, setState] = useState<CreditState>(globalCachedData ?? defaultState);
+  const [state, setState] = useState<CreditState>(() => {
+    // 優先順位: メモリキャッシュ > localStorageキャッシュ > デフォルト
+    if (globalCachedData) return globalCachedData;
+    const localCached = loadCachedCredits();
+    if (localCached) {
+      globalCachedData = localCached;
+      return localCached;
+    }
+    return defaultState;
+  });
   const lastFetchRef = useRef<number>(globalLastFetch);
   const fetchingRef = useRef<boolean>(globalFetching);
 
@@ -166,8 +212,9 @@ export function useCredits(): UseCreditReturn {
         },
       };
 
-      // グローバルキャッシュを更新
+      // グローバルキャッシュを更新 + localStorageに保存
       globalCachedData = newState;
+      saveCachedCredits(newState);
       setState(newState);
     } catch (error) {
       console.error("Failed to fetch credits:", error);
