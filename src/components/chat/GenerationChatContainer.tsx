@@ -179,14 +179,16 @@ export function GenerationChatContainer({
     const total = progress?.totalQuestions ?? state.totalQuestions;
     const level = progress?.unlockLevel ?? state.unlockLevel;
     const isUnlocked = total === 0 || level >= total;
+    const quizHistory = progress?.quizHistory ?? state.quizHistory ?? [];
     return {
       unlockLevel: level,
       totalQuestions: total,
       progressPercentage: total === 0 ? 100 : (level / total) * 100,
       canCopy: isUnlocked,
       isUnlocked,
+      quizHistory,
     };
-  }, [state.activeArtifactId, state.artifactProgress, state.totalQuestions, state.unlockLevel]);
+  }, [state.activeArtifactId, state.artifactProgress, state.totalQuestions, state.unlockLevel, state.quizHistory]);
 
   // Wrapped sendMessage that includes active artifact context
   const sendMessageWithArtifact = useCallback(
@@ -720,6 +722,72 @@ export function GenerationChatContainer({
                       </div>
                     </div>
                   )
+                )}
+
+                {/* クイズ完了サマリー（全問正解後に表示） */}
+                {state.phase === "unlocked" && activeArtifactProgress.quizHistory.length > 0 && (
+                  <div className="px-4 py-4">
+                    <div className="rounded-xl border border-green-500/30 bg-gradient-to-b from-green-500/5 to-emerald-500/5 overflow-hidden">
+                      {/* ヘッダー */}
+                      <div className="px-4 py-3 bg-green-500/10 border-b border-green-500/20">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-green-400 text-xl">verified</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-green-400">クイズ完了！</p>
+                            <p className="text-xs text-muted-foreground">
+                              {activeArtifactProgress.quizHistory.length}問全て正解しました
+                            </p>
+                          </div>
+                          <div className="ml-auto flex items-center gap-1 text-green-400">
+                            <span className="material-symbols-outlined text-base">lock_open</span>
+                            <span className="text-sm font-medium">アンロック済み</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 振り返り */}
+                      <div className="p-4 space-y-3">
+                        <p className="text-sm font-medium text-foreground/80 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base text-blue-400">history_edu</span>
+                          学習の振り返り
+                        </p>
+                        <div className="space-y-2">
+                          {activeArtifactProgress.quizHistory.map((item, index) => (
+                            <div
+                              key={index}
+                              className="p-3 rounded-lg bg-card/50 border border-border/50"
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="material-symbols-outlined text-green-400 text-base mt-0.5">
+                                  check_circle
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground/90 mb-1">
+                                    Q{index + 1}. {item.question}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    回答: <span className="text-green-400 font-medium">{item.userAnswer}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* コードがコピー可能になったことを強調 */}
+                        <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="material-symbols-outlined text-yellow-400 text-base">content_copy</span>
+                            <span className="text-yellow-400 font-medium">
+                              コードをコピーできるようになりました
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 <div ref={endRef} />
