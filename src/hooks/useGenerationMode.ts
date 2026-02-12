@@ -667,6 +667,10 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
   // 重要: 新規アーティファクト追加時、既存アーティファクトの進捗は必ず保持する
   // Returns: Promise that resolves with the saved artifact ID (for quiz generation)
   const addOrUpdateArtifact = useCallback((artifact: Artifact): Promise<string | null> => {
+    // Check if this is a truncated artifact (streaming incomplete)
+    // Truncated artifacts should NOT be saved to API or set as active
+    const isTruncated = artifact.id.endsWith("-truncated");
+
     // Estimate quiz count based on code complexity (used for both API and local state)
     const estimatedQuizCount = skipAllowedRef.current ? 0 : estimateQuizCount(artifact.content);
 
@@ -674,8 +678,9 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
     const currentConversationId = conversationIdRef.current;
 
     // API同期 - conversationIdがある場合のみ
+    // Truncated artifacts are NOT saved to the database (they will be replaced by complete artifacts)
     // Returns a Promise so callers can wait for the artifact to be saved
-    const apiPromise: Promise<string | null> = currentConversationId
+    const apiPromise: Promise<string | null> = (currentConversationId && !isTruncated)
       ? apiUpsertArtifact(currentConversationId, {
           id: artifact.id,
           type: artifact.type,
@@ -712,6 +717,48 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
           }
         : artifact;
 
+      // Truncated artifacts are handled specially:
+      // - They are added to the artifacts list (for display during streaming)
+      // - They are NOT set as activeArtifactId (to prevent quiz loading errors)
+      // - They are NOT given progress tracking
+      // When a complete artifact replaces a truncated one, the truncated one is cleaned up
+      if (isTruncated) {
+        // Just add the truncated artifact for display, don't change active state
+        return {
+          ...prev,
+          artifacts: {
+            ...prev.artifacts,
+            [artifact.id]: updatedArtifact,
+          },
+          // If no active artifact yet, show the truncated one (but don't set it as active)
+          generatedCode: !prev.activeArtifactId ? {
+            language: artifact.language || "text",
+            code: artifact.content,
+            filename: artifact.title,
+          } : prev.generatedCode,
+          // フェーズは coding に移行（まだ initial なら）
+          phase: prev.phase === "initial" ? "coding" : prev.phase,
+        };
+      }
+
+      // Check if this complete artifact replaces a truncated one
+      // Truncated ID format: `{baseId}-truncated`
+      const truncatedId = `${artifact.id}-truncated`;
+      const hadTruncated = prev.artifacts[truncatedId];
+
+      // Create new artifacts object, removing any truncated version
+      const newArtifacts = { ...prev.artifacts };
+      if (hadTruncated) {
+        delete newArtifacts[truncatedId];
+      }
+      newArtifacts[artifact.id] = updatedArtifact;
+
+      // Also clean up progress for truncated artifact
+      const newProgress = { ...prev.artifactProgress };
+      if (hadTruncated && newProgress[truncatedId]) {
+        delete newProgress[truncatedId];
+      }
+
       // 既存の進行状況がある場合は必ずそれを使用（リロード時の状態保持）
       // 新規アーティファクトの場合のみデフォルト値を使用
       if (existingProgress) {
@@ -725,10 +772,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
 
         return {
           ...prev,
-          artifacts: {
-            ...prev.artifacts,
-            [artifact.id]: updatedArtifact,
-          },
+          artifacts: newArtifacts,
           activeArtifactId: artifact.id,
           unlockLevel: effectiveUnlockLevel,
           totalQuestions: effectiveTotalQuestions,
@@ -740,6 +784,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
             filename: artifact.title,
           },
           phase: artifactIsUnlocked ? "unlocked" : (prev.phase === "initial" ? "coding" : prev.phase),
+          artifactProgress: newProgress,
         };
       }
 
@@ -748,63 +793,57 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
       if (!canSaveRef.current && conversationId) {
         return {
           ...prev,
-          artifacts: {
-            ...prev.artifacts,
-            [artifact.id]: updatedArtifact,
-          },
+          artifacts: newArtifacts,
           activeArtifactId: artifact.id,
           generatedCode: {
             language: artifact.language || "text",
             code: artifact.content,
             filename: artifact.title,
           },
+          artifactProgress: newProgress,
           // 進行状況は作成せず、フェーズも変更しない（初期状態の読み込みを待つ）
         };
       }
 
       // 新規アーティファクトの場合: このアーティファクト専用のtotalQuestionsを使用
-      const newProgress: ArtifactProgress = {
+      const artifactProgress: ArtifactProgress = {
         unlockLevel: 0,
         totalQuestions: estimatedQuizCount,
         currentQuiz: null,
         quizHistory: [],
       };
+      newProgress[artifact.id] = artifactProgress;
 
-      const newArtifactIsUnlocked = newProgress.totalQuestions === 0;
+      const newArtifactIsUnlocked = artifactProgress.totalQuestions === 0;
 
-      // 重要: 既存のアーティファクトが存在する場合、アクティブを切り替えずに追加のみ行う
+      // 重要: 既存の非truncatedアクティブアーティファクトが存在する場合、アクティブを切り替えずに追加のみ行う
       // ユーザーが手動で切り替えるか、最初のアーティファクトの場合のみアクティブにする
-      const hasExistingActiveArtifact = prev.activeArtifactId && prev.artifacts[prev.activeArtifactId];
+      // ただし、truncatedアーティファクトがアクティブだった場合は、完全なアーティファクトに切り替える
+      const currentActiveId = prev.activeArtifactId;
+      const hasExistingActiveArtifact = currentActiveId &&
+        prev.artifacts[currentActiveId] &&
+        !currentActiveId.endsWith("-truncated");
 
       if (hasExistingActiveArtifact) {
-        // 既存のアクティブアーティファクトがある: 新規追加のみ、切り替えない
+        // 既存の非truncatedアクティブアーティファクトがある: 新規追加のみ、切り替えない
         return {
           ...prev,
-          artifacts: {
-            ...prev.artifacts,
-            [artifact.id]: updatedArtifact,
-          },
+          artifacts: newArtifacts,
           // activeArtifactId は変更しない（現在のアーティファクトを維持）
           // グローバル状態も変更しない
-          artifactProgress: {
-            ...prev.artifactProgress,
-            [artifact.id]: newProgress,
-          },
+          artifactProgress: newProgress,
           // フェーズは coding に移行（まだ initial なら）
           phase: prev.phase === "initial" ? "coding" : prev.phase,
         };
       }
 
-      // 最初のアーティファクト: アクティブに設定
+      // 最初のアーティファクト（またはtruncatedからの切り替え）: アクティブに設定
       return {
         ...prev,
-        artifacts: {
-          ...prev.artifacts,
-          [artifact.id]: updatedArtifact,
-        },
+        artifacts: newArtifacts,
         activeArtifactId: artifact.id,
-        unlockLevel: newProgress.unlockLevel,
-        totalQuestions: newProgress.totalQuestions,
+        unlockLevel: artifactProgress.unlockLevel,
+        totalQuestions: artifactProgress.totalQuestions,
         currentQuiz: null,
         quizHistory: [],
         generatedCode: {
@@ -813,10 +852,7 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
           filename: artifact.title,
         },
         phase: newArtifactIsUnlocked ? "unlocked" : "coding",
-        artifactProgress: {
-          ...prev.artifactProgress,
-          [artifact.id]: newProgress,
-        },
+        artifactProgress: newProgress,
       };
     });
 
