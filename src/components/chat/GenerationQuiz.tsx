@@ -39,6 +39,18 @@ export function GenerationQuiz({
   const [hintCountdown, setHintCountdown] = useState(30);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
+  // Reset state when quiz changes (critical fix for auto-answer bug)
+  // Without this, state from previous quiz would persist and show incorrect results
+  useEffect(() => {
+    // Only reset if this is not a completed quiz display
+    if (!completedAnswer) {
+      setSelectedOption(null);
+      setShowResult(false);
+      setIsCorrect(false);
+      setHintCountdown(30);
+    }
+  }, [quiz.level, quiz.question, completedAnswer]); // Reset when quiz changes (level + question for uniqueness)
+
   // 完了済みクイズの場合は初期状態を設定
   const isCompleted = !!completedAnswer;
   const displayAnswer = completedAnswer || selectedOption;
@@ -100,7 +112,7 @@ export function GenerationQuiz({
             </div>
             <div className="text-left">
               <span className="text-sm font-medium text-green-400">
-                Q{quiz.level}. 正解済み
+                Q{quiz.level + 1}. 正解済み
               </span>
               <p className="text-xs text-muted-foreground line-clamp-1">{quiz.question}</p>
             </div>
@@ -140,7 +152,7 @@ export function GenerationQuiz({
             </div>
             <div>
               <span className="text-sm font-medium text-foreground/90">
-                {isCompleted ? `Q${quiz.level}. 正解済み` : `アンロッククイズ - ${levelInfo.title}`}
+                {isCompleted ? `Q${quiz.level + 1}. 正解済み` : `アンロッククイズ - ${levelInfo.title}`}
               </span>
               <p className="text-xs text-muted-foreground">
                 {isCompleted ? "クリックで詳細を表示" : levelInfo.description}

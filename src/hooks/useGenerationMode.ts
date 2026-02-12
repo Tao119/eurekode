@@ -346,13 +346,23 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         return prev;
       }
 
-      const updatedProgress: Record<string, ArtifactProgress> = activeId && currentProgress
+      // Initialize or update artifactProgress for the active artifact
+      // This ensures both panels stay in sync even when API quiz loading fails
+      const updatedProgress: Record<string, ArtifactProgress> = activeId
         ? {
             ...prev.artifactProgress,
-            [activeId]: {
-              ...currentProgress,
-              currentQuiz: quiz,
-            },
+            [activeId]: currentProgress
+              ? {
+                  ...currentProgress,
+                  currentQuiz: quiz,
+                }
+              : {
+                  // Initialize new progress entry if none exists
+                  unlockLevel: prev.unlockLevel,
+                  totalQuestions: quiz.totalQuestions ?? prev.totalQuestions,
+                  currentQuiz: quiz,
+                  quizHistory: [],
+                },
           }
         : prev.artifactProgress;
 

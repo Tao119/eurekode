@@ -373,7 +373,8 @@ export function quizApiToUnlockQuiz(quiz: QuizApiResponse): UnlockQuiz & {
 } {
   return {
     id: quiz.id,
-    level: quiz.level,
+    // APIのlevelは1ベース、内部では0ベースを使用するため変換
+    level: quiz.level - 1,
     question: quiz.question,
     options: quiz.options.map((opt) => ({
       label: opt.label,
