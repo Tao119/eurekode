@@ -659,23 +659,28 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
   // アーティファクトを追加または更新
   // 重要: 保存済みの進行状況を最優先で使用する
   // 重要: 新規アーティファクト追加時、既存アーティファクトの進捗は必ず保持する
-  const addOrUpdateArtifact = useCallback((artifact: Artifact) => {
+  // Returns: Promise that resolves with the saved artifact ID (for quiz generation)
+  const addOrUpdateArtifact = useCallback((artifact: Artifact): Promise<string | null> => {
     // Estimate quiz count based on code complexity (used for both API and local state)
     const estimatedQuizCount = skipAllowedRef.current ? 0 : estimateQuizCount(artifact.content);
 
-    // API同期（非ブロッキング）- conversationIdがある場合のみ
-    if (conversationId) {
-      apiUpsertArtifact(conversationId, {
-        id: artifact.id,
-        type: artifact.type,
-        title: artifact.title,
-        content: artifact.content,
-        language: artifact.language,
-        totalQuestions: estimatedQuizCount,
-      }).catch((e) => {
-        console.error("[addOrUpdateArtifact] API sync failed:", e);
-      });
-    }
+    // API同期 - conversationIdがある場合のみ
+    // Returns a Promise so callers can wait for the artifact to be saved
+    const apiPromise: Promise<string | null> = conversationId
+      ? apiUpsertArtifact(conversationId, {
+          id: artifact.id,
+          type: artifact.type,
+          title: artifact.title,
+          content: artifact.content,
+          language: artifact.language,
+          totalQuestions: estimatedQuizCount,
+        })
+          .then((response) => response.id)
+          .catch((e) => {
+            console.error("[addOrUpdateArtifact] API sync failed:", e);
+            return null;
+          })
+      : Promise.resolve(null);
 
     setState((prev) => {
       const existing = prev.artifacts[artifact.id];
@@ -797,6 +802,9 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         },
       };
     });
+
+    // Return the API promise so callers can wait for the artifact to be saved
+    return apiPromise;
   }, [conversationId]);
 
   const setActiveArtifact = useCallback((id: string) => {

@@ -174,6 +174,8 @@ export function GenerationChatContainer({
 
   const prevMessagesLengthRef = useRef(0);
   const initializedRef = useRef(false);
+  // Track artifacts that have been saved to the database
+  const savedArtifactIdsRef = useRef<Set<string>>(new Set());
 
   // Artifacts list from state
   const artifactsList = useMemo(() => Object.values(state.artifacts), [state.artifacts]);
@@ -218,6 +220,15 @@ export function GenerationChatContainer({
     },
     [onSendMessage, activeArtifact]
   );
+
+  // 初期状態からのアーティファクトを保存済みとしてマーク
+  useEffect(() => {
+    if (initialGenerationState?.artifacts) {
+      for (const artifactId of Object.keys(initialGenerationState.artifacts)) {
+        savedArtifactIdsRef.current.add(artifactId);
+      }
+    }
+  }, [initialGenerationState]);
 
   // 初期読み込み時にすべてのメッセージからアーティファクトを抽出
   useEffect(() => {
@@ -339,15 +350,30 @@ export function GenerationChatContainer({
     const { artifacts } = parseArtifacts(content);
     if (artifacts.length > 0) {
       for (const artifact of artifacts) {
-        addOrUpdateArtifact(artifact);
-
-        // 新クイズシステム: ストリーミング完了後にクイズを生成
+        // 新クイズシステム: アーティファクト保存後にクイズを生成
         // 1アーティファクトにつき1回のみ
-        if (!isLoading && !quizGeneratedRef.current.has(artifact.id)) {
+        const shouldGenerateQuiz = !isLoading && !quizGeneratedRef.current.has(artifact.id);
+
+        if (shouldGenerateQuiz) {
           quizGeneratedRef.current.add(artifact.id);
-          // クイズ生成をトリガー（非同期）
-          generateQuizzesForArtifact(artifact.id).catch((error) => {
-            console.error("[GenerationChatContainer] Quiz generation failed:", error);
+
+          // アーティファクトを保存し、保存完了後にクイズ生成
+          addOrUpdateArtifact(artifact).then((savedArtifactId) => {
+            if (savedArtifactId) {
+              // Mark artifact as saved to database
+              savedArtifactIdsRef.current.add(savedArtifactId);
+              // 保存されたアーティファクトIDでクイズを生成
+              generateQuizzesForArtifact(savedArtifactId).catch((error) => {
+                console.error("[GenerationChatContainer] Quiz generation failed:", error);
+              });
+            }
+          });
+        } else {
+          // クイズ生成が不要な場合は通常通りアーティファクトを追加
+          addOrUpdateArtifact(artifact).then((savedArtifactId) => {
+            if (savedArtifactId) {
+              savedArtifactIdsRef.current.add(savedArtifactId);
+            }
           });
         }
       }
@@ -383,12 +409,21 @@ export function GenerationChatContainer({
     const artifactId = state.activeArtifactId;
     if (!artifactId) return;
 
-    // 既にクイズがある場合、または生成済みの場合はスキップ
+    // 既にクイズがある場合はスキップ
     if (state.currentQuiz) return;
-    if (quizGeneratedRef.current.has(artifactId)) return;
+
+    // このセッションでクイズ生成中（まだ保存されていない可能性）の場合はスキップ
+    if (quizGeneratedRef.current.has(artifactId) && !savedArtifactIdsRef.current.has(artifactId)) {
+      return;
+    }
 
     // 既存クイズを読み込み（非同期）
+    // 404エラーは新規アーティファクトの可能性があるため、静かに処理
     loadQuizzesFromAPI(artifactId).catch((error) => {
+      // NOT_FOUND エラーは新規アーティファクトの可能性があるため無視
+      if (error?.code === "NOT_FOUND") {
+        return;
+      }
       console.error("[GenerationChatContainer] Failed to load quizzes:", error);
     });
   }, [state.activeArtifactId, state.currentQuiz, loadQuizzesFromAPI]);
