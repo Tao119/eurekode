@@ -685,7 +685,15 @@ export function useGenerationMode(options: UseGenerationModeOptions = {}) {
         })
           .then((response) => response.id)
           .catch((e) => {
-            console.error("[addOrUpdateArtifact] API sync failed:", e);
+            // Log detailed error information for debugging
+            console.error("[addOrUpdateArtifact] API sync failed:", {
+              error: e,
+              code: e?.code,
+              message: e?.message,
+              details: e?.details,
+              artifactId: artifact.id,
+              conversationId: currentConversationId,
+            });
             return null;
           })
       : Promise.resolve(null);

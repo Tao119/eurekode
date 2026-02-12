@@ -207,7 +207,13 @@ export async function POST(
       data: formatArtifact(artifact),
     });
   } catch (error) {
-    console.error("Create/update artifact error:", error);
+    // Log detailed error information for debugging
+    console.error("Create/update artifact error:", {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : undefined,
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "アーティファクトの保存に失敗しました" } },
       { status: 500 }

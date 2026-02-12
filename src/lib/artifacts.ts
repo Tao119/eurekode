@@ -45,12 +45,17 @@ export function parseArtifacts(content: string): {
 
         // Create unique ID by combining meta.id with title to prevent collisions
         // This ensures different files (e.g., "Counter.tsx" and "App.tsx") get different IDs
-        let uniqueId = `${meta.id}-${meta.title}`;
+        // Limit to 100 characters to satisfy API validation
+        let baseId = `${meta.id}-${meta.title}`;
+        if (baseId.length > 95) {
+          baseId = baseId.slice(0, 95);
+        }
+        let uniqueId = baseId;
 
         // If ID is already used (same id+title), append a suffix
         let suffix = 1;
         while (usedIds.has(uniqueId)) {
-          uniqueId = `${meta.id}-${meta.title}-${suffix}`;
+          uniqueId = `${baseId}-${suffix}`;
           suffix++;
         }
         usedIds.add(uniqueId);
@@ -120,8 +125,13 @@ function parseTruncatedArtifact(content: string): ParsedArtifact | null {
     code = code.replace(/`{0,2}$/, "").trim();
 
     const now = new Date().toISOString();
+    // Limit ID to 100 characters to satisfy API validation
+    let truncatedId = `${meta.id}-${meta.title}-truncated`;
+    if (truncatedId.length > 100) {
+      truncatedId = `${meta.id}-${meta.title.slice(0, 70)}-truncated`;
+    }
     return {
-      id: `${meta.id}-${meta.title}-truncated`,
+      id: truncatedId,
       type: meta.type || "code",
       title: `${meta.title} (途中)`,
       content: code,
