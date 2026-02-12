@@ -524,6 +524,10 @@ export function generateFallbackQuiz(
 /**
  * Convert StructuredQuiz to UnlockQuiz format
  * Options are shuffled to randomize correct answer position
+ *
+ * Note: AI response uses 1-based levels (1, 2, 3...) but internal
+ * system uses 0-based levels (0, 1, 2...) for consistency.
+ * This function converts 1-based to 0-based.
  */
 export function structuredQuizToUnlockQuiz(quiz: StructuredQuiz): UnlockQuiz {
   // Shuffle options to randomize correct answer position
@@ -533,7 +537,8 @@ export function structuredQuizToUnlockQuiz(quiz: StructuredQuiz): UnlockQuiz {
   );
 
   return {
-    level: quiz.level as UnlockLevel,
+    // Convert 1-based level from AI response to 0-based for internal use
+    level: (quiz.level - 1) as UnlockLevel,
     totalQuestions: quiz.totalQuestions,
     question: quiz.question,
     options,
