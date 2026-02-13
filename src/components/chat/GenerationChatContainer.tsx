@@ -7,6 +7,7 @@ import { ChatInput } from "./ChatInput";
 import { ChatModeSelector } from "./ChatModeSelector";
 import { BlurredCode } from "./BlurredCode";
 import { GenerationQuiz } from "./GenerationQuiz";
+import { DialogueUnlock } from "./DialogueUnlock";
 import { GenerationOptionsPopover } from "./GenerationOptionsPopover";
 import { Button } from "@/components/ui/button";
 import {
@@ -150,6 +151,14 @@ export function GenerationChatContainer({
 
   // Artifacts list from state
   const artifactsList = useMemo(() => Object.values(state.artifacts), [state.artifacts]);
+
+  // Dialogue mode state (for unlockMethod="explanation")
+  const [dialogueQuestion, setDialogueQuestion] = useState<{
+    question: string;
+    codeSnippet?: string;
+    codeLanguage?: string;
+  } | null>(null);
+  const [isLoadingDialogue, setIsLoadingDialogue] = useState(false);
 
   // Per-artifact progress values (use artifact-specific progress if available)
   const activeArtifactProgress = useMemo(() => {
@@ -399,6 +408,69 @@ export function GenerationChatContainer({
     sendMessageWithArtifact("アンロックをスキップしました。");
   }, [skipToUnlock, sendMessageWithArtifact]);
 
+  // 対話形式: 質問を取得
+  const loadDialogueQuestion = useCallback(async () => {
+    if (!activeArtifact?.id) return;
+    setIsLoadingDialogue(true);
+    try {
+      const response = await fetch(`/api/artifacts/${activeArtifact.id}/dialogue`);
+      const data = await response.json();
+      if (data.success && data.data) {
+        setDialogueQuestion(data.data);
+      }
+    } catch (error) {
+      console.error("[DialogueUnlock] Failed to load dialogue question:", error);
+    } finally {
+      setIsLoadingDialogue(false);
+    }
+  }, [activeArtifact?.id]);
+
+  // 対話形式: 回答を評価
+  const handleDialogueAnswer = useCallback(async (answer: string): Promise<{ isCorrect: boolean; feedback: string }> => {
+    if (!activeArtifact?.id || !dialogueQuestion) {
+      return { isCorrect: false, feedback: "質問が見つかりません" };
+    }
+
+    try {
+      const response = await fetch(`/api/artifacts/${activeArtifact.id}/dialogue`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: dialogueQuestion.question,
+          userAnswer: answer,
+          codeSnippet: dialogueQuestion.codeSnippet,
+          codeLanguage: dialogueQuestion.codeLanguage,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        if (data.data.isCorrect) {
+          // 次の質問を読み込む
+          setDialogueQuestion(null);
+          if (!data.data.isFullyUnlocked) {
+            setTimeout(loadDialogueQuestion, 500);
+          }
+        }
+        return {
+          isCorrect: data.data.isCorrect,
+          feedback: data.data.feedback,
+        };
+      }
+      return { isCorrect: false, feedback: data.error?.message || "評価に失敗しました" };
+    } catch (error) {
+      console.error("[DialogueUnlock] Failed to evaluate answer:", error);
+      return { isCorrect: false, feedback: "通信エラーが発生しました" };
+    }
+  }, [activeArtifact?.id, dialogueQuestion, loadDialogueQuestion]);
+
+  // 対話形式: アーティファクト変更時に質問を読み込む
+  useEffect(() => {
+    if (options.unlockMethod === "explanation" && activeArtifact?.id && !activeArtifactProgress.isUnlocked && !dialogueQuestion && !isLoadingDialogue) {
+      loadDialogueQuestion();
+    }
+  }, [options.unlockMethod, activeArtifact?.id, activeArtifactProgress.isUnlocked, dialogueQuestion, isLoadingDialogue, loadDialogueQuestion]);
+
   // 解説モードでコードを解説
   const handleExplainCode = useCallback(() => {
     if (!activeArtifact) return;
@@ -629,8 +701,65 @@ export function GenerationChatContainer({
                   </div>
                 )}
 
-                {/* クイズ（チャット内に表示、折りたたみ可能） */}
-                {state.currentQuiz ? (
+                {/* 理解度チェック: クイズ形式 or 対話形式 */}
+                {options.unlockMethod === "explanation" ? (
+                  /* 対話形式モード */
+                  activeArtifact && !activeArtifactProgress.isUnlocked && (
+                    <div className="px-4 py-4">
+                      {dialogueQuestion ? (
+                        <DialogueUnlock
+                          question={dialogueQuestion}
+                          unlockLevel={activeArtifactProgress.unlockLevel}
+                          totalQuestions={activeArtifactProgress.totalQuestions}
+                          onAnswer={handleDialogueAnswer}
+                          disabled={isLoading}
+                        />
+                      ) : isLoadingDialogue ? (
+                        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                              <span className="material-symbols-outlined text-yellow-400 animate-spin">refresh</span>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground/90">
+                                質問を準備中...
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                コードについて質問を生成しています
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                              <span className="material-symbols-outlined text-yellow-400">chat</span>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground/90">
+                                対話形式で理解度をチェック
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                質問に自由回答してコードをアンロック
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={loadDialogueQuestion}
+                              className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                            >
+                              <span className="material-symbols-outlined text-base mr-1.5">play_arrow</span>
+                              開始
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                ) : state.currentQuiz ? (
+                  /* クイズ形式モード（チャット内に表示、折りたたみ可能） */
                   <div className="px-4 py-4">
                     <GenerationQuiz
                       quiz={state.currentQuiz}
@@ -639,8 +768,8 @@ export function GenerationChatContainer({
                       onSkip={canSkip ? handleSkip : undefined}
                       canSkip={canSkip}
                       isCollapsible={true}
-                      onAskAboutQuestion={(question, options) => {
-                        const optionsList = options.join("\n");
+                      onAskAboutQuestion={(question, opts) => {
+                        const optionsList = opts.join("\n");
                         sendMessageWithArtifact(
                           `このクイズについて教えてください：\n\n質問: ${question}\n\n選択肢:\n${optionsList}\n\n正解を教えずに、この問題を解くためのヒントや考え方を教えてください。`
                         );
