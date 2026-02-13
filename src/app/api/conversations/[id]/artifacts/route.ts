@@ -160,47 +160,32 @@ export async function POST(
 
     const data = parsed.data;
 
-    // Check if artifact already exists
-    const existing = await prisma.artifact.findFirst({
-      where: {
+    // Use upsert to avoid race condition (multiple concurrent requests)
+    // This atomically creates or updates the artifact
+    const artifact = await prisma.artifact.upsert({
+      where: { id: data.id },
+      create: {
         id: data.id,
         conversationId,
+        userId: session.user.id,
+        type: data.type,
+        title: data.title,
+        content: data.content,
+        language: data.language,
+        totalQuestions: data.totalQuestions,
+        unlockLevel: 0,
+        quizHistory: [],
+        currentQuiz: Prisma.JsonNull,
+      },
+      update: {
+        title: data.title,
+        content: data.content,
+        language: data.language,
+        type: data.type,
+        version: { increment: 1 },
+        // Don't update totalQuestions if artifact exists (preserve progress)
       },
     });
-
-    let artifact;
-
-    if (existing) {
-      // Update existing artifact - increment version
-      artifact = await prisma.artifact.update({
-        where: { id: existing.id },
-        data: {
-          title: data.title,
-          content: data.content,
-          language: data.language,
-          type: data.type,
-          version: { increment: 1 },
-          // Don't update totalQuestions if artifact exists (preserve progress)
-        },
-      });
-    } else {
-      // Create new artifact
-      artifact = await prisma.artifact.create({
-        data: {
-          id: data.id,
-          conversationId,
-          userId: session.user.id,
-          type: data.type,
-          title: data.title,
-          content: data.content,
-          language: data.language,
-          totalQuestions: data.totalQuestions,
-          unlockLevel: 0,
-          quizHistory: [],
-          currentQuiz: Prisma.JsonNull,
-        },
-      });
-    }
 
     return NextResponse.json({
       success: true,

@@ -192,6 +192,25 @@ export function GenerationChatContainer({
     return hasTruncatedArtifact;
   }, [messages]);
 
+  // Check if user asked for more explanation after answering a quiz
+  // This is true when:
+  // 1. There's a next quiz available (state.currentQuiz)
+  // 2. Recent messages contain quiz explanation requests
+  // In this case, show a "次のクイズに進む" button at the bottom
+  const shouldShowNextQuizButtonAtBottom = useMemo(() => {
+    if (!state.currentQuiz) return false;
+    if (activeArtifactProgress.isUnlocked) return false;
+    if (messages.length < 3) return false;
+
+    // Check if any recent message is a quiz explanation request
+    const recentMessages = messages.slice(-4);
+    const hasQuizExplanationRequest = recentMessages.some(
+      (m) => m.role === "user" && m.content.includes("このクイズの解説をもっと詳しく")
+    );
+
+    return hasQuizExplanationRequest;
+  }, [state.currentQuiz, activeArtifactProgress.isUnlocked, messages]);
+
   // Wrapped sendMessage that includes active artifact context
   const sendMessageWithArtifact = useCallback(
     (message: string, attachments?: FileAttachment[]) => {
@@ -724,7 +743,7 @@ export function GenerationChatContainer({
                       {/* 現在のクイズをアーティファクト生成メッセージの直後に表示 */}
                       {shouldShowCurrentQuizHere && (
                         state.currentQuiz ? (
-                          <div className="px-4 py-4">
+                          <div id="current-quiz-block" className="px-4 py-4">
                             <GenerationQuiz
                               quiz={state.currentQuiz}
                               onAnswer={handleQuizAnswer}
@@ -889,6 +908,41 @@ export function GenerationChatContainer({
                       )}
                     </div>
                   )}
+
+                {/* 解説を聞いた後の「次のクイズへ」ボタン */}
+                {shouldShowNextQuizButtonAtBottom && (
+                  <div className="px-4 py-4">
+                    <div className="rounded-lg border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-yellow-400">quiz</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground/90">
+                            次のクイズに挑戦しましょう
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {activeArtifactProgress.unlockLevel}/{activeArtifactProgress.totalQuestions} 完了
+                          </p>
+                        </div>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            const quizBlock = document.getElementById("current-quiz-block");
+                            if (quizBlock) {
+                              quizBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }
+                          }}
+                          className="bg-yellow-500 hover:bg-yellow-400 text-zinc-900 font-medium"
+                        >
+                          <span className="material-symbols-outlined text-base mr-1.5">arrow_upward</span>
+                          次のクイズへ
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* クイズ完了通知と振り返り（全問正解後に表示） */}
                 {state.phase === "unlocked" && activeArtifactProgress.quizHistory.length > 0 && (
