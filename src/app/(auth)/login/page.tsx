@@ -68,6 +68,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/home";
   const error = searchParams.get("error");
+  const registered = searchParams.get("registered");
 
   // Redirect authenticated users to home
   useEffect(() => {
@@ -189,6 +190,11 @@ function LoginForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
           <CardContent className="space-y-4">
+            {registered === "true" && (
+              <div className="p-3 text-sm text-green-600 bg-green-500/10 border border-green-500/20 rounded-md">
+                アカウントが作成されました。ログインしてください。
+              </div>
+            )}
             {resendSuccess && (
               <div className="p-3 text-sm text-green-600 bg-green-500/10 border border-green-500/20 rounded-md">
                 確認メールを送信しました。メールをご確認ください。

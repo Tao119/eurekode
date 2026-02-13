@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { sendVerificationEmail } from "@/lib/email";
 import type { ApiResponse } from "@/types/api";
+
+// Email verification is currently disabled
+// import crypto from "crypto";
+// import { sendVerificationEmail } from "@/lib/email";
 
 const registerSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
@@ -101,7 +103,7 @@ export async function POST(
               passwordHash,
               displayName,
               userType: "admin",
-              // emailVerified is NOT set - requires email verification
+              emailVerified: new Date(), // Auto-verify (email verification disabled)
             },
           },
           subscription: {
@@ -119,34 +121,15 @@ export async function POST(
         },
       });
 
-      // Generate verification token and send email
-      const token = crypto.randomBytes(32).toString("hex");
-      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-      await prisma.verificationToken.create({
-        data: {
-          identifier: email,
-          token,
-          expires,
-        },
-      });
-
-      // Send verification email
-      try {
-        await sendVerificationEmail(email, token);
-      } catch (emailError) {
-        console.error("Failed to send verification email:", emailError);
-        // Continue registration even if email fails - user can request resend
-      }
-
+      // Email verification disabled - user is auto-verified
       return NextResponse.json(
         {
           success: true,
           data: {
             userId: organization.users[0].id,
             organizationId: organization.id,
-            message: "アカウントが作成されました。メールアドレスの確認をお願いします。",
-            requiresVerification: true,
+            message: "アカウントが作成されました。ログインしてご利用ください。",
+            requiresVerification: false,
           },
         },
         { status: 201 }
@@ -160,7 +143,7 @@ export async function POST(
           passwordHash,
           displayName,
           userType: "individual",
-          // emailVerified is NOT set - requires email verification
+          emailVerified: new Date(), // Auto-verify (email verification disabled)
           subscription: {
             create: {
               individualPlan: "starter", // Start with Starter plan
@@ -173,33 +156,14 @@ export async function POST(
         },
       });
 
-      // Generate verification token and send email
-      const token = crypto.randomBytes(32).toString("hex");
-      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-      await prisma.verificationToken.create({
-        data: {
-          identifier: email,
-          token,
-          expires,
-        },
-      });
-
-      // Send verification email
-      try {
-        await sendVerificationEmail(email, token);
-      } catch (emailError) {
-        console.error("Failed to send verification email:", emailError);
-        // Continue registration even if email fails - user can request resend
-      }
-
+      // Email verification disabled - user is auto-verified
       return NextResponse.json(
         {
           success: true,
           data: {
             userId: user.id,
-            message: "アカウントが作成されました。メールアドレスの確認をお願いします。",
-            requiresVerification: true,
+            message: "アカウントが作成されました。ログインしてご利用ください。",
+            requiresVerification: false,
             trialEnd: trialEndDate.toISOString(),
           },
         },

@@ -222,8 +222,8 @@ function RegisterForm() {
         return;
       }
 
-      // Redirect to email verification pending page
-      router.push(`/register/verify-pending?email=${encodeURIComponent(data.email)}`);
+      // Email verification is disabled - redirect to login
+      router.push(`/login?registered=true`);
     } catch {
       setErrorMessage("登録に失敗しました。もう一度お試しください。");
     } finally {
