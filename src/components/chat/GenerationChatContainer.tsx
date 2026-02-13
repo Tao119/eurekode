@@ -374,8 +374,9 @@ export function GenerationChatContainer({
     // 既にクイズがある場合はスキップ
     if (state.currentQuiz) return;
 
-    // このセッションでクイズ生成中（まだ保存されていない可能性）の場合はスキップ
-    if (quizGeneratedRef.current.has(artifactId) && !savedArtifactIdsRef.current.has(artifactId)) {
+    // 新規アーティファクト（まだDBに保存されていない）の場合はスキップ
+    // クイズ生成は addOrUpdateArtifact の .then() で行われる
+    if (!savedArtifactIdsRef.current.has(artifactId)) {
       return;
     }
 
