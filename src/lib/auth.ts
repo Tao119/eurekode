@@ -203,13 +203,13 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
-        // Check email verification for individual/admin users
-        if (
-          (user.userType === "individual" || user.userType === "admin") &&
-          !user.emailVerified
-        ) {
-          throw new Error("EMAIL_NOT_VERIFIED");
-        }
+        // Email verification disabled - skip check
+        // if (
+        //   (user.userType === "individual" || user.userType === "admin") &&
+        //   !user.emailVerified
+        // ) {
+        //   throw new Error("EMAIL_NOT_VERIFIED");
+        // }
 
         // Check if member is disabled
         if (user.userType === "member") {

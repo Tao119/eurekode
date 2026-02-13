@@ -195,7 +195,7 @@ export default function GenerationModePage() {
         currentBranchId={currentBranchId}
         onSwitchBranch={switchBranch}
         onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
+        canRegenerate={false}
         conversationId={currentConversationId || undefined}
         initialGenerationState={initialGenerationState}
         goal={goal}

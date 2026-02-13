@@ -106,7 +106,7 @@ export default function BrainstormRoomPage({ params }: PageProps) {
       currentBranchId={currentBranchId}
       onSwitchBranch={switchBranch}
       onRegenerate={regenerateLastMessage}
-      canRegenerate={canRegenerate}
+      canRegenerate={false}
       conversationId={conversationId}
       restoredMetadata={restoredMetadata}
       onMetadataChange={handleMetadataChange}

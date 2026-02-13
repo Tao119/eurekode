@@ -93,7 +93,7 @@ export default function ExplanationRoomPage({ params }: PageProps) {
       currentBranchId={currentBranchId}
       onSwitchBranch={switchBranch}
       onRegenerate={regenerateLastMessage}
-      canRegenerate={canRegenerate}
+      canRegenerate={false}
       conversationId={conversationId}
     />
   );

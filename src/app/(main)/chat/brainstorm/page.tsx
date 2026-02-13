@@ -181,7 +181,7 @@ export default function BrainstormModePage() {
         currentBranchId={currentBranchId}
         onSwitchBranch={switchBranch}
         onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
+        canRegenerate={false}
         conversationId={currentConversationId || undefined}
         restoredMetadata={restoredMetadata}
         onMetadataChange={handleMetadataChange}

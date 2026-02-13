@@ -213,7 +213,7 @@ export default function ExplanationModePage() {
         currentBranchId={currentBranchId}
         onSwitchBranch={switchBranch}
         onRegenerate={regenerateLastMessage}
-        canRegenerate={canRegenerate}
+        canRegenerate={false}
         goal={goal}
         onGoalEdit={() => setShowGoalModal(true)}
         onGoalClear={clearGoal}
