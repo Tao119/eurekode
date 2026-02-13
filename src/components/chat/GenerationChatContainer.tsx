@@ -678,6 +678,26 @@ export function GenerationChatContainer({
                             completedAnswer={quizItem.userAnswer}
                             defaultCollapsed={false}
                             isCollapsible={true}
+                            onAskForMoreExplanation={(quiz, userAnswer) => {
+                              const correctOption = quiz.options.find(o => o.label === quiz.correctLabel);
+                              const userOption = userAnswer ? quiz.options.find(o => o.label === userAnswer) : null;
+
+                              let message = `このクイズの解説をもっと詳しく教えてください：\n\n`;
+                              message += `【質問】\n${quiz.question}\n\n`;
+                              message += `【正解】\n${quiz.correctLabel}) ${correctOption?.text || ""}\n`;
+                              if (correctOption?.explanation) {
+                                message += `解説: ${correctOption.explanation}\n`;
+                              }
+
+                              if (userAnswer && userAnswer !== quiz.correctLabel && userOption) {
+                                message += `\n【私の回答】\n${userAnswer}) ${userOption.text}\n`;
+                                message += `\nなぜ私の回答が間違いで、正解が正しいのか、より詳しく説明してください。`;
+                              } else {
+                                message += `\nこの正解についてさらに深く理解したいです。関連する概念や応用例も含めて詳しく説明してください。`;
+                              }
+
+                              sendMessageWithArtifact(message);
+                            }}
                           />
                         </div>
                       ))}
@@ -789,6 +809,26 @@ export function GenerationChatContainer({
                           `このクイズについて教えてください：\n\n質問: ${question}\n\n選択肢:\n${optionsList}\n\n正解を教えずに、この問題を解くためのヒントや考え方を教えてください。`
                         );
                       }}
+                      onAskForMoreExplanation={(quiz, userAnswer) => {
+                        const correctOption = quiz.options.find(o => o.label === quiz.correctLabel);
+                        const userOption = userAnswer ? quiz.options.find(o => o.label === userAnswer) : null;
+
+                        let message = `このクイズの解説をもっと詳しく教えてください：\n\n`;
+                        message += `【質問】\n${quiz.question}\n\n`;
+                        message += `【正解】\n${quiz.correctLabel}) ${correctOption?.text || ""}\n`;
+                        if (correctOption?.explanation) {
+                          message += `解説: ${correctOption.explanation}\n`;
+                        }
+
+                        if (userAnswer && userAnswer !== quiz.correctLabel && userOption) {
+                          message += `\n【私の回答】\n${userAnswer}) ${userOption.text}\n`;
+                          message += `\nなぜ私の回答が間違いで、正解が正しいのか、より詳しく説明してください。`;
+                        } else {
+                          message += `\nこの正解についてさらに深く理解したいです。関連する概念や応用例も含めて詳しく説明してください。`;
+                        }
+
+                        sendMessageWithArtifact(message);
+                      }}
                     />
                   </div>
                 ) : (
@@ -869,6 +909,26 @@ export function GenerationChatContainer({
                             hintVisible={false}
                             completedAnswer={quizItem.userAnswer}
                             defaultCollapsed={false}
+                            onAskForMoreExplanation={(quiz, userAnswer) => {
+                              const correctOption = quiz.options.find(o => o.label === quiz.correctLabel);
+                              const userOption = userAnswer ? quiz.options.find(o => o.label === userAnswer) : null;
+
+                              let message = `このクイズの解説をもっと詳しく教えてください：\n\n`;
+                              message += `【質問】\n${quiz.question}\n\n`;
+                              message += `【正解】\n${quiz.correctLabel}) ${correctOption?.text || ""}\n`;
+                              if (correctOption?.explanation) {
+                                message += `解説: ${correctOption.explanation}\n`;
+                              }
+
+                              if (userAnswer && userAnswer !== quiz.correctLabel && userOption) {
+                                message += `\n【私の回答】\n${userAnswer}) ${userOption.text}\n`;
+                                message += `\nなぜ私の回答が間違いで、正解が正しいのか、より詳しく説明してください。`;
+                              } else {
+                                message += `\nこの正解についてさらに深く理解したいです。関連する概念や応用例も含めて詳しく説明してください。`;
+                              }
+
+                              sendMessageWithArtifact(message);
+                            }}
                           />
                         )
                       ))}

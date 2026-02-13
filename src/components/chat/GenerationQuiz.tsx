@@ -14,6 +14,8 @@ interface GenerationQuizProps {
   canSkip?: boolean;
   /** この問題について質問するコールバック */
   onAskAboutQuestion?: (question: string, options: string[]) => void;
+  /** 解説をもっと詳しく聞くコールバック */
+  onAskForMoreExplanation?: (quiz: UnlockQuiz, userAnswer: string | null) => void;
   /** 完了済みクイズとして表示（ユーザーの回答を表示） */
   completedAnswer?: string;
   /** 折りたたみ可能かどうか */
@@ -29,6 +31,7 @@ export function GenerationQuiz({
   onSkip,
   canSkip = false,
   onAskAboutQuestion,
+  onAskForMoreExplanation,
   completedAnswer,
   isCollapsible = false,
   defaultCollapsed = false,
@@ -403,6 +406,21 @@ export function GenerationQuiz({
                         ))}
                     </div>
                   </div>
+
+                  {/* 解説を詳しく聞くボタン */}
+                  {onAskForMoreExplanation && (
+                    <div className="mt-4 pt-3 border-t border-blue-500/20">
+                      <Button
+                        onClick={() => onAskForMoreExplanation(quiz, displayAnswer)}
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
+                      >
+                        <span className="material-symbols-outlined text-base mr-2">forum</span>
+                        この解説をもっと詳しく聞く
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
