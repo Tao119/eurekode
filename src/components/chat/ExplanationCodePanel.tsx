@@ -20,8 +20,6 @@ interface ExplanationCodePanelProps {
   bookmarks: number[];
   /** 解説済みの範囲 */
   explainedRanges?: Array<{ start: number; end: number }>;
-  /** 行クリック時のコールバック */
-  onLineClick: (lineNumber: number) => void;
   /** ブックマーク切り替え */
   onBookmarkToggle: (lineNumber: number) => void;
   /** パネルを閉じる */
@@ -66,7 +64,6 @@ export function ExplanationCodePanel({
   previousHighlightedLines = [],
   bookmarks,
   explainedRanges = [],
-  onLineClick,
   onBookmarkToggle,
   onClose,
   scrollToLine,
@@ -272,12 +269,10 @@ export function ExplanationCodePanel({
                     styles.wasPreviouslyHighlighted && !styles.isHighlighted && "bg-yellow-500/5",
                     styles.isBookmarked && !styles.isHighlighted && "bg-amber-500/10",
                     styles.isExplained && !styles.isHighlighted && !styles.isBookmarked && "bg-green-500/5",
-                    styles.isHovered && !styles.isHighlighted && "bg-blue-500/10",
-                    "hover:bg-blue-500/10 cursor-pointer"
+                    styles.isHovered && !styles.isHighlighted && "bg-zinc-800/50"
                   )}
                   onMouseEnter={() => setHoveredLine(lineNumber)}
                   onMouseLeave={() => setHoveredLine(null)}
-                  onClick={() => onLineClick(lineNumber)}
                 >
                   {/* 行番号 */}
                   <div className="w-12 flex-shrink-0 flex items-center justify-end pr-3 select-none">
@@ -371,18 +366,12 @@ export function ExplanationCodePanel({
         </div>
       </div>
 
-      {/* フッター（ヒント） */}
+      {/* フッター（凡例） */}
       <div className="shrink-0 px-4 py-2.5 border-t border-zinc-800 bg-zinc-900/50">
         <div className="flex items-center justify-between text-xs text-zinc-500">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm text-yellow-400">lightbulb</span>
-              <span>行をクリックで質問</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm text-amber-400">bookmark</span>
-              <span>ブックマーク: {bookmarks.length}</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sm text-amber-400">bookmark</span>
+            <span>ブックマーク: {bookmarks.length}</span>
           </div>
 
           {/* 凡例 */}
@@ -413,7 +402,6 @@ interface MobileCodeSheetProps {
   filename?: string;
   highlightedLines: number[];
   bookmarks: number[];
-  onLineClick: (lineNumber: number) => void;
   onBookmarkToggle: (lineNumber: number) => void;
 }
 
@@ -425,7 +413,6 @@ export function MobileExplanationCodeSheet({
   filename,
   highlightedLines,
   bookmarks,
-  onLineClick,
   onBookmarkToggle,
 }: MobileCodeSheetProps) {
   const [copied, setCopied] = useState(false);
@@ -509,9 +496,8 @@ export function MobileExplanationCodeSheet({
               lineHeight: "1.5",
             }}
             lineProps={(lineNumber) => ({
-              onClick: () => onLineClick(lineNumber),
               className: cn(
-                "cursor-pointer hover:bg-blue-500/10 transition-colors",
+                "transition-colors",
                 highlightedLines.includes(lineNumber) && "bg-yellow-500/20 border-l-2 border-yellow-400",
                 bookmarks.includes(lineNumber) && "bg-amber-500/10"
               ),
@@ -526,7 +512,7 @@ export function MobileExplanationCodeSheet({
         <div className="shrink-0 px-4 py-3 border-t border-zinc-800 bg-zinc-900/50">
           <div className="flex items-center justify-between text-xs text-zinc-500">
             <span>{totalLines}行</span>
-            <span>行をタップで質問</span>
+            <span>ブックマーク: {bookmarks.length}</span>
           </div>
         </div>
       </div>

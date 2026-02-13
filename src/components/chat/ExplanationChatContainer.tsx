@@ -70,7 +70,6 @@ export function ExplanationChatContainer({
     clearHighlightedLines,
     toggleBookmark,
     markSectionExplained,
-    generateLineQuestion,
     resetScrollTarget,
     hasCode,
   } = useExplanationMode({ conversationId });
@@ -142,15 +141,6 @@ export function ExplanationChatContainer({
       }
     });
   }, [messages]);
-
-  // 行クリック時の処理
-  const handleLineClick = useCallback(
-    (lineNumber: number) => {
-      const prompt = generateLineQuestion(lineNumber);
-      onSendMessage(prompt);
-    },
-    [generateLineQuestion, onSendMessage]
-  );
 
   // ブックマーク切り替え
   const handleBookmarkToggle = useCallback(
@@ -334,7 +324,6 @@ export function ExplanationChatContainer({
             filename={codeState.filename}
             highlightedLines={codeState.highlightedLines}
             bookmarks={codeState.bookmarks}
-            onLineClick={handleLineClick}
             onBookmarkToggle={handleBookmarkToggle}
           />
         )}
@@ -349,7 +338,6 @@ export function ExplanationChatContainer({
             previousHighlightedLines={codeState.previousHighlightedLines}
             bookmarks={codeState.bookmarks}
             explainedRanges={codeState.explainedRanges}
-            onLineClick={handleLineClick}
             onBookmarkToggle={handleBookmarkToggle}
             onClose={() => setIsCodePanelCollapsed(true)}
             scrollToLine={codeState.scrollToLine}
@@ -485,10 +473,6 @@ function WelcomeScreen({
           <li className="flex items-start gap-2">
             <span className={cn("material-symbols-outlined text-xs sm:text-sm mt-0.5", config.color)}>check</span>
             <span>AIが解説している行が自動でハイライトされます</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className={cn("material-symbols-outlined text-xs sm:text-sm mt-0.5", config.color)}>check</span>
-            <span>行をクリックすると、その行について質問できます</span>
           </li>
         </ul>
       </div>
