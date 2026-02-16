@@ -211,6 +211,22 @@ export function GenerationChatContainer({
     return hasQuizExplanationRequest;
   }, [state.currentQuiz, activeArtifactProgress.isUnlocked, messages]);
 
+  // Calculate the message index where unlock happened (for inline quiz summary)
+  // This is the message AFTER which the last quiz was answered
+  const unlockedAtMessageIndex = useMemo(() => {
+    if (!activeArtifactProgress.isUnlocked) return -1;
+    if (activeArtifactProgress.quizHistory.length === 0) return -1;
+
+    // Find the last quiz that was answered (highest answeredAtMessageCount)
+    const lastQuiz = activeArtifactProgress.quizHistory.reduce((max, item) => {
+      const count = item.answeredAtMessageCount ?? 0;
+      return count > (max?.answeredAtMessageCount ?? 0) ? item : max;
+    }, activeArtifactProgress.quizHistory[0]);
+
+    // answeredAtMessageCount is the message count at answer time, so message index is count - 1
+    return lastQuiz?.answeredAtMessageCount ? lastQuiz.answeredAtMessageCount - 1 : -1;
+  }, [activeArtifactProgress.isUnlocked, activeArtifactProgress.quizHistory]);
+
   // Wrapped sendMessage that includes active artifact context
   const sendMessageWithArtifact = useCallback(
     (message: string, attachments?: FileAttachment[]) => {
@@ -745,6 +761,33 @@ export function GenerationChatContainer({
                         </div>
                       ))}
 
+                      {/* クイズ完了通知（アンロックが発生したメッセージの直後に表示） */}
+                      {state.phase === "unlocked" &&
+                        index === unlockedAtMessageIndex &&
+                        activeArtifactProgress.quizHistory.length > 0 && (
+                        <div className="px-4 py-4">
+                          <div className="rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="size-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-green-400 text-2xl">emoji_events</span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-bold text-lg text-green-400">
+                                  クイズ完了！
+                                </p>
+                                <p className="text-sm text-foreground/80">
+                                  {activeArtifactProgress.quizHistory.length}問全て正解しました。コードをコピーできます。
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 text-green-400 bg-green-500/20 px-3 py-1.5 rounded-full">
+                                <span className="material-symbols-outlined text-lg">lock_open</span>
+                                <span className="text-sm font-medium">アンロック</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* 現在のクイズをアーティファクト生成メッセージの直後に表示 */}
                       {shouldShowCurrentQuizHere && (
                         state.currentQuiz ? (
@@ -946,73 +989,6 @@ export function GenerationChatContainer({
                           次のクイズへ
                         </Button>
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* クイズ完了通知と振り返り（全問正解後に表示） */}
-                {state.phase === "unlocked" && activeArtifactProgress.quizHistory.length > 0 && (
-                  <div className="px-4 py-4 space-y-4">
-                    {/* 完了通知ヘッダー */}
-                    <div className="rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="size-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-green-400 text-2xl">emoji_events</span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-lg text-green-400">
-                            クイズ完了！
-                          </p>
-                          <p className="text-sm text-foreground/80">
-                            {activeArtifactProgress.quizHistory.length}問全て正解しました。コードをコピーできます。
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 text-green-400 bg-green-500/20 px-3 py-1.5 rounded-full">
-                          <span className="material-symbols-outlined text-lg">lock_open</span>
-                          <span className="text-sm font-medium">アンロック</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 全問題の振り返り（フルビュー） */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-medium text-foreground/70">
-                        <span className="material-symbols-outlined text-base">school</span>
-                        <span>クイズ振り返り</span>
-                      </div>
-                      {activeArtifactProgress.quizHistory.map((quizItem, quizIndex) => (
-                        quizItem.completedQuiz && (
-                          <GenerationQuiz
-                            key={`summary-quiz-${quizIndex}`}
-                            quiz={quizItem.completedQuiz}
-                            onAnswer={() => {}}
-                            hintVisible={false}
-                            completedAnswer={quizItem.userAnswer}
-                            defaultCollapsed={false}
-                            onAskForMoreExplanation={(quiz, userAnswer) => {
-                              const correctOption = quiz.options.find(o => o.label === quiz.correctLabel);
-                              const userOption = userAnswer ? quiz.options.find(o => o.label === userAnswer) : null;
-
-                              let message = `【システム生成クイズについての質問】\n\n`;
-                              message += `※これはコード理解度確認のためにシステムが自動生成したクイズです（あなたが出題したものではありません）。以下のクイズについて詳しく解説してください。\n\n`;
-                              message += `【質問】\n${quiz.question}\n\n`;
-                              message += `【正解】\n${quiz.correctLabel}) ${correctOption?.text || ""}\n`;
-                              if (correctOption?.explanation) {
-                                message += `解説: ${correctOption.explanation}\n`;
-                              }
-
-                              if (userAnswer && userAnswer !== quiz.correctLabel && userOption) {
-                                message += `\n【私の回答】\n${userAnswer}) ${userOption.text}\n`;
-                                message += `\nなぜ私の回答が間違いで、正解が正しいのか、より詳しく説明してください。`;
-                              } else {
-                                message += `\nこの正解についてさらに深く理解したいです。関連する概念や応用例も含めて詳しく説明してください。`;
-                              }
-
-                              sendMessageWithArtifact(message);
-                            }}
-                          />
-                        )
-                      ))}
                     </div>
                   </div>
                 )}
