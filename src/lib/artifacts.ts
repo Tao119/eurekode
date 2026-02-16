@@ -6,6 +6,18 @@ export interface ParsedArtifact extends Artifact {
 }
 
 /**
+ * Generate a unique artifact ID
+ * Uses timestamp + random string to ensure uniqueness across users
+ */
+function generateUniqueId(prefix: string): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  const id = `${prefix}-${timestamp}-${random}`;
+  // Limit to 100 characters for API validation
+  return id.length > 100 ? id.slice(0, 100) : id;
+}
+
+/**
  * Parse artifacts from AI response content
  * Format: <!--ARTIFACT:{"id":"main","type":"code","title":"main.ts","language":"typescript"}-->
  * ```typescript
@@ -43,21 +55,9 @@ export function parseArtifacts(content: string): {
           language?: string;
         };
 
-        // Create unique ID by combining meta.id with title to prevent collisions
-        // This ensures different files (e.g., "Counter.tsx" and "App.tsx") get different IDs
-        // Limit to 100 characters to satisfy API validation
-        let baseId = `${meta.id}-${meta.title}`;
-        if (baseId.length > 95) {
-          baseId = baseId.slice(0, 95);
-        }
-        let uniqueId = baseId;
-
-        // If ID is already used (same id+title), append a suffix
-        let suffix = 1;
-        while (usedIds.has(uniqueId)) {
-          uniqueId = `${baseId}-${suffix}`;
-          suffix++;
-        }
+        // Generate globally unique ID using timestamp + random string
+        // This ensures uniqueness across different users and sessions
+        const uniqueId = generateUniqueId(meta.id);
         usedIds.add(uniqueId);
 
         artifacts.push({
@@ -125,11 +125,8 @@ function parseTruncatedArtifact(content: string): ParsedArtifact | null {
     code = code.replace(/`{0,2}$/, "").trim();
 
     const now = new Date().toISOString();
-    // Limit ID to 100 characters to satisfy API validation
-    let truncatedId = `${meta.id}-${meta.title}-truncated`;
-    if (truncatedId.length > 100) {
-      truncatedId = `${meta.id}-${meta.title.slice(0, 70)}-truncated`;
-    }
+    // Generate unique ID for truncated artifact
+    const truncatedId = generateUniqueId(`${meta.id}-truncated`);
     return {
       id: truncatedId,
       type: meta.type || "code",

@@ -414,7 +414,7 @@ export default function AccessKeysPage() {
   };
 
   const copyAllKeys = async () => {
-    await navigator.clipboard.writeText(createdKeys.join("\n"));
+    await navigator.clipboard.writeText(createdKeys.join(", "));
     toast.success("すべてのキーをコピーしました");
   };
 
@@ -953,11 +953,28 @@ export default function AccessKeysPage() {
               <p className="text-xs text-muted-foreground">
                 割り当て可能な残り: <span className="font-medium text-primary">{remainingAllocatable.toLocaleString()}pt</span>
                 {creditAllocation && (
-                  <> / 組織上限: {creditAllocation.total.toLocaleString()}pt（割り当て済み: {creditAllocation.allocated.toLocaleString()}pt）</>
+                  <> / 組織上限: {creditAllocation.total.toLocaleString()}pt（現在割り当て済み: {creditAllocation.allocated.toLocaleString()}pt）</>
                 )}
               </p>
+              {keyCount > 1 && creditLimit > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  発行予定: <span className="font-medium">{(creditLimit * keyCount).toLocaleString()}pt</span>
+                  （{keyCount}件 × {creditLimit.toLocaleString()}pt）
+                  → 発行後合計: <span className={cn(
+                    "font-medium",
+                    (creditAllocation?.allocated || 0) + creditLimit * keyCount > (creditAllocation?.total || 0)
+                      ? "text-destructive"
+                      : "text-primary"
+                  )}>
+                    {((creditAllocation?.allocated || 0) + creditLimit * keyCount).toLocaleString()}pt
+                  </span>
+                </p>
+              )}
               {creditLimit < 1 && (
                 <p className="text-xs text-amber-500">※ 1以上の値を設定してください</p>
+              )}
+              {creditLimit * keyCount > remainingAllocatable && (
+                <p className="text-xs text-destructive">※ 割り当て可能なポイントを超えています</p>
               )}
             </div>
             <div className="space-y-2">
