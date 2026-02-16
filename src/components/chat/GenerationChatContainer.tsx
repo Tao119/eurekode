@@ -351,7 +351,8 @@ export function GenerationChatContainer({
       for (const artifact of artifacts) {
         // 新クイズシステム: アーティファクト保存後にクイズを生成
         // 1アーティファクトにつき1回のみ
-        const shouldGenerateQuiz = !isLoading && !quizGeneratedRef.current.has(artifact.id);
+        // canSkip が有効な場合はクイズを生成しない（即アンロック）
+        const shouldGenerateQuiz = !canSkip && !isLoading && !quizGeneratedRef.current.has(artifact.id);
 
         if (shouldGenerateQuiz) {
           quizGeneratedRef.current.add(artifact.id);
@@ -383,10 +384,13 @@ export function GenerationChatContainer({
     }
 
     // Note: 旧クイズ抽出システムは削除済み。クイズはAPIから生成・取得される。
-  }, [messages, isLoading, state.phase, setPhase, addOrUpdateArtifact, generateQuizzesForArtifact]);
+  }, [messages, isLoading, state.phase, setPhase, addOrUpdateArtifact, generateQuizzesForArtifact, canSkip]);
 
   // 新クイズシステム: アーティファクト選択時にクイズを読み込む
   useEffect(() => {
+    // canSkip が有効な場合はクイズを読み込まない（即アンロック）
+    if (canSkip) return;
+
     const artifactId = state.activeArtifactId;
     if (!artifactId) return;
 
@@ -408,7 +412,7 @@ export function GenerationChatContainer({
       }
       console.error("[GenerationChatContainer] Failed to load quizzes:", error);
     });
-  }, [state.activeArtifactId, state.currentQuiz, loadQuizzesFromAPI]);
+  }, [state.activeArtifactId, state.currentQuiz, loadQuizzesFromAPI, canSkip]);
 
   // Note: 旧フォールバッククイズ生成と自動リクエストは削除済み。
   // クイズはAPIから生成・取得される（generateQuizzesForArtifact, loadQuizzesFromAPI）。

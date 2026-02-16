@@ -74,9 +74,25 @@ export async function GET() {
       ...(userSettings || {}),
     };
 
-    // For member users, check if admin has set skipAllowed permission
-    if (user.userType === "member" && userSettings?.skipAllowed !== undefined) {
-      settings.unlockSkipAllowed = userSettings.skipAllowed;
+    // For member users, compute unlockSkipAllowed from organization/accessKey settings
+    // Priority: organization settings -> access key settings -> user settings (same as allowedModes)
+    if (user.userType === "member") {
+      // Start with organization settings
+      const orgSettings = user.accessKey?.organization?.settings as Record<string, unknown> | null;
+      if (typeof orgSettings?.unlockSkipAllowed === "boolean") {
+        settings.unlockSkipAllowed = orgSettings.unlockSkipAllowed;
+      }
+
+      // Override with access key settings
+      const akSettings = user.accessKey?.settings as Record<string, unknown> | null;
+      if (typeof akSettings?.unlockSkipAllowed === "boolean") {
+        settings.unlockSkipAllowed = akSettings.unlockSkipAllowed;
+      }
+
+      // Legacy: check skipAllowed field in user settings (for backwards compatibility)
+      if (userSettings?.skipAllowed !== undefined) {
+        settings.unlockSkipAllowed = userSettings.skipAllowed;
+      }
     }
 
     // Get dailyTokenLimit from AccessKey or use default
