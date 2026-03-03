@@ -219,7 +219,7 @@ ${code}
   try {
     const client = createAnthropicClient();
     const response = await client.messages.create({
-      model: "anthropic.claude-sonnet-4-6",
+      model: "us.anthropic.claude-sonnet-4-6",
       max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });

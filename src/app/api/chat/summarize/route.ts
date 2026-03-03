@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     // Generate summary using Claude (non-streaming for simplicity)
     const response = await anthropic.messages.create({
-      model: "anthropic.claude-sonnet-4-6", // Use Sonnet for cost efficiency
+      model: "us.anthropic.claude-sonnet-4-6", // Use Sonnet for cost efficiency
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],

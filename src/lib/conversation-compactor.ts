@@ -14,7 +14,7 @@ const COMPACTING_CONFIG = {
   /** Minimum messages before compacting is considered */
   MIN_MESSAGES_FOR_COMPACT: 10,
   /** Claude model for summarization (Haiku for speed and cost) */
-  SUMMARY_MODEL: "anthropic.claude-haiku-4-5-20251001-v1:0",
+  SUMMARY_MODEL: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
   /** Max tokens for the summary response */
   SUMMARY_MAX_TOKENS: 512,
 } as const;

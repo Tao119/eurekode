@@ -100,7 +100,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     // AIでタイトルを生成（Haiku を使用してコスト削減）
     const completion = await anthropic.messages.create({
-      model: "anthropic.claude-haiku-4-5-20251001-v1:0",
+      model: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
       max_tokens: 50,
       system: `あなたは会話のタイトルを生成するアシスタントです。
 以下の会話の内容を分析し、簡潔で分かりやすいタイトルを生成してください。

@@ -80,7 +80,7 @@ ${validated.userAnswer}
 - フィードバックは励ましの言葉を含め、具体的な改善点を示す`;
 
     const response = await client.messages.create({
-      model: "anthropic.claude-sonnet-4-6",
+      model: "us.anthropic.claude-sonnet-4-6",
       max_tokens: 500,
       messages: [{ role: "user", content: evaluationPrompt }],
     });
@@ -228,7 +228,7 @@ ${artifact.unlockLevel + 1}/${artifact.totalQuestions}（${artifact.unlockLevel}
 4. codeSnippetには質問に関連するコード部分を必ず含める`;
 
     const response = await client.messages.create({
-      model: "anthropic.claude-sonnet-4-6",
+      model: "us.anthropic.claude-sonnet-4-6",
       max_tokens: 500,
       messages: [{ role: "user", content: generatePrompt }],
     });
