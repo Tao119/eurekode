@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, ContentBlockParam, ImageBlockParam, DocumentBlockParam, TextBlockParam } from "@anthropic-ai/sdk/resources/messages";
+import { createAnthropicClient, classifyApiError } from "@/lib/anthropic";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -21,6 +21,7 @@ import type { AIModel } from "@/config/plans";
 import { buildProjectContext } from "@/lib/rag-service";
 import { embedConversationMessages } from "@/lib/embedding-service";
 import { rateLimiters, rateLimitErrorResponse } from "@/lib/rate-limit";
+import { withSystemCacheControl, addCacheBreakpoints } from "@/lib/prompt-cache";
 
 // Map ClaudeModel to AIModel for point consumption
 // haiku is treated as sonnet for billing purposes
@@ -362,8 +363,7 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
     };
 
     // Check if API key is configured
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -444,10 +444,8 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
       currentConversationId = newConv.id;
     }
 
-    // Initialize Anthropic client
-    const anthropic = new Anthropic({
-      apiKey,
-    });
+    // Initialize Anthropic client (maxRetries: 3, exponential backoff for 429/5xx)
+    const anthropic = createAnthropicClient();
 
     // Build system prompt (may include async RAG context)
     const systemPrompt = await getSystemPrompt();
@@ -479,8 +477,8 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
           const response = await anthropic.messages.stream({
             model: getModelId(selectedModel),
             max_tokens: 4096,
-            system: systemPrompt,
-            messages: messagesForApi,
+            system: withSystemCacheControl(systemPrompt),
+            messages: addCacheBreakpoints(messagesForApi),
           });
 
           let chunkCount = 0;
@@ -603,8 +601,7 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
+          const classified = classifyApiError(error);
 
           // Update generation status to failed
           if (currentConversationId) {
@@ -612,14 +609,18 @@ ${activeArtifact.language ? `- 言語: ${activeArtifact.language}` : ""}
               where: { id: currentConversationId },
               data: {
                 generationStatus: "failed",
-                generationError: errorMessage,
+                generationError: classified.message,
               },
             }).catch(console.error);
           }
 
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ error: errorMessage })}\n\n`
+              `data: ${JSON.stringify({
+                error: classified.message,
+                errorCode: classified.code,
+                retryable: classified.retryable,
+              })}\n\n`
             )
           );
           controller.close();

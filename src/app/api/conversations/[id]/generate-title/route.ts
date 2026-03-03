@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/lib/auth";
+import { createAnthropicClient } from "@/lib/anthropic";
 import { prisma } from "@/lib/prisma";
 import type { Message } from "@/types/chat";
 
@@ -95,10 +95,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .map((m) => `${m.role === "user" ? "ユーザー" : "AI"}: ${m.content.slice(0, 200)}`)
       .join("\n");
 
-    // Anthropic クライアント
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    // Anthropic クライアント (maxRetries: 3)
+    const anthropic = createAnthropicClient();
 
     // AIでタイトルを生成（Haiku を使用してコスト削減）
     const completion = await anthropic.messages.create({

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import { createAnthropicClient as createClient } from "@/lib/anthropic";
 import type { ChatMode } from "@/generated/prisma/client";
 import type { ConversationCompactSummary, ConversationMetadata } from "@/types/chat";
 import { estimateTokens } from "@/lib/token-limit";
@@ -198,7 +199,7 @@ async function generateSummary(
   previousSummary?: string,
   existingClient?: Anthropic,
 ): Promise<string> {
-  const anthropic = existingClient ?? createAnthropicClient();
+  const anthropic = existingClient ?? createAnthropicClientFallback();
   const prompt = buildSummarizationPrompt(messages, mode, previousSummary);
 
   const response = await anthropic.messages.create({
@@ -216,12 +217,8 @@ async function generateSummary(
   return textBlock.text;
 }
 
-function createAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured for summarization");
-  }
-  return new Anthropic({ apiKey });
+function createAnthropicClientFallback(): Anthropic {
+  return createClient();
 }
 
 function buildSummarizationPrompt(

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/anthropic";
 
 // Validation schema for dialogue evaluation
 const evaluateDialogueSchema = z.object({
@@ -46,7 +46,7 @@ export async function POST(
     }
 
     // Evaluate the user's answer using Claude
-    const client = new Anthropic();
+    const client = createAnthropicClient();
     const evaluationPrompt = `あなたはプログラミング教育の専門家です。ユーザーの回答がコードの理解を示しているか評価してください。
 
 【質問】
@@ -198,7 +198,7 @@ export async function GET(
     }
 
     // Generate a dialogue question based on the code
-    const client = new Anthropic();
+    const client = createAnthropicClient();
     const generatePrompt = `あなたはプログラミング教育の専門家です。以下のコードについて、ユーザーの理解度を確認するための質問を1つ生成してください。
 
 【ファイル名】${artifact.title}

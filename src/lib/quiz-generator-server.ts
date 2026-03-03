@@ -3,7 +3,7 @@
  * アーティファクトのコード内容に基づいてクイズを生成
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/anthropic";
 import { estimateQuizCount } from "./quiz-generator";
 
 export interface QuizOption {
@@ -217,7 +217,7 @@ ${code}
    - 「どのデザインパターンが使われていますか？」（汎用的）`;
 
   try {
-    const client = new Anthropic();
+    const client = createAnthropicClient();
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,

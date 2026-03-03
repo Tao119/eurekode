@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import type { TextBlock } from "@anthropic-ai/sdk/resources/messages";
 import { auth } from "@/lib/auth";
+import { createAnthropicClient } from "@/lib/anthropic";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { ConversationMetadata, ConversationSummary } from "@/types/chat";
@@ -102,16 +103,15 @@ export async function POST(request: NextRequest) {
     const { conversationId, messages, brainstormState, saveSummary } = parsed.data;
 
     // Check if API key is configured
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { success: false, error: { code: "CONFIG_ERROR", message: "AI service is not configured" } },
         { status: 500 }
       );
     }
 
-    // Initialize Anthropic client
-    const anthropic = new Anthropic({ apiKey });
+    // Initialize Anthropic client (maxRetries: 3)
+    const anthropic = createAnthropicClient();
 
     // Select system prompt based on subMode
     const systemPrompt = brainstormState?.subMode === "planning"
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     // Extract text content
     const summary = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
+      .filter((block): block is TextBlock => block.type === "text")
       .map((block) => block.text)
       .join("\n");
 

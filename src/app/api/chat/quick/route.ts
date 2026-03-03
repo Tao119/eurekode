@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/lib/auth";
+import { createAnthropicClient, classifyApiError } from "@/lib/anthropic";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { systemPrompts } from "@/lib/prompts";
@@ -8,6 +8,7 @@ import { detectChatMode, detectChatModeWithDetails } from "@/lib/mode-detector";
 import type { ChatMode, ClaudeModel, ConversationMetadata } from "@/types/chat";
 import { getModelId, DEFAULT_MODEL } from "@/types/chat";
 import { compactConversationIfNeeded } from "@/lib/conversation-compactor";
+import { withSystemCacheControl, addCacheBreakpoints } from "@/lib/prompt-cache";
 
 const quickChatRequestSchema = z.object({
   content: z.string().min(1).max(10000),
@@ -54,8 +55,7 @@ export async function POST(request: NextRequest) {
     const selectedModel: ClaudeModel = model || DEFAULT_MODEL;
 
     // Check if API key is configured
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -126,10 +126,8 @@ export async function POST(request: NextRequest) {
     // Add user message
     messages.push({ role: "user", content });
 
-    // Initialize Anthropic client
-    const anthropic = new Anthropic({
-      apiKey,
-    });
+    // Initialize Anthropic client (maxRetries: 3, exponential backoff for 429/5xx)
+    const anthropic = createAnthropicClient();
 
     // Compact conversation if needed (summarize old messages to reduce token usage)
     let compactResult: Awaited<ReturnType<typeof compactConversationIfNeeded>> | null = null;
@@ -173,8 +171,8 @@ export async function POST(request: NextRequest) {
           const response = await anthropic.messages.stream({
             model: getModelId(selectedModel),
             max_tokens: 4096,
-            system: systemPrompts[mode],
-            messages: messagesForApi,
+            system: withSystemCacheControl(systemPrompts[mode]),
+            messages: addCacheBreakpoints(messagesForApi),
           });
 
           let chunkCount = 0;
@@ -299,8 +297,7 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
+          const classified = classifyApiError(error);
 
           // Update generation status to failed
           if (currentConversationId) {
@@ -309,14 +306,20 @@ export async function POST(request: NextRequest) {
                 where: { id: currentConversationId },
                 data: {
                   generationStatus: "failed",
-                  generationError: errorMessage,
+                  generationError: classified.message,
                 },
               })
               .catch(console.error);
           }
 
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`)
+            encoder.encode(
+              `data: ${JSON.stringify({
+                error: classified.message,
+                errorCode: classified.code,
+                retryable: classified.retryable,
+              })}\n\n`
+            )
           );
           controller.close();
         }
