@@ -17,10 +17,27 @@ const DEFAULT_MAX_RETRIES = 3;
 /**
  * Amazon Bedrock経由のAnthropicクライアントを作成する。
  * SDKが429/5xxエラーをexponential backoffで自動リトライする。
+ *
+ * Vercel等のサーバーレス環境ではAWS credential chainが使えないため、
+ * 環境変数から明示的にクレデンシャルを渡す。
+ * ローカル開発ではAWS_PROFILE経由のcredential chainにフォールバック。
  */
 export function createAnthropicClient(): AnthropicBedrock {
+  const accessKey = process.env.AWS_ACCESS_KEY_ID?.trim();
+  const secretKey = process.env.AWS_SECRET_ACCESS_KEY?.trim();
+  const region = (process.env.AWS_REGION || "us-east-1").trim();
+
+  if (accessKey && secretKey) {
+    return new AnthropicBedrock({
+      awsAccessKey: accessKey,
+      awsSecretKey: secretKey,
+      awsRegion: region,
+      maxRetries: DEFAULT_MAX_RETRIES,
+    });
+  }
+
   return new AnthropicBedrock({
-    awsRegion: process.env.AWS_REGION || "us-east-1",
+    awsRegion: region,
     maxRetries: DEFAULT_MAX_RETRIES,
   });
 }
