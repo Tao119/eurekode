@@ -102,7 +102,7 @@ export default function BrainstormModePage() {
   );
 
   // Goal setting for learner autonomy
-  const { goal, setGoal, clearGoal } = useGoal({
+  const { goal, setGoal } = useGoal({
     restoredMetadata,
     onMetadataChange: handleMetadataChange,
   });
@@ -194,9 +194,6 @@ export default function BrainstormModePage() {
         onMetadataChange={handleMetadataChange}
         onSubModeChange={setSubMode}
         initialArtifactQuizState={initialArtifactQuizState}
-        goal={goal}
-        onGoalEdit={() => setShowGoalModal(true)}
-        onGoalClear={clearGoal}
         headerExtra={
           <>
             <GoalTrigger goal={goal} onClick={() => setShowGoalModal(true)} />

@@ -14,7 +14,7 @@ import { useArtifactDetection } from "@/hooks/useArtifactDetection";
 import type { PersistedArtifactQuizState } from "@/hooks/useArtifactQuiz";
 import { parseLineReferences, findFirstCodeBlockInMessages } from "@/lib/line-reference-parser";
 import { MODE_CONFIG } from "@/config/modes";
-import type { Message, ConversationBranch, Artifact, FileAttachment, LearnerGoal } from "@/types/chat";
+import type { Message, ConversationBranch, FileAttachment } from "@/types/chat";
 import { cn } from "@/lib/utils";
 
 // Panel view state for right panel
@@ -39,10 +39,6 @@ interface ExplanationChatContainerProps {
   headerExtra?: React.ReactNode;
   // Conversation ID for persistence
   conversationId?: string;
-  // Goal setting (learner autonomy)
-  goal?: LearnerGoal | null;
-  onGoalEdit?: () => void;
-  onGoalClear?: () => void;
   // Artifact quiz initial state (from conversation metadata)
   initialArtifactQuizState?: PersistedArtifactQuizState;
 }
@@ -135,11 +131,9 @@ export function ExplanationChatContainer({
     const refs = parseLineReferences(lastMessage.content);
     if (refs.allLines.length > 0) {
       setHighlightedLines(refs.allLines);
-      if (refs.allLines.length > 0) {
-        const min = Math.min(...refs.allLines);
-        const max = Math.max(...refs.allLines);
-        markSectionExplained(min, max);
-      }
+      const min = Math.min(...refs.allLines);
+      const max = Math.max(...refs.allLines);
+      markSectionExplained(min, max);
     } else {
       clearHighlightedLines();
     }
@@ -166,6 +160,13 @@ export function ExplanationChatContainer({
       }
     });
   }, [messages]);
+
+  // クイズ再生成
+  const handleRegenerateQuiz = useCallback(() => {
+    if (artQuiz.activeArtifact?.id) {
+      artQuiz.generateQuizzesForArtifact(artQuiz.activeArtifact.id).catch(() => {});
+    }
+  }, [artQuiz]);
 
   // ブックマーク切り替え
   const handleBookmarkToggle = useCallback(
@@ -321,13 +322,7 @@ export function ExplanationChatContainer({
                         isLoading={isLoading}
                         onQuizAnswer={handleQuizAnswer}
                         onSendMessage={onSendMessage}
-                        onRegenerateQuiz={() => {
-                          if (artQuiz.activeArtifact?.id) {
-                            artQuiz.generateQuizzesForArtifact(artQuiz.activeArtifact.id).catch((error) => {
-                              console.error("[ExplanationChatContainer] Quiz regeneration failed:", error);
-                            });
-                          }
-                        }}
+                        onRegenerateQuiz={handleRegenerateQuiz}
                         themeColor="blue"
                       />
                     </div>

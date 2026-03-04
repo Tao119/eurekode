@@ -90,7 +90,7 @@ export default function ExplanationModePage() {
     [setExternalMetadata]
   );
 
-  const { goal, setGoal, clearGoal } = useGoal({
+  const { goal, setGoal } = useGoal({
     restoredMetadata,
     onMetadataChange: handleMetadataChange,
   });
@@ -221,9 +221,6 @@ export default function ExplanationModePage() {
         onSwitchBranch={switchBranch}
         onRegenerate={regenerateLastMessage}
         canRegenerate={false}
-        goal={goal}
-        onGoalEdit={() => setShowGoalModal(true)}
-        onGoalClear={clearGoal}
         initialArtifactQuizState={initialArtifactQuizState}
         headerExtra={
           <>

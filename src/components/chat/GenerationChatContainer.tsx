@@ -25,7 +25,7 @@ import {
 } from "@/hooks/useGenerationMode";
 import { useUserSettingsOptional } from "@/contexts/UserSettingsContext";
 import { MODE_CONFIG } from "@/config/modes";
-import type { Message, ConversationBranch, Artifact, FileAttachment, LearnerGoal } from "@/types/chat";
+import type { Message, ConversationBranch, Artifact, FileAttachment } from "@/types/chat";
 import type { ActiveArtifactContext } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { parseArtifacts } from "@/lib/artifacts";
@@ -56,10 +56,6 @@ interface GenerationChatContainerProps {
   conversationId?: string; // クイズ進行状況を保存するためのID
   // 初期状態（会話metadataから読み込み）
   initialGenerationState?: PersistedGenerationState;
-  // Goal setting (learner autonomy)
-  goal?: LearnerGoal | null;
-  onGoalEdit?: () => void;
-  onGoalClear?: () => void;
 }
 
 export function GenerationChatContainer({

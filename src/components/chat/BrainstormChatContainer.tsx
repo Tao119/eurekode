@@ -33,7 +33,7 @@ import {
   detectCompletionIntent,
   extractPlanSteps,
 } from "@/lib/brainstormUtils";
-import type { Message, ConversationBranch, PlanStep, BrainstormPhase, BrainstormSubMode, BrainstormModeState, ConversationMetadata, FileAttachment, LearnerGoal } from "@/types/chat";
+import type { Message, ConversationBranch, PlanStep, BrainstormPhase, BrainstormSubMode, BrainstormModeState, ConversationMetadata, FileAttachment } from "@/types/chat";
 import { BRAINSTORM_INITIAL_MESSAGES } from "@/lib/prompts";
 import { cn } from "@/lib/utils";
 
@@ -61,10 +61,6 @@ interface BrainstormChatContainerProps {
   onSubModeChange?: (subMode: BrainstormSubMode) => void;
   // Project selector
   headerExtra?: React.ReactNode;
-  // Goal setting (learner autonomy)
-  goal?: LearnerGoal | null;
-  onGoalEdit?: () => void;
-  onGoalClear?: () => void;
   // Artifact quiz initial state (from conversation metadata)
   initialArtifactQuizState?: PersistedArtifactQuizState;
 }
@@ -162,15 +158,24 @@ export function BrainstormChatContainer({
   } = useBrainstormMode();
 
   // Handle subMode change - update both internal state and notify parent
+  const subModeChangedByUserRef = useRef(false);
   const handleSubModeChange = useCallback((newSubMode: BrainstormSubMode) => {
+    subModeChangedByUserRef.current = true;
     setInternalSubMode(newSubMode);
     onSubModeChange?.(newSubMode);
   }, [setInternalSubMode, onSubModeChange]);
 
-  // Notify parent of initial/restored subMode
+  // Notify parent when subMode changes from state restoration (not user action)
+  const prevSubModeRef = useRef(state.subMode);
   useEffect(() => {
-    if (onSubModeChange) {
-      onSubModeChange(state.subMode);
+    if (prevSubModeRef.current !== state.subMode) {
+      prevSubModeRef.current = state.subMode;
+      // Skip if change was from user action (already notified in handleSubModeChange)
+      if (subModeChangedByUserRef.current) {
+        subModeChangedByUserRef.current = false;
+        return;
+      }
+      onSubModeChange?.(state.subMode);
     }
   }, [state.subMode, onSubModeChange]);
 
@@ -309,6 +314,13 @@ export function BrainstormChatContainer({
   const handleDismissTransition = useCallback(() => {
     dismissTransitionSuggestion();
   }, [dismissTransitionSuggestion]);
+
+  // クイズ再生成
+  const handleRegenerateQuiz = useCallback(() => {
+    if (artQuiz.activeArtifact?.id) {
+      artQuiz.generateQuizzesForArtifact(artQuiz.activeArtifact.id).catch(() => {});
+    }
+  }, [artQuiz]);
 
   // クイックリプライを選択
   const handleQuickReply = useCallback(
@@ -608,13 +620,7 @@ export function BrainstormChatContainer({
                         isLoading={isLoading}
                         onQuizAnswer={handleQuizAnswer}
                         onSendMessage={onSendMessage}
-                        onRegenerateQuiz={() => {
-                          if (artQuiz.activeArtifact?.id) {
-                            artQuiz.generateQuizzesForArtifact(artQuiz.activeArtifact.id).catch((error) => {
-                              console.error("[BrainstormChatContainer] Quiz regeneration failed:", error);
-                            });
-                          }
-                        }}
+                        onRegenerateQuiz={handleRegenerateQuiz}
                         themeColor="purple"
                       />
                     </div>

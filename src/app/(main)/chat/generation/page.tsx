@@ -99,7 +99,7 @@ export default function GenerationModePage() {
     [setExternalMetadata]
   );
 
-  const { goal, setGoal, clearGoal } = useGoal({
+  const { goal, setGoal } = useGoal({
     restoredMetadata,
     onMetadataChange: handleMetadataChange,
   });
@@ -198,9 +198,6 @@ export default function GenerationModePage() {
         canRegenerate={false}
         conversationId={currentConversationId || undefined}
         initialGenerationState={initialGenerationState}
-        goal={goal}
-        onGoalEdit={() => setShowGoalModal(true)}
-        onGoalClear={clearGoal}
         headerExtra={
           <>
             <GoalTrigger goal={goal} onClick={() => setShowGoalModal(true)} />
